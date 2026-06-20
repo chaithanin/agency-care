@@ -1,0 +1,22 @@
+# ไฟล์ที่ไม่ต้องส่งขึ้น Cloud Build (ตัวที่ build container เห็น)
+.git/
+.gitignore
+node_modules/
+**/node_modules/
+dist/
+**/dist/
+api/uploads/
+api/prisma/data/
+.env
+.env.*
+!.env.example
+.claude/
+.vite/
+*.tsbuildinfo
+
+# เอกสาร/ของ local ที่ไม่เกี่ยวกับ build
+*.md
+railway.json
+GTG-CMR/
+GTGcustomer/
+agency-care/

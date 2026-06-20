@@ -7,6 +7,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { PhotoPhase, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { StorageService, UploadFile } from '../storage/storage.service';
 import { RequestUser } from '../common/current-user.decorator';
 import { CheckinDto, CreatePlanDto, ReportDto, UpdatePlanStatusDto } from './dto/visit.dto';
 
@@ -27,6 +28,7 @@ export class VisitService {
   constructor(
     private prisma: PrismaService,
     private config: ConfigService,
+    private storage: StorageService,
   ) {}
 
   private get maxRadius(): number {
@@ -162,7 +164,7 @@ export class VisitService {
   async addPhoto(
     user: RequestUser,
     checkinId: string,
-    file: { filename: string },
+    file: UploadFile,
     phase: PhotoPhase,
     coords: { latitude?: number; longitude?: number },
   ) {
@@ -171,10 +173,13 @@ export class VisitService {
     if (!checkin) throw new NotFoundException('ไม่พบการ check-in');
     if (checkin.employeeId !== emp.id) throw new ForbiddenException('ไม่ใช่งานของคุณ');
 
+    // อัปโหลดขึ้น GCS (หรือ local ตอน dev) แล้วเก็บ url
+    const url = await this.storage.save(file);
+
     return this.prisma.visitPhoto.create({
       data: {
         checkinId,
-        url: `/uploads/${file.filename}`,
+        url,
         phase,
         latitude: coords.latitude,
         longitude: coords.longitude,

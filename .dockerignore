@@ -7,3 +7,4 @@ dist
 .env.*
 !.env.example
 api/uploads
+api/prisma/data

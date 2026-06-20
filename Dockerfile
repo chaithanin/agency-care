@@ -37,6 +37,8 @@ ENV NODE_ENV=production
 COPY --from=build /app /app
 
 WORKDIR /app/api
-EXPOSE 3000
-# รัน migration แล้วเริ่ม server
-CMD ["sh", "-c", "pnpm exec prisma migrate deploy && node dist/main.js"]
+# Cloud Run ส่ง PORT=8080 มาให้ (แอปอ่าน process.env.PORT อยู่แล้ว)
+EXPOSE 8080
+# รันแอปอย่างเดียว — migration รันแยกตอน deploy (deploy.ps1) เพื่อกัน race
+# เมื่อหลาย instance สตาร์ทพร้อมกัน
+CMD ["node", "dist/main.js"]

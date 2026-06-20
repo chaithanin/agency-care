@@ -16,4 +16,6 @@ api/prisma/data/
 
 # โฟลเดอร์ git เปล่าที่หลงเข้ามา (ไม่ใช่ส่วนของโปรเจกต์)
 GTG-CMR/
+GTGcustomer/
+agency-care/
 

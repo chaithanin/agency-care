@@ -7,6 +7,7 @@ import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
 import { AppController } from './app.controller';
 import { PrismaModule } from './prisma/prisma.module';
+import { StorageModule } from './storage/storage.module';
 import { AuthModule } from './auth/auth.module';
 import { EmployeeModule } from './employee/employee.module';
 import { AgencyModule } from './agency/agency.module';
@@ -40,6 +41,7 @@ import { DashboardModule } from './dashboard/dashboard.module';
       exclude: ['/api*'],
     }),
     PrismaModule,
+    StorageModule,
     AuthModule,
     EmployeeModule,
     AgencyModule,

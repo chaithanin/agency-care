@@ -11,8 +11,7 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { diskStorage } from 'multer';
-import { extname } from 'path';
+import { memoryStorage } from 'multer';
 import { PhotoPhase } from '@prisma/client';
 import { VisitService } from './visit.service';
 import {
@@ -23,8 +22,6 @@ import {
 } from './dto/visit.dto';
 import { Roles } from '../auth/guards';
 import { CurrentUser, RequestUser } from '../common/current-user.decorator';
-
-const UPLOAD_DIR = process.env.UPLOAD_DIR || 'uploads';
 
 @Controller('visits')
 export class VisitController {
@@ -76,13 +73,8 @@ export class VisitController {
   @Post('checkins/:checkinId/photos')
   @UseInterceptors(
     FileInterceptor('photo', {
-      storage: diskStorage({
-        destination: UPLOAD_DIR,
-        filename: (_req, file, cb) => {
-          const name = `${Date.now()}-${Math.round(Math.random() * 1e6)}${extname(file.originalname)}`;
-          cb(null, name);
-        },
-      }),
+      // เก็บใน memory แล้วส่งต่อให้ StorageService (GCS หรือ local) จัดการ
+      storage: memoryStorage(),
       limits: { fileSize: 8 * 1024 * 1024 }, // 8MB
       fileFilter: (_req, file, cb) =>
         cb(null, /^image\//.test(file.mimetype)),
