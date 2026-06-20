@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Anthropic from '@anthropic-ai/sdk';
+import { GoogleGenAI } from '@google/genai';
 import { PrismaService } from '../prisma/prisma.service';
 
 export interface Insight {
@@ -107,22 +108,72 @@ export class AnalyticsService {
 
   async analyze(): Promise<{ generatedAt: string; insights: Insight[]; raw?: unknown }> {
     const stats = await this.gatherStats();
-    const apiKey = this.config.get<string>('ANTHROPIC_API_KEY');
-    if (!apiKey) {
+    const provider = (this.config.get<string>('ANALYTICS_PROVIDER') || 'gemini').toLowerCase();
+    const system =
+      'คุณเป็นนักวิเคราะห์ทีมขายภาคสนาม วิเคราะห์ข้อมูลที่ให้และสรุปเป็น insight ภาษาไทยที่นำไปใช้จริงได้ ' +
+      '5-8 ข้อ จัดลำดับความสำคัญ ระบุปัญหาเชิงตัวเลขชัดเจน (เช่น "Agency X ยอดตก 32%") พร้อมข้อเสนอแนะที่ทำได้ทันที';
+    const prompt = `ข้อมูลสรุปทีมขาย (JSON):\n${JSON.stringify(stats, null, 2)}\n\nวิเคราะห์และสร้าง insights`;
+
+    try {
+      const insights =
+        provider === 'claude'
+          ? await this.callClaude(system, prompt)
+          : await this.callGemini(system, prompt);
+      if (insights === null) {
+        return {
+          generatedAt: new Date().toISOString(),
+          insights: [
+            {
+              title: `ยังไม่ได้ตั้งค่า API key ของ ${provider}`,
+              detail:
+                'ใส่ GEMINI_API_KEY (จาก aistudio.google.com) หรือ ANTHROPIC_API_KEY ใน .env — ด้านล่างคือสถิติดิบ',
+              severity: 'low',
+              recommendation: 'ตั้งค่าคีย์แล้วลองอีกครั้ง',
+            },
+          ],
+          raw: stats,
+        };
+      }
+      return { generatedAt: new Date().toISOString(), insights };
+    } catch (e) {
+      this.logger.error(`AI วิเคราะห์ล้มเหลว (${provider}): ${(e as Error).message}`);
       return {
         generatedAt: new Date().toISOString(),
         insights: [
           {
-            title: 'ยังไม่ได้ตั้งค่า ANTHROPIC_API_KEY',
-            detail: 'ใส่ key ใน .env เพื่อเปิดการวิเคราะห์ด้วย AI — ด้านล่างคือสถิติดิบ',
-            severity: 'low',
-            recommendation: 'ตั้งค่า ANTHROPIC_API_KEY แล้วลองอีกครั้ง',
+            title: 'วิเคราะห์ด้วย AI ไม่สำเร็จ',
+            detail: (e as Error).message,
+            severity: 'medium',
+            recommendation: 'ตรวจสอบ API key / โควต้า แล้วลองใหม่',
           },
         ],
         raw: stats,
       };
     }
+  }
 
+  // ---- Gemini (คีย์จาก aistudio.google.com) ----
+  private async callGemini(system: string, prompt: string): Promise<Insight[] | null> {
+    const apiKey = this.config.get<string>('GEMINI_API_KEY');
+    if (!apiKey) return null;
+    const model = this.config.get<string>('GEMINI_MODEL') || 'gemini-2.5-flash';
+    const ai = new GoogleGenAI({ apiKey });
+    const res = await ai.models.generateContent({
+      model,
+      contents: `${prompt}\n\nตอบเป็น JSON เท่านั้น รูปแบบ: {"insights":[{"title":"","detail":"","severity":"high|medium|low","recommendation":""}]}`,
+      config: {
+        systemInstruction: system,
+        responseMimeType: 'application/json',
+      },
+    });
+    const parsed = JSON.parse(res.text ?? '{"insights":[]}');
+    return parsed.insights ?? [];
+  }
+
+  // ---- Claude (คีย์จาก console.anthropic.com) ----
+  private async callClaude(system: string, prompt: string): Promise<Insight[] | null> {
+    const apiKey = this.config.get<string>('ANTHROPIC_API_KEY');
+    if (!apiKey) return null;
     const client = new Anthropic({ apiKey });
     const schema = {
       type: 'object',
@@ -145,47 +196,21 @@ export class AnalyticsService {
       required: ['insights'],
       additionalProperties: false,
     };
-
-    try {
-      // หมายเหตุ: output_config / thinking ส่งผ่าน body ไป API (รองรับใน claude-opus-4-8)
-      // ใช้ any เพื่อข้าม type ของ SDK เวอร์ชันที่ติดตั้งซึ่งอาจยังไม่ประกาศฟิลด์เหล่านี้
-      const params: Record<string, unknown> = {
-        model: 'claude-opus-4-8',
-        max_tokens: 4000,
-        thinking: { type: 'adaptive' },
-        system:
-          'คุณเป็นนักวิเคราะห์ทีมขายภาคสนาม วิเคราะห์ข้อมูลที่ให้และสรุปเป็น insight ภาษาไทยที่นำไปใช้จริงได้ ' +
-          '5-8 ข้อ จัดลำดับความสำคัญ ระบุปัญหาเชิงตัวเลขชัดเจน (เช่น "Agency X ยอดตก 32%") พร้อมข้อเสนอแนะที่ทำได้ทันที',
-        output_config: { format: { type: 'json_schema', schema } },
-        messages: [
-          {
-            role: 'user',
-            content: `ข้อมูลสรุปทีมขาย (JSON):\n${JSON.stringify(stats, null, 2)}\n\nวิเคราะห์และสร้าง insights`,
-          },
-        ],
-      };
-      const response = await client.messages.create(
-        params as unknown as Anthropic.MessageCreateParamsNonStreaming,
-      );
-
-      const textBlock = response.content.find((b) => b.type === 'text');
-      const parsed =
-        textBlock && 'text' in textBlock ? JSON.parse(textBlock.text) : { insights: [] };
-      return { generatedAt: new Date().toISOString(), insights: parsed.insights ?? [] };
-    } catch (e) {
-      this.logger.error(`AI วิเคราะห์ล้มเหลว: ${(e as Error).message}`);
-      return {
-        generatedAt: new Date().toISOString(),
-        insights: [
-          {
-            title: 'วิเคราะห์ด้วย AI ไม่สำเร็จ',
-            detail: (e as Error).message,
-            severity: 'medium',
-            recommendation: 'ตรวจสอบ ANTHROPIC_API_KEY และโควต้า แล้วลองใหม่',
-          },
-        ],
-        raw: stats,
-      };
-    }
+    // output_config / thinking ส่งผ่าน body ไป API (รองรับใน claude-opus-4-8)
+    const params: Record<string, unknown> = {
+      model: 'claude-opus-4-8',
+      max_tokens: 4000,
+      thinking: { type: 'adaptive' },
+      system,
+      output_config: { format: { type: 'json_schema', schema } },
+      messages: [{ role: 'user', content: prompt }],
+    };
+    const response = await client.messages.create(
+      params as unknown as Anthropic.MessageCreateParamsNonStreaming,
+    );
+    const textBlock = response.content.find((b) => b.type === 'text');
+    const parsed =
+      textBlock && 'text' in textBlock ? JSON.parse(textBlock.text) : { insights: [] };
+    return parsed.insights ?? [];
   }
 }
