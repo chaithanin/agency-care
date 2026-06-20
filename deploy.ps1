@@ -21,8 +21,8 @@ gcloud run deploy $SERVICE `
   --min-instances 0 `
   --add-cloudsql-instances $SQL_CONN `
   --set-env-vars "GCS_BUCKET=$BUCKET,ANALYTICS_PROVIDER=gemini,CORS_ORIGIN=*,JWT_ACCESS_TTL=15m,JWT_REFRESH_TTL=7d" `
-  --set-secrets "DATABASE_URL=agency-database-url:latest,JWT_ACCESS_SECRET=agency-jwt-access:latest,JWT_REFRESH_SECRET=agency-jwt-refresh:latest"
-  # --- secret ตัวเลือก (เปิดใช้เมื่อต้องการฟีเจอร์นั้น) ต่อท้ายบรรทัดบนด้วย , ---
-  # ,GEMINI_API_KEY=agency-gemini-key:latest,GOOGLE_MAPS_API_KEY=agency-maps-key:latest,LINE_CHANNEL_ACCESS_TOKEN=agency-line-token:latest
+  --set-secrets "DATABASE_URL=agency-database-url:latest,JWT_ACCESS_SECRET=agency-jwt-access:latest,JWT_REFRESH_SECRET=agency-jwt-refresh:latest,GOOGLE_MAPS_API_KEY=agency-maps-key:latest"
+  # --- secret ตัวเลือกเพิ่มเติม (สร้าง secret ก่อน แล้วต่อท้ายบรรทัดบนด้วย ,) ---
+  # ,GEMINI_API_KEY=agency-gemini-key:latest,LINE_CHANNEL_ACCESS_TOKEN=agency-line-token:latest
 
 Write-Host "==> เสร็จ! ดู URL ด้านบน (https://$SERVICE-xxxx.a.run.app)" -ForegroundColor Green

@@ -61,7 +61,7 @@ export class AgencyService {
     return this.prisma.agency.update({ where: { id }, data });
   }
 
-  // เติมพิกัดอัตโนมัติให้ agency ที่ยังไม่มี ผ่าน Google Places Text Search
+  // เติมพิกัดอัตโนมัติให้ agency ที่ยังไม่มี ผ่าน Google Geocoding API
   async geocodeMissing(limit = 50) {
     const key = this.config.get<string>('GOOGLE_MAPS_API_KEY');
     if (!key) {
@@ -76,8 +76,8 @@ export class AgencyService {
     let found = 0;
     const failedNames: string[] = [];
     for (const a of targets) {
-      const query = encodeURIComponent(`${a.name} ${a.zone ?? 'Pattaya'} Thailand`);
-      const url = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${query}&region=th&language=th&key=${key}`;
+      const address = encodeURIComponent(`${a.name} ${a.zone ?? 'Pattaya'} Thailand`);
+      const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${address}&region=th&language=th&key=${key}`;
       try {
         const res = await fetch(url);
         const data = (await res.json()) as {
