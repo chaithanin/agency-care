@@ -1,0 +1,19 @@
+node_modules/
+dist/
+build/
+*.log
+.env
+.env.*
+!.env.example
+.DS_Store
+api/public/
+api/uploads/
+*.tsbuildinfo
+.vite/
+
+# ข้อมูลจริง (PII) — สร้างใหม่จาก Excel ด้วย py scripts/xlsx_extract.py
+api/prisma/data/
+
+# โฟลเดอร์ git เปล่าที่หลงเข้ามา (ไม่ใช่ส่วนของโปรเจกต์)
+GTG-CMR/
+

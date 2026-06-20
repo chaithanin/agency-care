@@ -1,0 +1,146 @@
+import { useState } from 'react';
+import {
+  Box,
+  Typography,
+  Paper,
+  Stack,
+  Button,
+  Table,
+  TableHead,
+  TableRow,
+  TableCell,
+  TableBody,
+  Chip,
+  Alert,
+  LinearProgress,
+} from '@mui/material';
+import { api, errMsg } from '../api/client';
+
+interface ProposalRow {
+  agencyId: string;
+  agencyCode: string;
+  agencyName: string;
+  zone?: string;
+  employeeId: string;
+  employeeName: string;
+  matchedZone: boolean;
+}
+interface SummaryRow {
+  employeeId: string;
+  name: string;
+  count: number;
+}
+
+export default function AutoAssignPage() {
+  const [proposal, setProposal] = useState<ProposalRow[] | null>(null);
+  const [summary, setSummary] = useState<SummaryRow[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [msg, setMsg] = useState('');
+
+  const propose = async () => {
+    setLoading(true);
+    setMsg('');
+    try {
+      const { data } = await api.get('/auto-assign/propose');
+      setProposal(data.proposal);
+      setSummary(data.summary);
+    } catch (e) {
+      setMsg(errMsg(e));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const apply = async () => {
+    if (!proposal) return;
+    setLoading(true);
+    setMsg('');
+    try {
+      const assignments = proposal.map((p) => ({ agencyId: p.agencyId, employeeId: p.employeeId }));
+      const { data } = await api.post('/auto-assign/apply', { assignments });
+      setMsg(`ยืนยันการแบ่งแล้ว ${data.applied} ร้าน`);
+      setProposal(null);
+    } catch (e) {
+      setMsg(errMsg(e));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Box>
+      <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2}>
+        <Typography variant="h5" fontWeight={700}>
+          จัดทีมอัตโนมัติ (AI)
+        </Typography>
+        <Stack direction="row" spacing={1}>
+          <Button variant="outlined" onClick={propose} disabled={loading}>
+            เสนอการแบ่ง
+          </Button>
+          {proposal && (
+            <Button variant="contained" color="success" onClick={apply} disabled={loading}>
+              ยืนยันใช้จริง
+            </Button>
+          )}
+        </Stack>
+      </Stack>
+
+      <Typography variant="body2" color="text.secondary" mb={2}>
+        ระบบเสนอการแบ่ง Agency ให้เซลส์โดยบาลานซ์ตามโซนและภาระงาน — ตรวจสอบก่อนกดยืนยัน
+      </Typography>
+
+      {loading && <LinearProgress sx={{ mb: 2 }} />}
+      {msg && (
+        <Alert severity="info" sx={{ mb: 2 }} onClose={() => setMsg('')}>
+          {msg}
+        </Alert>
+      )}
+
+      {summary.length > 0 && (
+        <Paper sx={{ p: 2, mb: 2 }}>
+          <Typography variant="subtitle1" fontWeight={700} mb={1}>
+            สรุปภาระงานที่เสนอ
+          </Typography>
+          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+            {summary.map((s) => (
+              <Chip key={s.employeeId} label={`${s.name}: ${s.count} ร้าน`} />
+            ))}
+          </Stack>
+        </Paper>
+      )}
+
+      {proposal && (
+        <Paper>
+          <Table size="small">
+            <TableHead>
+              <TableRow>
+                <TableCell>Agency</TableCell>
+                <TableCell>โซน</TableCell>
+                <TableCell>เซลส์ที่เสนอ</TableCell>
+                <TableCell>โซนตรง</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {proposal.map((p) => (
+                <TableRow key={p.agencyId}>
+                  <TableCell>
+                    {p.agencyCode} — {p.agencyName}
+                  </TableCell>
+                  <TableCell>{p.zone || '-'}</TableCell>
+                  <TableCell>{p.employeeName}</TableCell>
+                  <TableCell>
+                    {p.matchedZone ? (
+                      <Chip size="small" color="success" label="ตรง" />
+                    ) : (
+                      <Chip size="small" label="-" />
+                    )}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </Paper>
+      )}
+    </Box>
+  );
+}

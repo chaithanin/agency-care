@@ -1,0 +1,33 @@
+import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { PassportStrategy } from '@nestjs/passport';
+import { ExtractJwt, Strategy } from 'passport-jwt';
+import { UserRole } from '@prisma/client';
+
+export interface JwtPayload {
+  sub: string;
+  email: string;
+  name: string;
+  role: UserRole;
+}
+
+@Injectable()
+export class JwtStrategy extends PassportStrategy(Strategy) {
+  constructor(config: ConfigService) {
+    super({
+      jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
+      ignoreExpiration: false,
+      secretOrKey: config.get<string>('JWT_ACCESS_SECRET', 'change-me-access-secret'),
+    });
+  }
+
+  // ค่า return จะถูกแนบเข้า req.user
+  validate(payload: JwtPayload) {
+    return {
+      id: payload.sub,
+      email: payload.email,
+      name: payload.name,
+      role: payload.role,
+    };
+  }
+}

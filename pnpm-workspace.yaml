@@ -1,0 +1,13 @@
+packages:
+  - 'api'
+  - 'web'
+  - 'shared'
+
+# อนุญาตให้ dependency เหล่านี้รัน build/postinstall script
+allowBuilds:
+  '@nestjs/core': true
+  '@prisma/client': true
+  '@prisma/engines': true
+  argon2: true
+  esbuild: true
+  prisma: true

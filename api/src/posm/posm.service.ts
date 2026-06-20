@@ -1,0 +1,62 @@
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
+import { RequestUser } from '../common/current-user.decorator';
+import { assertVisitAccess } from '../common/visit-ownership';
+import { CreatePosmItemDto, CreatePosmTxnDto, UpdatePosmItemDto } from './dto/posm.dto';
+
+@Injectable()
+export class PosmService {
+  constructor(private prisma: PrismaService) {}
+
+  // ---- master items ----
+  listItems() {
+    return this.prisma.posmItem.findMany({ orderBy: { code: 'asc' } });
+  }
+
+  async createItem(dto: CreatePosmItemDto) {
+    const dup = await this.prisma.posmItem.findUnique({ where: { code: dto.code } });
+    if (dup) throw new BadRequestException(`รหัส ${dto.code} ถูกใช้แล้ว`);
+    return this.prisma.posmItem.create({ data: dto });
+  }
+
+  async updateItem(id: string, dto: UpdatePosmItemDto) {
+    const item = await this.prisma.posmItem.findUnique({ where: { id } });
+    if (!item) throw new NotFoundException('ไม่พบรายการสื่อ');
+    return this.prisma.posmItem.update({ where: { id }, data: dto });
+  }
+
+  // ---- แจกสื่อในงานเยี่ยม (ตัดสต็อกแบบ atomic) ----
+  async giveOut(user: RequestUser, dto: CreatePosmTxnDto) {
+    await assertVisitAccess(this.prisma, user, dto.visitPlanId);
+
+    return this.prisma.$transaction(async (tx) => {
+      const item = await tx.posmItem.findUnique({ where: { id: dto.posmItemId } });
+      if (!item) throw new NotFoundException('ไม่พบรายการสื่อ');
+      if (item.stockQty < dto.quantity) {
+        throw new BadRequestException(
+          `สต็อก ${item.name} เหลือ ${item.stockQty} ${item.unit} (ขอ ${dto.quantity})`,
+        );
+      }
+      await tx.posmItem.update({
+        where: { id: item.id },
+        data: { stockQty: { decrement: dto.quantity } },
+      });
+      return tx.posmTransaction.create({
+        data: {
+          visitPlanId: dto.visitPlanId,
+          posmItemId: dto.posmItemId,
+          quantity: dto.quantity,
+        },
+        include: { posmItem: { select: { code: true, name: true, unit: true } } },
+      });
+    });
+  }
+
+  listByVisit(visitPlanId: string) {
+    return this.prisma.posmTransaction.findMany({
+      where: { visitPlanId },
+      orderBy: { createdAt: 'asc' },
+      include: { posmItem: { select: { code: true, name: true, unit: true } } },
+    });
+  }
+}

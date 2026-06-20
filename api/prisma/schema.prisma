@@ -1,0 +1,409 @@
+// Agency Care Enterprise — Prisma schema
+// MVP เฟส 1: users / employees / agencies / assignments / visit (plan, checkin, photo, report)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================
+// Enums
+// ============================================================
+enum UserRole {
+  admin // ผู้ดูแลระบบ / ผู้บริหาร — เห็นทุกอย่าง
+  manager // หัวหน้าทีม — เห็นทีมตัวเอง
+  sales // เซลส์ภาคสนาม — เห็นงานตัวเอง
+}
+
+enum AgencyLevel {
+  A // เยี่ยม 4 ครั้ง/เดือน
+  B // เยี่ยม 2 ครั้ง/เดือน
+  C // เยี่ยม 1 ครั้ง/เดือน
+  D // เยี่ยม 1 ครั้ง/3 เดือน
+}
+
+enum AgencyStatus {
+  active
+  inactive
+}
+
+enum VisitStatus {
+  pending // รอเข้าเยี่ยม
+  done // เข้าเยี่ยมแล้ว
+  postponed // เลื่อน
+  cancelled // ยกเลิก
+}
+
+enum PhotoPhase {
+  before // ก่อนเข้า
+  during // ระหว่างเข้า
+  after // หลังเข้า
+}
+
+enum AuditAction {
+  create
+  update
+  delete
+  login
+}
+
+// ============================================================
+// 1) users — บัญชีเข้าระบบ (auth)
+// ============================================================
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  name         String
+  role         UserRole @default(sales)
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  // เซลส์ 1 คน = 1 user (โปรไฟล์ field-sales อยู่ใน Employee)
+  employee  Employee?
+  auditLogs AuditLog[]
+
+  @@map("users")
+}
+
+// ============================================================
+// 2) employees — โปรไฟล์พนักงาน/เซลส์ภาคสนาม
+// ============================================================
+model Employee {
+  id        String   @id @default(cuid())
+  userId    String?  @unique @map("user_id") // ผูกกับบัญชี login (ถ้ามี)
+  code       String   @unique // รหัสพนักงาน เช่น SALE-001
+  name       String
+  phone      String?
+  zone       String? // โซน/พื้นที่ดูแล
+  lineUserId String?  @map("line_user_id") // ผูก LINE เพื่อรับแจ้งเตือน
+  isActive   Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user        User?              @relation(fields: [userId], references: [id], onDelete: SetNull)
+  assignments AgencyAssignment[]
+  visitPlans  VisitPlan[]
+  checkins    VisitCheckin[]
+
+  @@index([zone])
+  @@map("employees")
+}
+
+// ============================================================
+// 3) agencies — เอเจนซี่ (Master)
+// ============================================================
+model Agency {
+  id     String       @id @default(cuid())
+  code   String       @unique // รหัส Agency
+  name   String
+  type   String? // ประเภทร้าน
+  level  AgencyLevel  @default(C) // ระดับ A/B/C/D (คุมความถี่เยี่ยม)
+  status AgencyStatus @default(active)
+
+  // พื้นที่
+  province String? // จังหวัด
+  zone     String? // โซน/ภาค
+
+  // ผู้ติดต่อ
+  ownerName   String? @map("owner_name") // เจ้าของ
+  managerName String? @map("manager_name") // ผู้จัดการ
+  phone       String?
+  email       String?
+  lineId      String? @map("line_id")
+
+  // ข้อมูลจัดกลุ่ม/อ้างอิง (จากไฟล์ Agency List)
+  classification    String? // เช่น Rus / Eng / Freelance / Office in Pattaya
+  gradeQuality      String? @map("grade_quality") // เกรดคุณภาพ (K)
+  gradeRelationship String? @map("grade_relationship") // เกรดความสัมพันธ์ (L) เช่น A = Sold for us
+  priority          String? // Priority
+  source            String? // Source of Customer
+  tags              String? // Extra tags
+  lastVisitAt       DateTime? @map("last_visit_at") // วันเข้าเยี่ยมล่าสุด (ก่อนใช้ระบบ)
+
+  // พิกัด (ใช้ตรวจ check-in)
+  latitude       Float?
+  longitude      Float?
+  geocodeSource  String? @map("geocode_source") // manual = ยืนยันแล้ว, google = auto (ควรตรวจ)
+
+  // รูป (เก็บ url/path)
+  photoFront  String? @map("photo_front")
+  photoInside String? @map("photo_inside")
+  logo        String?
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  assignments AgencyAssignment[]
+  visitPlans  VisitPlan[]
+  models      Model[] // อุปกรณ์ที่อยู่ที่ร้านนี้ตอนนี้
+  modelTxns   ModelTransaction[]
+
+  @@index([zone])
+  @@index([province])
+  @@index([status])
+  @@map("agencies")
+}
+
+// ============================================================
+// 4) agency_assignments — มอบหมาย Agency ให้เซลส์
+// ============================================================
+model AgencyAssignment {
+  id         String   @id @default(cuid())
+  agencyId   String   @map("agency_id")
+  employeeId String   @map("employee_id")
+  isActive   Boolean  @default(true) @map("is_active")
+  assignedAt DateTime @default(now()) @map("assigned_at")
+
+  agency   Agency   @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  // 1 agency ผูกกับ 1 เซลส์ได้ครั้งเดียว (ความสัมพันธ์ที่ active)
+  @@unique([agencyId, employeeId])
+  @@index([employeeId])
+  @@map("agency_assignments")
+}
+
+// ============================================================
+// 5) visit_plans — แผนการเข้าเยี่ยม
+// ============================================================
+model VisitPlan {
+  id         String      @id @default(cuid())
+  agencyId   String      @map("agency_id")
+  employeeId String      @map("employee_id")
+  planDate   DateTime    @map("plan_date") @db.Date // วันที่นัดเยี่ยม
+  status     VisitStatus @default(pending)
+  note       String?
+  createdAt  DateTime    @default(now()) @map("created_at")
+  updatedAt  DateTime    @updatedAt @map("updated_at")
+
+  agency   Agency   @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  // เข้าเยี่ยมจริง 1 แผน = 1 check-in + 1 report (MVP)
+  checkin VisitCheckin?
+  report  VisitReport?
+
+  // เฟส 2: สื่อที่แจก + การขาย ในงานเยี่ยมนี้
+  posmTransactions PosmTransaction[]
+  salesActivities  SalesActivity[]
+  modelTransactions ModelTransaction[]
+
+  @@index([employeeId, planDate])
+  @@index([agencyId, planDate])
+  @@index([planDate, status])
+  @@map("visit_plans")
+}
+
+// ============================================================
+// 6) visit_checkins — GPS check-in หน้างาน
+// ============================================================
+model VisitCheckin {
+  id          String   @id @default(cuid())
+  visitPlanId String   @unique @map("visit_plan_id")
+  employeeId  String   @map("employee_id")
+  checkinAt   DateTime @default(now()) @map("checkin_at")
+
+  // ตำแหน่งที่ผู้ใช้ check-in จริง
+  latitude  Float
+  longitude Float
+
+  // ผลตรวจระยะห่างจากพิกัด Agency (เมตร)
+  distanceMeters Int     @map("distance_meters")
+  withinRadius   Boolean @map("within_radius") // ผ่านเงื่อนไขรัศมีหรือไม่
+
+  visitPlan VisitPlan    @relation(fields: [visitPlanId], references: [id], onDelete: Cascade)
+  employee  Employee     @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  photos    VisitPhoto[]
+
+  @@index([employeeId, checkinAt])
+  @@map("visit_checkins")
+}
+
+// ============================================================
+// 7) visit_photos — รูปยืนยันการเข้าเยี่ยม
+// ============================================================
+model VisitPhoto {
+  id        String     @id @default(cuid())
+  checkinId String     @map("checkin_id")
+  url       String // path/url ของไฟล์
+  phase     PhotoPhase @default(during)
+
+  // metadata กันปลอมแปลง
+  latitude  Float?
+  longitude Float?
+  takenAt   DateTime @default(now()) @map("taken_at")
+
+  checkin VisitCheckin @relation(fields: [checkinId], references: [id], onDelete: Cascade)
+
+  @@index([checkinId])
+  @@map("visit_photos")
+}
+
+// ============================================================
+// 8) visit_reports — รายงานสรุปหลังเข้าเยี่ยม
+// ============================================================
+model VisitReport {
+  id          String   @id @default(cuid())
+  visitPlanId String   @unique @map("visit_plan_id")
+
+  // วัตถุประสงค์ (เลือกได้หลายข้อ) เช่น ["visit","close_sale","install_posm"]
+  purposes   String[]
+  summary    String? // สรุปผล
+  problems   String? // ปัญหาที่พบ
+  actionPlan String?  @map("action_plan") // แผนต่อไป
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  visitPlan VisitPlan @relation(fields: [visitPlanId], references: [id], onDelete: Cascade)
+
+  @@map("visit_reports")
+}
+
+// ============================================================
+// 10) posm_items — คลังสื่อส่งเสริมการขาย (POSM master)
+// ============================================================
+model PosmItem {
+  id        String   @id @default(cuid())
+  code      String   @unique
+  name      String // เช่น โบรชัวร์ / Roll Up / Banner
+  unit      String   @default("ชิ้น")
+  stockQty  Int      @default(0) @map("stock_qty") // คงเหลือในคลัง
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  transactions PosmTransaction[]
+
+  @@map("posm_items")
+}
+
+// ============================================================
+// 11) posm_transactions — แจกสื่อในงานเยี่ยม (ตัดสต็อก)
+// ============================================================
+model PosmTransaction {
+  id          String   @id @default(cuid())
+  visitPlanId String   @map("visit_plan_id")
+  posmItemId  String   @map("posm_item_id")
+  quantity    Int
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  visitPlan VisitPlan @relation(fields: [visitPlanId], references: [id], onDelete: Cascade)
+  posmItem  PosmItem  @relation(fields: [posmItemId], references: [id], onDelete: Restrict)
+
+  @@index([visitPlanId])
+  @@index([posmItemId])
+  @@map("posm_transactions")
+}
+
+// ============================================================
+// 12) products — สินค้า (master)
+// ============================================================
+model Product {
+  id        String   @id @default(cuid())
+  code      String   @unique
+  name      String
+  price     Float    @default(0) // ราคาต่อหน่วย
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  salesActivities SalesActivity[]
+
+  @@map("products")
+}
+
+// ============================================================
+// 13) sales_activities — บันทึกการขายในงานเยี่ยม
+// ============================================================
+model SalesActivity {
+  id          String   @id @default(cuid())
+  visitPlanId String   @map("visit_plan_id")
+  productId   String   @map("product_id")
+  qtyOffered  Int      @default(0) @map("qty_offered") // จำนวนที่เสนอ
+  qtySold     Int      @default(0) @map("qty_sold") // จำนวนที่ขายได้
+  amount      Float    @default(0) // ยอดขายรวม (บาท)
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  visitPlan VisitPlan @relation(fields: [visitPlanId], references: [id], onDelete: Cascade)
+  product   Product   @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@index([visitPlanId])
+  @@index([productId])
+  @@map("sales_activities")
+}
+
+// ============================================================
+// 14) models — อุปกรณ์/เครื่องเดโม/Display/Stand (เฟส 4)
+// ============================================================
+enum ModelStatus {
+  in_stock // อยู่คลัง
+  deployed // ติดตั้งที่ร้าน
+  repair // ส่งซ่อม
+  lost // สูญหาย
+}
+
+model Model {
+  id        String      @id @default(cuid())
+  code      String      @unique
+  name      String
+  category  String? // Display / Demo Unit / Stand / ป้าย
+  status    ModelStatus @default(in_stock)
+
+  // ร้านที่อุปกรณ์อยู่ตอนนี้ (ถ้า deployed)
+  currentAgencyId String? @map("current_agency_id")
+  currentAgency   Agency? @relation(fields: [currentAgencyId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  transactions ModelTransaction[]
+
+  @@index([status])
+  @@index([currentAgencyId])
+  @@map("models")
+}
+
+// 15) model_transactions — ประวัติเคลื่อนย้ายอุปกรณ์
+model ModelTransaction {
+  id          String   @id @default(cuid())
+  modelId     String   @map("model_id")
+  agencyId    String?  @map("agency_id") // ร้านปลายทาง (deploy) หรือต้นทาง (return)
+  visitPlanId String?  @map("visit_plan_id")
+  action      String // deploy | return | repair
+  note        String?
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  model     Model      @relation(fields: [modelId], references: [id], onDelete: Cascade)
+  agency    Agency?    @relation(fields: [agencyId], references: [id], onDelete: SetNull)
+  visitPlan VisitPlan? @relation(fields: [visitPlanId], references: [id], onDelete: SetNull)
+
+  @@index([modelId])
+  @@index([agencyId])
+  @@map("model_transactions")
+}
+
+// ============================================================
+// (infra) audit_logs — บันทึกการกระทำสำคัญ
+// ============================================================
+model AuditLog {
+  id        String      @id @default(cuid())
+  userId    String?     @map("user_id")
+  action    AuditAction
+  entity    String // ชื่อ entity เช่น "agency"
+  entityId  String?     @map("entity_id")
+  ip        String?
+  createdAt DateTime    @default(now()) @map("created_at")
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([entity, entityId])
+  @@map("audit_logs")
+}
