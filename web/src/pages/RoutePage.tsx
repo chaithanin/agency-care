@@ -15,6 +15,7 @@ import {
 } from '@mui/material';
 import DirectionsIcon from '@mui/icons-material/Directions';
 import { api } from '../api/client';
+import { useT } from '../i18n';
 
 interface Stop {
   order: number;
@@ -33,6 +34,7 @@ interface RoutePlan {
 const todayStr = () => new Date().toISOString().slice(0, 10);
 
 export default function RoutePage() {
+  const { t } = useT();
   const [date, setDate] = useState(todayStr());
   const [data, setData] = useState<RoutePlan | null>(null);
   const [loading, setLoading] = useState(false);
@@ -53,7 +55,7 @@ export default function RoutePage() {
     <Box>
       <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2}>
         <Typography variant="h5" fontWeight={700}>
-          เส้นทางวิ่งงาน
+          {t('rt.title')}
         </Typography>
         <TextField type="date" size="small" value={date} onChange={(e) => setDate(e.target.value)} />
       </Stack>
@@ -74,7 +76,7 @@ export default function RoutePage() {
                 href={data.mapsUrl}
                 target="_blank"
               >
-                เปิดเส้นทางใน Google Maps
+                {t('rt.openMaps')}
               </Button>
             )}
           </Stack>
@@ -86,14 +88,14 @@ export default function RoutePage() {
           )}
 
           {data.stops.length === 0 ? (
-            <Typography color="text.secondary">ไม่มีงานที่มีพิกัดในวันนี้</Typography>
+            <Typography color="text.secondary">{t('rt.noJobs')}</Typography>
           ) : (
             <List dense>
               {data.stops.map((s) => (
                 <ListItem key={s.order} divider>
                   <Chip size="small" label={s.order} color="primary" sx={{ mr: 2 }} />
                   <ListItemText primary={s.name} secondary={s.code} />
-                  {s.status === 'done' && <Chip size="small" color="success" label="เข้าแล้ว" />}
+                  {s.status === 'done' && <Chip size="small" color="success" label={t('c.done')} />}
                 </ListItem>
               ))}
             </List>

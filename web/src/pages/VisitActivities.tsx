@@ -14,6 +14,7 @@ import {
   Alert,
 } from '@mui/material';
 import { api, errMsg } from '../api/client';
+import { useT } from '../i18n';
 
 interface PosmItem {
   id: string;
@@ -46,6 +47,7 @@ export default function VisitActivities({
   visitPlanId: string;
   isSales: boolean;
 }) {
+  const { t } = useT();
   const [items, setItems] = useState<PosmItem[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [txns, setTxns] = useState<PosmTxn[]>([]);
@@ -125,40 +127,40 @@ export default function VisitActivities({
       {/* ---- POSM ---- */}
       <Paper sx={{ p: 2, mb: 2 }}>
         <Typography variant="h6" fontWeight={700} mb={1}>
-          แจกสื่อ POSM
+          {t('va.posmTitle')}
         </Typography>
         {isSales && (
           <Stack direction="row" spacing={1} mb={2} alignItems="center" flexWrap="wrap" useFlexGap>
             <TextField
               select
               size="small"
-              label="สื่อ"
+              label={t('va.media')}
               value={posmItem}
               onChange={(e) => setPosmItem(e.target.value)}
               sx={{ minWidth: 180 }}
             >
               {items.map((i) => (
                 <MenuItem key={i.id} value={i.id} disabled={i.stockQty <= 0}>
-                  {i.name} (เหลือ {i.stockQty})
+                  {i.name} ({t('va.left')} {i.stockQty})
                 </MenuItem>
               ))}
             </TextField>
             <TextField
               size="small"
               type="number"
-              label="จำนวน"
+              label={t('va.qty')}
               value={posmQty}
               onChange={(e) => setPosmQty(e.target.value)}
               sx={{ width: 100 }}
             />
             <Button variant="outlined" onClick={giveOut}>
-              บันทึก
+              {t('common.save')}
             </Button>
           </Stack>
         )}
         {txns.length === 0 ? (
           <Typography variant="body2" color="text.secondary">
-            ยังไม่มีการแจกสื่อ
+            {t('va.noPosm')}
           </Typography>
         ) : (
           <Table size="small">
@@ -179,14 +181,14 @@ export default function VisitActivities({
       {/* ---- Sales ---- */}
       <Paper sx={{ p: 2, mb: 2 }}>
         <Typography variant="h6" fontWeight={700} mb={1}>
-          บันทึกการขาย
+          {t('va.salesTitle')}
         </Typography>
         {isSales && (
           <Stack direction="row" spacing={1} mb={2} alignItems="center" flexWrap="wrap" useFlexGap>
             <TextField
               select
               size="small"
-              label="สินค้า"
+              label={t('va.product')}
               value={product}
               onChange={(e) => setProduct(e.target.value)}
               sx={{ minWidth: 160 }}
@@ -200,7 +202,7 @@ export default function VisitActivities({
             <TextField
               size="small"
               type="number"
-              label="เสนอ"
+              label={t('va.offered')}
               value={offered}
               onChange={(e) => setOffered(e.target.value)}
               sx={{ width: 80 }}
@@ -208,7 +210,7 @@ export default function VisitActivities({
             <TextField
               size="small"
               type="number"
-              label="ขายได้"
+              label={t('va.sold')}
               value={sold}
               onChange={(e) => setSold(e.target.value)}
               sx={{ width: 80 }}
@@ -216,29 +218,29 @@ export default function VisitActivities({
             <TextField
               size="small"
               type="number"
-              label="ยอด (บาท)"
+              label={t('va.amount')}
               placeholder="auto"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               sx={{ width: 110 }}
             />
             <Button variant="outlined" onClick={recordSale}>
-              บันทึก
+              {t('common.save')}
             </Button>
           </Stack>
         )}
         {sales.length === 0 ? (
           <Typography variant="body2" color="text.secondary">
-            ยังไม่มีการขาย
+            {t('va.noSales')}
           </Typography>
         ) : (
           <Table size="small">
             <TableHead>
               <TableRow>
-                <TableCell>สินค้า</TableCell>
-                <TableCell align="right">เสนอ</TableCell>
-                <TableCell align="right">ขายได้</TableCell>
-                <TableCell align="right">ยอด</TableCell>
+                <TableCell>{t('va.product')}</TableCell>
+                <TableCell align="right">{t('va.offered')}</TableCell>
+                <TableCell align="right">{t('va.sold')}</TableCell>
+                <TableCell align="right">{t('va.amountShort')}</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>

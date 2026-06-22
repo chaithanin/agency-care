@@ -14,6 +14,7 @@ import LocationOnIcon from '@mui/icons-material/LocationOn';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
+import { useT } from '../i18n';
 
 interface Plan {
   id: string;
@@ -25,6 +26,7 @@ interface Plan {
 const todayStr = () => new Date().toISOString().slice(0, 10);
 
 export default function MyVisitsPage() {
+  const { t } = useT();
   const [plans, setPlans] = useState<Plan[] | null>(null);
   const [date, setDate] = useState(todayStr());
   const nav = useNavigate();
@@ -38,7 +40,7 @@ export default function MyVisitsPage() {
     <Box>
       <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2}>
         <Typography variant="h5" fontWeight={700}>
-          งานเข้าเยี่ยมของฉัน
+          {t('mv.title')}
         </Typography>
         <TextField
           type="date"
@@ -70,9 +72,9 @@ export default function MyVisitsPage() {
                     </Typography>
                   </Box>
                   {p.status === 'done' ? (
-                    <Chip icon={<CheckCircleIcon />} color="success" label="เข้าแล้ว" />
+                    <Chip icon={<CheckCircleIcon />} color="success" label={t('c.done')} />
                   ) : (
-                    <Chip icon={<LocationOnIcon />} color="warning" label="รอเข้าเยี่ยม" />
+                    <Chip icon={<LocationOnIcon />} color="warning" label={t('mv.pending')} />
                   )}
                 </Stack>
               </CardContent>

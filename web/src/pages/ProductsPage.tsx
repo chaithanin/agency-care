@@ -18,6 +18,7 @@ import {
   Alert,
 } from '@mui/material';
 import { api, errMsg } from '../api/client';
+import { useT } from '../i18n';
 
 interface Product {
   id: string;
@@ -29,6 +30,7 @@ interface Product {
 const empty = { code: '', name: '', price: '' };
 
 export default function ProductsPage() {
+  const { t } = useT();
   const [rows, setRows] = useState<Product[]>([]);
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ ...empty });
@@ -59,10 +61,10 @@ export default function ProductsPage() {
     <Box>
       <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2}>
         <Typography variant="h5" fontWeight={700}>
-          สินค้า
+          {t('pr.title')}
         </Typography>
         <Button variant="contained" onClick={() => setOpen(true)}>
-          + เพิ่มสินค้า
+          {t('pr.add')}
         </Button>
       </Stack>
 
@@ -70,9 +72,9 @@ export default function ProductsPage() {
         <Table size="small">
           <TableHead>
             <TableRow>
-              <TableCell>รหัส</TableCell>
-              <TableCell>ชื่อสินค้า</TableCell>
-              <TableCell align="right">ราคา/หน่วย</TableCell>
+              <TableCell>{t('c.code')}</TableCell>
+              <TableCell>{t('pr.name')}</TableCell>
+              <TableCell align="right">{t('pr.price')}</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>

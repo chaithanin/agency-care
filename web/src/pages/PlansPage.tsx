@@ -17,6 +17,7 @@ import {
 } from '@mui/material';
 import { Link } from 'react-router-dom';
 import { api, errMsg } from '../api/client';
+import { useT } from '../i18n';
 
 interface Opt {
   id: string;
@@ -43,6 +44,7 @@ const statusColor: Record<string, 'default' | 'success' | 'warning' | 'error'> =
 };
 
 export default function PlansPage() {
+  const { t } = useT();
   const [agencies, setAgencies] = useState<Opt[]>([]);
   const [employees, setEmployees] = useState<Opt[]>([]);
   const [plans, setPlans] = useState<Plan[]>([]);
@@ -84,14 +86,14 @@ export default function PlansPage() {
   return (
     <Box>
       <Typography variant="h5" fontWeight={700} mb={2}>
-        แผนการเข้าเยี่ยม
+        {t('pl2.title')}
       </Typography>
 
       <Paper sx={{ p: 2, mb: 2 }}>
         <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} alignItems="center">
           <TextField
             type="date"
-            label="วันที่"
+            label={t('pl2.date')}
             value={date}
             onChange={(e) => setDate(e.target.value)}
             InputLabelProps={{ shrink: true }}
@@ -111,7 +113,7 @@ export default function PlansPage() {
           </TextField>
           <TextField
             select
-            label="เซลส์"
+            label={t('c.seller')}
             value={form.employeeId}
             onChange={(e) => setForm({ ...form, employeeId: e.target.value })}
             sx={{ minWidth: 180 }}
@@ -123,7 +125,7 @@ export default function PlansPage() {
             ))}
           </TextField>
           <Button variant="contained" onClick={create}>
-            + เพิ่มแผน
+            {t('pl2.add')}
           </Button>
         </Stack>
         {error && (
@@ -138,10 +140,10 @@ export default function PlansPage() {
           <TableHead>
             <TableRow>
               <TableCell>Agency</TableCell>
-              <TableCell>เซลส์</TableCell>
-              <TableCell>สถานะ</TableCell>
+              <TableCell>{t('c.seller')}</TableCell>
+              <TableCell>{t('c.status')}</TableCell>
               <TableCell>Check-in</TableCell>
-              <TableCell>รายงาน</TableCell>
+              <TableCell>{t('pl2.report')}</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>

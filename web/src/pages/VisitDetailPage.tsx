@@ -33,6 +33,7 @@ import AddTaskIcon from '@mui/icons-material/AddTask';
 import { useParams } from 'react-router-dom';
 import { api, errMsg } from '../api/client';
 import { useAuth } from '../auth/AuthContext';
+import { useT } from '../i18n';
 import VisitActivities from './VisitActivities';
 import CameraCapture from '../components/CameraCapture';
 
@@ -114,6 +115,7 @@ const gpsChip = (s: string) =>
 export default function VisitDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
+  const { t } = useT();
   const isSales = user?.role === 'sales';
   const [plan, setPlan] = useState<Plan | null>(null);
   const [error, setError] = useState('');
@@ -190,17 +192,17 @@ export default function VisitDetailPage() {
       <Paper sx={{ p: 2, mb: 2 }}>
         <Typography variant="h5" fontWeight={700}>{plan.agency.name}</Typography>
         <Typography variant="body2" color="text.secondary">
-          {plan.agency.code} · เซลส์: {plan.employee.name}
+          {plan.agency.code} · {t('c.seller')}: {plan.employee.name}
         </Typography>
-        {plan.agency.phone && <Typography variant="body2">โทร: {plan.agency.phone}</Typography>}
+        {plan.agency.phone && <Typography variant="body2">{t('c.phone')}: {plan.agency.phone}</Typography>}
         <Stack direction="row" spacing={1} mt={1}>
-          <Chip size="small" label={`สถานะ: ${plan.status}`} />
+          <Chip size="small" label={`${t('vd.statusLbl')}: ${plan.status}`} />
           {plan.agency.latitude != null ? (
             <Chip size="small" color="success" clickable component="a"
               href={`https://www.google.com/maps/search/?api=1&query=${plan.agency.latitude},${plan.agency.longitude}`}
-              target="_blank" label="เปิดแผนที่" />
+              target="_blank" label={t('vd.openMap')} />
           ) : (
-            <Chip size="small" color="warning" label="Agency ยังไม่ตั้งพิกัด" />
+            <Chip size="small" color="warning" label={t('vd.noGps')} />
           )}
         </Stack>
       </Paper>
@@ -210,22 +212,22 @@ export default function VisitDetailPage() {
       {!plan.checkin ? (
         isSales ? (
           <Paper sx={{ p: 3, mb: 2, textAlign: 'center' }}>
-            <Typography variant="h6" mb={1}>เริ่มเข้าเยี่ยม</Typography>
+            <Typography variant="h6" mb={1}>{t('vd.startVisit')}</Typography>
             <Typography variant="body2" color="text.secondary" mb={2}>
-              ตรวจ GPS (≤100m ผ่าน · ≤300m แจ้งเตือน · เกิน 300m ไม่อนุญาต)
+              {t('vd.gpsHint')}
             </Typography>
             <Button variant="contained" size="large" fullWidth disabled={busy}
               startIcon={busy ? <CircularProgress size={20} color="inherit" /> : <MyLocationIcon />}
               onClick={checkin}>
-              {busy ? 'กำลังอ่านตำแหน่ง...' : 'Check-in ที่นี่'}
+              {busy ? t('vd.reading') : t('vd.checkinHere')}
             </Button>
             <Button variant="text" color="warning" startIcon={<EventBusyIcon />} sx={{ mt: 1 }}
               onClick={() => { setError(''); setRsOpen(true); }}>
-              เลื่อนการเข้าพบ
+              {t('vd.reschedule')}
             </Button>
           </Paper>
         ) : (
-          <Alert severity="info" sx={{ mb: 2 }}>ยังไม่มีการ check-in</Alert>
+          <Alert severity="info" sx={{ mb: 2 }}>{t('vd.noCheckin')}</Alert>
         )
       ) : (
         <CheckedInSection plan={plan} isSales={isSales} reload={load} salesName={plan.employee.name} agencyName={plan.agency.name} />
@@ -234,16 +236,16 @@ export default function VisitDetailPage() {
       {/* ---- รูปการทำงาน (อัปโหลดได้ทุกเมื่อ) ---- */}
       <Paper sx={{ p: 2, mt: 2 }}>
         <Stack direction="row" justifyContent="space-between" alignItems="center" mb={1}>
-          <Typography variant="h6" fontWeight={700}>รูปการทำงาน</Typography>
+          <Typography variant="h6" fontWeight={700}>{t('vd.workPhotos')}</Typography>
           {isSales && (
             <Button variant="outlined" size="small" startIcon={<PhotoCameraIcon />}
               disabled={uploadingWork} onClick={() => { setError(''); setCamOpen(true); }}>
-              {uploadingWork ? 'กำลังอัปโหลด...' : 'ถ่ายรูป'}
+              {uploadingWork ? t('vd.uploading') : t('vd.takePhoto')}
             </Button>
           )}
         </Stack>
         {!plan.workPhotos?.length ? (
-          <Typography variant="body2" color="text.secondary">ยังไม่มีรูป</Typography>
+          <Typography variant="body2" color="text.secondary">{t('vd.noPhoto')}</Typography>
         ) : (
           <ImageList cols={3} gap={8} sx={{ m: 0 }}>
             {plan.workPhotos.map((ph) => (
@@ -259,20 +261,18 @@ export default function VisitDetailPage() {
 
       {/* ---- dialog เลื่อนนัด ---- */}
       <Dialog open={rsOpen} onClose={() => setRsOpen(false)} fullWidth maxWidth="xs">
-        <DialogTitle>เลื่อนการเข้าพบ — {plan.agency.name}</DialogTitle>
+        <DialogTitle>{t('vd.reschedule')} — {plan.agency.name}</DialogTitle>
         <DialogContent>
           <Stack spacing={2} mt={1}>
-            <TextField label="เหตุผลที่เลื่อน" multiline minRows={2} value={reason}
-              onChange={(e) => setReason(e.target.value)} required autoFocus
-              placeholder="เช่น ร้านปิด / ติดประชุม / ลูกค้าขอเลื่อน" />
-            <TextField label="วันใหม่ (ถ้ามี)" type="date" value={newDate}
-              onChange={(e) => setNewDate(e.target.value)} InputLabelProps={{ shrink: true }}
-              helperText="เว้นว่าง = เลื่อนแบบยังไม่กำหนดวัน" />
+            <TextField label={t('vd.reason')} multiline minRows={2} value={reason}
+              onChange={(e) => setReason(e.target.value)} required autoFocus />
+            <TextField label={t('vd.newDate')} type="date" value={newDate}
+              onChange={(e) => setNewDate(e.target.value)} InputLabelProps={{ shrink: true }} />
           </Stack>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setRsOpen(false)}>ยกเลิก</Button>
-          <Button variant="contained" color="warning" onClick={doReschedule} disabled={!reason.trim()}>ยืนยันเลื่อน</Button>
+          <Button onClick={() => setRsOpen(false)}>{t('common.cancel')}</Button>
+          <Button variant="contained" color="warning" onClick={doReschedule} disabled={!reason.trim()}>{t('vd.confirmResched')}</Button>
         </DialogActions>
       </Dialog>
 
@@ -284,6 +284,7 @@ export default function VisitDetailPage() {
 function CheckedInSection({
   plan, isSales, reload, salesName, agencyName,
 }: { plan: Plan; isSales: boolean; reload: () => Promise<void>; salesName: string; agencyName: string }) {
+  const { t } = useT();
   const checkin = plan.checkin!;
   const fileRef = useRef<HTMLInputElement>(null);
   const [phase, setPhase] = useState<string>('office');
@@ -386,24 +387,24 @@ function CheckedInSection({
       {/* check-out */}
       {isSales && !checkin.checkOutAt && (
         <Button variant="outlined" color="warning" startIcon={<LogoutIcon />} onClick={doCheckout} sx={{ mb: 2 }}>
-          Check-out (จบงาน)
+          {t('vd.checkout')}
         </Button>
       )}
 
       {/* ผู้เข้าพบ */}
       <Paper sx={{ p: 2, mb: 2 }}>
-        <Typography variant="subtitle1" fontWeight={700} mb={1}>ผู้เข้าพบ (ผู้ดูแล Agency)</Typography>
+        <Typography variant="subtitle1" fontWeight={700} mb={1}>{t('vd.contact')}</Typography>
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
-          <TextField label="ชื่อ" size="small" value={cName} onChange={(e) => setCName(e.target.value)} disabled={!isSales} fullWidth />
-          <TextField label="ตำแหน่ง" size="small" value={cPos} onChange={(e) => setCPos(e.target.value)} disabled={!isSales} fullWidth />
-          <TextField label="เบอร์โทร" size="small" value={cPhone} onChange={(e) => setCPhone(e.target.value)} disabled={!isSales} fullWidth />
-          {isSales && <Button onClick={saveContact} variant="contained">บันทึก</Button>}
+          <TextField label={t('vd.contactName')} size="small" value={cName} onChange={(e) => setCName(e.target.value)} disabled={!isSales} fullWidth />
+          <TextField label={t('vd.contactPos')} size="small" value={cPos} onChange={(e) => setCPos(e.target.value)} disabled={!isSales} fullWidth />
+          <TextField label={t('c.phone')} size="small" value={cPhone} onChange={(e) => setCPhone(e.target.value)} disabled={!isSales} fullWidth />
+          {isSales && <Button onClick={saveContact} variant="contained">{t('common.save')}</Button>}
         </Stack>
       </Paper>
 
       {/* รูป (มีลายน้ำอัตโนมัติ) */}
       <Paper sx={{ p: 2, mb: 2 }}>
-        <Typography variant="h6" fontWeight={700} mb={1}>รูปยืนยัน (ลายน้ำอัตโนมัติ)</Typography>
+        <Typography variant="h6" fontWeight={700} mb={1}>{t('vd.photos')}</Typography>
         {isSales && (
           <Stack direction="row" spacing={1} mb={2} flexWrap="wrap" useFlexGap>
             {PHOTO_CATS.map((c) => (
@@ -415,7 +416,7 @@ function CheckedInSection({
           </Stack>
         )}
         {checkin.photos.length === 0 ? (
-          <Typography variant="body2" color="text.secondary">ยังไม่มีรูป</Typography>
+          <Typography variant="body2" color="text.secondary">{t('vd.noPhoto')}</Typography>
         ) : (
           <ImageList cols={3} gap={8} sx={{ m: 0 }}>
             {checkin.photos.map((ph) => (
@@ -435,8 +436,8 @@ function CheckedInSection({
 
       {/* รายงาน */}
       <Paper sx={{ p: 2, mb: 2 }}>
-        <Typography variant="h6" fontWeight={700} mb={1}>รายงานการเข้าเยี่ยม</Typography>
-        <Typography variant="subtitle2" color="text.secondary">วัตถุประสงค์</Typography>
+        <Typography variant="h6" fontWeight={700} mb={1}>{t('vd.report')}</Typography>
+        <Typography variant="subtitle2" color="text.secondary">{t('vd.purpose')}</Typography>
         <FormGroup row>
           {PURPOSES.map((p) => (
             <FormControlLabel key={p.key}
@@ -446,25 +447,25 @@ function CheckedInSection({
         </FormGroup>
         <Divider sx={{ my: 2 }} />
         <Stack spacing={2}>
-          <TextField label="ประเด็นที่คุย / สรุปผล" multiline minRows={2} value={summary} onChange={(e) => setSummary(e.target.value)} disabled={!isSales} />
-          <TextField label="ปัญหาที่พบ" multiline minRows={2} value={problems} onChange={(e) => setProblems(e.target.value)} disabled={!isSales} />
-          <TextField label="สิ่งที่ต้องติดตามต่อ" multiline minRows={2} value={actionPlan} onChange={(e) => setActionPlan(e.target.value)} disabled={!isSales} />
-          {isSales && <Button variant="contained" onClick={saveReport} disabled={savingReport}>{savingReport ? 'กำลังบันทึก...' : 'บันทึกรายงาน'}</Button>}
+          <TextField label={t('vd.summary')} multiline minRows={2} value={summary} onChange={(e) => setSummary(e.target.value)} disabled={!isSales} />
+          <TextField label={t('vd.problems')} multiline minRows={2} value={problems} onChange={(e) => setProblems(e.target.value)} disabled={!isSales} />
+          <TextField label={t('vd.followNext')} multiline minRows={2} value={actionPlan} onChange={(e) => setActionPlan(e.target.value)} disabled={!isSales} />
+          {isSales && <Button variant="contained" onClick={saveReport} disabled={savingReport}>{savingReport ? t('vd.savingReport') : t('vd.saveReport')}</Button>}
         </Stack>
       </Paper>
 
       {/* Follow-up tasks */}
       <Paper sx={{ p: 2 }}>
-        <Typography variant="h6" fontWeight={700} mb={1}>งานติดตามต่อ (Follow-up)</Typography>
+        <Typography variant="h6" fontWeight={700} mb={1}>{t('vd.followup')}</Typography>
         {isSales && (
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} mb={1}>
-            <TextField label="งานที่ต้องทำ" size="small" value={ftTitle} onChange={(e) => setFtTitle(e.target.value)} fullWidth />
-            <TextField label="ครบกำหนด" type="date" size="small" value={ftDue} onChange={(e) => setFtDue(e.target.value)} InputLabelProps={{ shrink: true }} />
-            <Button variant="contained" startIcon={<AddTaskIcon />} onClick={addTask}>เพิ่ม</Button>
+            <TextField label={t('vd.task')} size="small" value={ftTitle} onChange={(e) => setFtTitle(e.target.value)} fullWidth />
+            <TextField label={t('vd.due')} type="date" size="small" value={ftDue} onChange={(e) => setFtDue(e.target.value)} InputLabelProps={{ shrink: true }} />
+            <Button variant="contained" startIcon={<AddTaskIcon />} onClick={addTask}>{t('common.add')}</Button>
           </Stack>
         )}
         {tasks.length === 0 ? (
-          <Typography variant="body2" color="text.secondary">ยังไม่มีงานติดตาม</Typography>
+          <Typography variant="body2" color="text.secondary">{t('vd.noFollow')}</Typography>
         ) : (
           <List dense>
             {tasks.map((t) => (

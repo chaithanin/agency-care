@@ -11,6 +11,7 @@ import {
 } from '@mui/material';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import { api, errMsg } from '../api/client';
+import { useT } from '../i18n';
 
 interface Insight {
   title: string;
@@ -27,6 +28,7 @@ const sevColor: Record<string, 'error' | 'warning' | 'info'> = {
 const sevLabel: Record<string, string> = { high: 'สูง', medium: 'กลาง', low: 'ต่ำ' };
 
 export default function AnalyticsPage() {
+  const { t } = useT();
   const [insights, setInsights] = useState<Insight[] | null>(null);
   const [generatedAt, setGeneratedAt] = useState('');
   const [loading, setLoading] = useState(false);
@@ -50,7 +52,7 @@ export default function AnalyticsPage() {
     <Box>
       <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2}>
         <Typography variant="h5" fontWeight={700}>
-          AI วิเคราะห์ทีมขาย
+          {t('an.title')}
         </Typography>
         <Button
           variant="contained"
@@ -58,7 +60,7 @@ export default function AnalyticsPage() {
           onClick={run}
           disabled={loading}
         >
-          {loading ? 'กำลังวิเคราะห์...' : 'วิเคราะห์ด้วย AI'}
+          {loading ? t('an.running') : t('an.run')}
         </Button>
       </Stack>
 

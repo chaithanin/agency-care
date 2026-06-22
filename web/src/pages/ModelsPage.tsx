@@ -20,6 +20,7 @@ import {
   Alert,
 } from '@mui/material';
 import { api, errMsg } from '../api/client';
+import { useT } from '../i18n';
 
 interface Model {
   id: string;
@@ -51,6 +52,7 @@ const statusLabel: Record<string, string> = {
 const empty = { code: '', name: '', category: '' };
 
 export default function ModelsPage() {
+  const { t } = useT();
   const [rows, setRows] = useState<Model[]>([]);
   const [agencies, setAgencies] = useState<Opt[]>([]);
   const [open, setOpen] = useState(false);
@@ -100,10 +102,10 @@ export default function ModelsPage() {
     <Box>
       <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2}>
         <Typography variant="h5" fontWeight={700}>
-          อุปกรณ์ / เครื่องเดโม
+          {t('m.title')}
         </Typography>
         <Button variant="contained" onClick={() => setOpen(true)}>
-          + เพิ่มอุปกรณ์
+          {t('m.add')}
         </Button>
       </Stack>
 
@@ -111,12 +113,12 @@ export default function ModelsPage() {
         <Table size="small">
           <TableHead>
             <TableRow>
-              <TableCell>รหัส</TableCell>
-              <TableCell>ชื่อ</TableCell>
-              <TableCell>ประเภท</TableCell>
-              <TableCell>สถานะ</TableCell>
-              <TableCell>อยู่ที่</TableCell>
-              <TableCell align="right">จัดการ</TableCell>
+              <TableCell>{t('c.code')}</TableCell>
+              <TableCell>{t('c.name')}</TableCell>
+              <TableCell>{t('m.type')}</TableCell>
+              <TableCell>{t('c.status')}</TableCell>
+              <TableCell>{t('m.location')}</TableCell>
+              <TableCell align="right">{t('c.manage')}</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -132,7 +134,7 @@ export default function ModelsPage() {
                 <TableCell align="right">
                   {m.status === 'deployed' ? (
                     <Button size="small" onClick={() => doReturn(m)}>
-                      รับคืน
+                      {t('m.return')}
                     </Button>
                   ) : (
                     <Button
@@ -142,7 +144,7 @@ export default function ModelsPage() {
                         setDeployAgency('');
                       }}
                     >
-                      ส่งไปร้าน
+                      {t('m.deploy')}
                     </Button>
                   )}
                 </TableCell>
