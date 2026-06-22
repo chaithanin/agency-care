@@ -15,6 +15,11 @@ export class CreatePosmItemDto {
   @IsInt()
   @Min(0)
   stockQty?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  reorderPoint?: number;
 }
 
 export class UpdatePosmItemDto {
@@ -33,8 +38,19 @@ export class UpdatePosmItemDto {
   stockQty?: number;
 
   @IsOptional()
+  @IsInt()
+  @Min(0)
+  reorderPoint?: number;
+
+  @IsOptional()
   @IsBoolean()
   isActive?: boolean;
+}
+
+// รับของเข้า/ปรับสต็อก (delta บวก=เติม ลบ=หัก)
+export class AdjustStockDto {
+  @IsInt()
+  delta!: number;
 }
 
 export class CreatePosmTxnDto {

@@ -1,6 +1,6 @@
 import { Body, Controller, Get, Param, Patch, Post, Query } from '@nestjs/common';
 import { PosmService } from './posm.service';
-import { CreatePosmItemDto, CreatePosmTxnDto, UpdatePosmItemDto } from './dto/posm.dto';
+import { AdjustStockDto, CreatePosmItemDto, CreatePosmTxnDto, UpdatePosmItemDto } from './dto/posm.dto';
 import { Roles } from '../auth/guards';
 import { CurrentUser, RequestUser } from '../common/current-user.decorator';
 
@@ -12,6 +12,19 @@ export class PosmController {
   @Get('items')
   listItems() {
     return this.service.listItems();
+  }
+
+  // Phase 7: คลังสื่อ + แจ้งเตือนสต็อกต่ำ
+  @Roles('admin', 'manager')
+  @Get('inventory')
+  inventory() {
+    return this.service.inventory();
+  }
+
+  @Roles('admin', 'manager')
+  @Post('items/:id/adjust')
+  adjust(@Param('id') id: string, @Body() dto: AdjustStockDto) {
+    return this.service.adjustStock(id, dto.delta);
   }
 
   @Roles('admin', 'manager')
