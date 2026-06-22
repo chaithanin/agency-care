@@ -34,6 +34,7 @@ import { useParams } from 'react-router-dom';
 import { api, errMsg } from '../api/client';
 import { useAuth } from '../auth/AuthContext';
 import VisitActivities from './VisitActivities';
+import CameraCapture from '../components/CameraCapture';
 
 interface Photo { id: string; url: string; phase: string }
 interface Checkin {
@@ -121,8 +122,8 @@ export default function VisitDetailPage() {
   const [rsOpen, setRsOpen] = useState(false);
   const [reason, setReason] = useState('');
   const [newDate, setNewDate] = useState('');
-  // อัปโหลดรูปการทำงาน
-  const workRef = useRef<HTMLInputElement>(null);
+  // ถ่ายรูปการทำงาน (กล้องอย่างเดียว)
+  const [camOpen, setCamOpen] = useState(false);
   const [uploadingWork, setUploadingWork] = useState(false);
 
   const load = () => api.get(`/visits/plans/${id}`).then((r) => setPlan(r.data));
@@ -167,10 +168,7 @@ export default function VisitDetailPage() {
     } catch (e) { setError(errMsg(e)); }
   };
 
-  const onWorkPhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    e.target.value = '';
-    if (!file) return;
+  const uploadWork = async (blob: Blob) => {
     setError(''); setUploadingWork(true);
     try {
       const loc = await new Promise<GeolocationCoordinates | null>((res) => {
@@ -178,7 +176,7 @@ export default function VisitDetailPage() {
         navigator.geolocation.getCurrentPosition((p) => res(p.coords), () => res(null), { timeout: 8000 });
       });
       const fd = new FormData();
-      fd.append('photo', file);
+      fd.append('photo', blob, 'work.jpg');
       if (loc) { fd.append('latitude', String(loc.latitude)); fd.append('longitude', String(loc.longitude)); }
       await api.post(`/visits/plans/${id}/work-photos`, fd);
       await load();
@@ -239,11 +237,10 @@ export default function VisitDetailPage() {
           <Typography variant="h6" fontWeight={700}>รูปการทำงาน</Typography>
           {isSales && (
             <Button variant="outlined" size="small" startIcon={<PhotoCameraIcon />}
-              disabled={uploadingWork} onClick={() => workRef.current?.click()}>
-              {uploadingWork ? 'กำลังอัปโหลด...' : 'อัปโหลดรูป'}
+              disabled={uploadingWork} onClick={() => { setError(''); setCamOpen(true); }}>
+              {uploadingWork ? 'กำลังอัปโหลด...' : 'ถ่ายรูป'}
             </Button>
           )}
-          <input ref={workRef} type="file" accept="image/*" capture="environment" hidden onChange={onWorkPhoto} />
         </Stack>
         {!plan.workPhotos?.length ? (
           <Typography variant="body2" color="text.secondary">ยังไม่มีรูป</Typography>
@@ -278,6 +275,8 @@ export default function VisitDetailPage() {
           <Button variant="contained" color="warning" onClick={doReschedule} disabled={!reason.trim()}>ยืนยันเลื่อน</Button>
         </DialogActions>
       </Dialog>
+
+      <CameraCapture open={camOpen} onClose={() => setCamOpen(false)} onCapture={uploadWork} />
     </Box>
   );
 }

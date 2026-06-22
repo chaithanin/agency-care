@@ -191,10 +191,10 @@ export default function AgenciesPage() {
         </Typography>
         <Stack direction="row" spacing={1}>
           <Button variant="outlined" onClick={runGeocode} disabled={geocoding}>
-            {geocoding ? 'กำลังเติมพิกัด...' : '📍 Geocode อัตโนมัติ'}
+            {geocoding ? t('ag.geocoding') : t('ag.geocode')}
           </Button>
           <Button variant="contained" onClick={() => setOpen(true)}>
-            + เพิ่ม Agency
+            {t('ag.add')}
           </Button>
         </Stack>
       </Stack>
@@ -209,13 +209,13 @@ export default function AgenciesPage() {
         <Table size="small">
           <TableHead>
             <TableRow>
-              <TableCell>รหัส</TableCell>
-              <TableCell>ชื่อ</TableCell>
+              <TableCell>{t('c.code')}</TableCell>
+              <TableCell>{t('c.name')}</TableCell>
               <TableCell>Tier / Stage</TableCell>
-              <TableCell>โซน</TableCell>
+              <TableCell>{t('c.zone')}</TableCell>
               <TableCell>GPS</TableCell>
-              <TableCell>เซลส์ที่ดูแล</TableCell>
-              <TableCell align="right">มอบหมาย</TableCell>
+              <TableCell>{t('ag.assignedSeller')}</TableCell>
+              <TableCell align="right">{t('ag.assign')}</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -245,10 +245,10 @@ export default function AgenciesPage() {
                     }
                     label={
                       a.latitude == null
-                        ? '+ ตั้งพิกัด'
+                        ? t('ag.setGps')
                         : a.geocodeSource === 'google'
-                          ? 'auto · ตรวจ'
-                          : 'ยืนยันแล้ว'
+                          ? t('ag.autoCheck')
+                          : t('ag.confirmed')
                     }
                     onClick={() => {
                       setGpsFor(a);
@@ -271,7 +271,7 @@ export default function AgenciesPage() {
                     </Stack>
                   ) : (
                     <Typography variant="caption" color="text.secondary">
-                      ยังไม่มอบหมาย
+                      {t('ag.notAssigned')}
                     </Typography>
                   )}
                 </TableCell>
@@ -283,7 +283,7 @@ export default function AgenciesPage() {
                       setAssignEmp('');
                     }}
                   >
-                    + เซลส์
+                    {t('ag.addSeller')}
                   </Button>
                 </TableCell>
               </TableRow>

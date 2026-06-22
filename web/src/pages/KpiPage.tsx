@@ -82,14 +82,14 @@ export default function KpiPage() {
           <Table size="small">
             <TableHead>
               <TableRow>
-                <TableCell>เซลส์</TableCell>
-                <TableCell align="right">แผน</TableCell>
-                <TableCell align="right">เข้าเยี่ยม</TableCell>
-                <TableCell align="center">Completion</TableCell>
-                <TableCell align="center">ส่งรายงาน</TableCell>
-                <TableCell align="center">GPS ตรง</TableCell>
-                <TableCell align="right">POSM</TableCell>
-                <TableCell align="right">ยอดขาย (บาท)</TableCell>
+                <TableCell>{t('c.seller')}</TableCell>
+                <TableCell align="right">{t('kpi.planned')}</TableCell>
+                <TableCell align="right">{t('kpi.visited')}</TableCell>
+                <TableCell align="center">{t('kpi.completion')}</TableCell>
+                <TableCell align="center">{t('kpi.report')}</TableCell>
+                <TableCell align="center">{t('kpi.gps')}</TableCell>
+                <TableCell align="right">{t('kpi.posm')}</TableCell>
+                <TableCell align="right">{t('kpi.sales')}</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>

@@ -123,10 +123,10 @@ export default function EmployeesPage() {
         <Typography variant="h5" fontWeight={700}>{t('page.employees')}</Typography>
         <Stack direction="row" spacing={1}>
           <Button variant="outlined" onClick={runNotify} disabled={notifying}>
-            {notifying ? 'กำลังส่ง...' : '🔔 แจ้งเตือนงานค้าง'}
+            {notifying ? t('emp.notifying') : t('emp.notify')}
           </Button>
           <Button variant="contained" onClick={() => { setError(''); setCreateOpen(true); }}>
-            + เพิ่มพนักงาน
+            {t('emp.add')}
           </Button>
         </Stack>
       </Stack>
@@ -139,14 +139,14 @@ export default function EmployeesPage() {
         <Table size="small">
           <TableHead>
             <TableRow>
-              <TableCell>รหัส</TableCell>
-              <TableCell>ชื่อ</TableCell>
-              <TableCell>ตำแหน่ง</TableCell>
-              <TableCell>ทีม</TableCell>
-              <TableCell>โซน</TableCell>
-              <TableCell>บัญชี login</TableCell>
+              <TableCell>{t('c.code')}</TableCell>
+              <TableCell>{t('c.name')}</TableCell>
+              <TableCell>{t('c.position')}</TableCell>
+              <TableCell>{t('c.team')}</TableCell>
+              <TableCell>{t('c.zone')}</TableCell>
+              <TableCell>{t('emp.loginAcct')}</TableCell>
               <TableCell align="right">Agency</TableCell>
-              <TableCell align="center">แก้ไข</TableCell>
+              <TableCell align="center">{t('common.edit')}</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -160,7 +160,7 @@ export default function EmployeesPage() {
                 <TableCell>{e.team?.name ?? '-'}</TableCell>
                 <TableCell>{e.zone || '-'}</TableCell>
                 <TableCell>
-                  {e.user ? <Chip size="small" color="success" label={e.user.email} /> : <Chip size="small" label="ไม่มี" />}
+                  {e.user ? <Chip size="small" color="success" label={e.user.email} /> : <Chip size="small" label={t('c.none')} />}
                 </TableCell>
                 <TableCell align="right">{e._count.assignments}</TableCell>
                 <TableCell align="center">

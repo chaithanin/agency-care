@@ -88,20 +88,19 @@ export default function AutoAssignPage() {
         </Typography>
         <Stack direction="row" spacing={1} className="no-pdf" alignItems="center">
           <TextField
-            label="จำกัด/คน"
+            label={t('aa.limit')}
             type="number"
             size="small"
             value={maxPerSales}
             onChange={(e) => setMaxPerSales(e.target.value)}
             sx={{ width: 110 }}
-            helperText="เว้นว่าง=ทั้งหมด"
           />
           <Button variant="outlined" onClick={propose} disabled={loading}>
-            เสนอการแบ่ง
+            {t('aa.propose')}
           </Button>
           {proposal && (
             <Button variant="contained" color="success" onClick={apply} disabled={loading}>
-              ยืนยันใช้จริง
+              {t('aa.apply')}
             </Button>
           )}
           {summary.length > 0 && <PdfExportButton targetRef={pdfRef} filename="จัดทีม-AI.pdf" />}
@@ -122,9 +121,9 @@ export default function AutoAssignPage() {
       {summary.length > 0 && (
         <Paper sx={{ p: 2, mb: 2 }}>
           <Typography variant="subtitle1" fontWeight={700} mb={1}>
-            สรุปภาระงานที่เสนอ{' '}
+            {t('aa.summary')}{' '}
             <Typography component="span" variant="caption" color="text.secondary">
-              (คลิกชื่อเพื่อดูเฉพาะร้านของคนนั้น)
+              {t('aa.clickFilter')}
             </Typography>
           </Typography>
           <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
@@ -138,10 +137,10 @@ export default function AutoAssignPage() {
               />
             ))}
             {unassigned > 0 && (
-              <Chip label={`เหลือไม่มอบหมาย: ${unassigned} ร้าน`} color="warning" />
+              <Chip label={`${t('aa.unassigned')}: ${unassigned}`} color="warning" />
             )}
             {filterEmp && (
-              <Chip label="✕ ล้างตัวกรอง" color="error" variant="outlined" onClick={() => setFilterEmp(null)} />
+              <Chip label={t('aa.clearFilter')} color="error" variant="outlined" onClick={() => setFilterEmp(null)} />
             )}
           </Stack>
         </Paper>
@@ -153,9 +152,9 @@ export default function AutoAssignPage() {
             <TableHead>
               <TableRow>
                 <TableCell>Agency</TableCell>
-                <TableCell>โซน</TableCell>
-                <TableCell>เซลส์ที่เสนอ</TableCell>
-                <TableCell>โซนตรง</TableCell>
+                <TableCell>{t('c.zone')}</TableCell>
+                <TableCell>{t('aa.proposed')}</TableCell>
+                <TableCell>{t('aa.zoneMatch')}</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>

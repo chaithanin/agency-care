@@ -63,7 +63,7 @@ export default function UsersPage() {
     <Box>
       <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2}>
         <Typography variant="h5" fontWeight={700}>{t('nav.users')}</Typography>
-        <Button variant="contained" onClick={() => { setError(''); setCreateOpen(true); }}>+ เพิ่มผู้ใช้</Button>
+        <Button variant="contained" onClick={() => { setError(''); setCreateOpen(true); }}>{t('usr.add')}</Button>
       </Stack>
 
       {msg && <Alert severity="success" sx={{ mb: 2 }} onClose={() => setMsg('')}>{msg}</Alert>}
@@ -72,12 +72,12 @@ export default function UsersPage() {
         <Table size="small">
           <TableHead>
             <TableRow>
-              <TableCell>อีเมล</TableCell>
-              <TableCell>ชื่อ</TableCell>
-              <TableCell>สิทธิ์</TableCell>
-              <TableCell>พนักงาน</TableCell>
-              <TableCell align="center">สถานะ</TableCell>
-              <TableCell align="center">จัดการ</TableCell>
+              <TableCell>{t('usr.email')}</TableCell>
+              <TableCell>{t('c.name')}</TableCell>
+              <TableCell>{t('usr.role')}</TableCell>
+              <TableCell>{t('usr.staff')}</TableCell>
+              <TableCell align="center">{t('c.status')}</TableCell>
+              <TableCell align="center">{t('c.manage')}</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -88,7 +88,7 @@ export default function UsersPage() {
                 <TableCell><Chip size="small" color={roleColor(u.role)} label={u.role} /></TableCell>
                 <TableCell>{u.employee ? `${u.employee.name} (${u.employee.code})` : '-'}</TableCell>
                 <TableCell align="center">
-                  <Chip size="small" label={u.isActive ? 'ใช้งาน' : 'ปิด'} color={u.isActive ? 'success' : 'default'} />
+                  <Chip size="small" label={u.isActive ? t('usr.active') : t('usr.off')} color={u.isActive ? 'success' : 'default'} />
                 </TableCell>
                 <TableCell align="center">
                   <IconButton size="small" title="แก้ไข" onClick={() => { setError(''); setEdit({ ...u }); }}><EditIcon fontSize="small" /></IconButton>

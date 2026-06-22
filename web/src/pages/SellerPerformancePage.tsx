@@ -93,7 +93,7 @@ export default function SellerPerformancePage() {
       <Stack direction="row" justifyContent="space-between" alignItems="flex-start" mb={0.5}>
         <Box>
           <Typography variant="h5" fontWeight={700}>{t('page.sellerPerf')}</Typography>
-          <Typography variant="caption" color="text.secondary">ผลงาน + ตารางงานรายคน (เดือนนี้)</Typography>
+          <Typography variant="caption" color="text.secondary">{t('sp.sub')}</Typography>
         </Box>
         <PdfExportButton targetRef={pdfRef} filename={`seller-${data.selected?.name ?? 'performance'}.pdf`} />
       </Stack>
@@ -119,16 +119,16 @@ export default function SellerPerformancePage() {
       {/* KPI row */}
       <Grid container spacing={1.5} mb={2}>
         <Grid item xs={6} md={3}>
-          <Kpi value={kpis.visitsDone} sub={String(kpis.visitTarget)} label="เยี่ยมเดือนนี้" color="primary.main" />
+          <Kpi value={kpis.visitsDone} sub={String(kpis.visitTarget)} label={t('my.visitMonth')} color="primary.main" />
         </Grid>
         <Grid item xs={6} md={3}>
-          <Kpi value={`${kpis.completionPct}%`} label="ทำได้ตามเป้า" color={kpis.completionPct >= 80 ? 'success.main' : 'warning.main'} />
+          <Kpi value={`${kpis.completionPct}%`} label={t('sp.onTarget')} color={kpis.completionPct >= 80 ? 'success.main' : 'warning.main'} />
         </Grid>
         <Grid item xs={6} md={3}>
-          <Kpi value={kpis.agencies} label="Agency ดูแล" />
+          <Kpi value={kpis.agencies} label={t('my.agencyDuty')} />
         </Grid>
         <Grid item xs={6} md={3}>
-          <Kpi value={kpis.newAgencies} sub={String(kpis.newAgencyTarget)} label="Agency ใหม่" color={kpis.newAgencies >= kpis.newAgencyTarget ? 'success.main' : 'warning.main'} />
+          <Kpi value={kpis.newAgencies} sub={String(kpis.newAgencyTarget)} label={t('sp.newAgency')} color={kpis.newAgencies >= kpis.newAgencyTarget ? 'success.main' : 'warning.main'} />
         </Grid>
       </Grid>
 
@@ -137,7 +137,7 @@ export default function SellerPerformancePage() {
         <Grid item xs={12} md={8}>
           <Paper sx={{ p: 2 }}>
             <Typography variant="subtitle1" fontWeight={700} mb={1.5}>
-              ตารางสัปดาห์นี้
+              {t('sp.weekTable')}
             </Typography>
             <Stack direction="row" spacing={1} sx={{ overflowX: 'auto' }}>
               {data.week.map((d) => (
@@ -171,7 +171,7 @@ export default function SellerPerformancePage() {
               ))}
             </Stack>
             <Stack direction="row" spacing={2} mt={1.5}>
-              {[['done', 'เยี่ยมแล้ว'], ['plan', 'แผน'], ['miss', 'พลาด']].map(([k, l]) => (
+              {[['done', t('c.visited')], ['plan', t('sp.plan')], ['miss', t('sp.miss')]].map(([k, l]) => (
                 <Stack key={k} direction="row" alignItems="center" spacing={0.5}>
                   <Box sx={{ width: 9, height: 9, borderRadius: '50%', bgcolor: statusColor[k] }} />
                   <Typography variant="caption" color="text.secondary">{l}</Typography>
@@ -185,7 +185,7 @@ export default function SellerPerformancePage() {
         <Grid item xs={12} md={4}>
           <Paper sx={{ p: 2, height: '100%' }}>
             <Typography variant="subtitle1" fontWeight={700} mb={1.5}>
-              ครอบคลุม Agency (เดือนนี้)
+              {t('sp.coverage')}
             </Typography>
             <Stack direction="row" alignItems="center" spacing={2}>
               <Box sx={{ width: 96, height: 96, borderRadius: '50%', background: donut, position: 'relative', flexShrink: 0, display: 'grid', placeItems: 'center' }}>
@@ -194,7 +194,7 @@ export default function SellerPerformancePage() {
                 </Box>
               </Box>
               <Stack spacing={0.5} flexGrow={1}>
-                {[['#1C7A62', 'เยี่ยมครบ ≥2', pipeline.pass], ['#E8C77E', 'เยี่ยม 1 ครั้ง', pipeline.partial], ['#E0E0E0', 'ยังไม่เยี่ยม', pipeline.none]].map(([c, l, v]) => (
+                {[['#1C7A62', t('sp.coverPass'), pipeline.pass], ['#E8C77E', t('sp.coverPartial'), pipeline.partial], ['#E0E0E0', t('sp.coverNone'), pipeline.none]].map(([c, l, v]) => (
                   <Stack key={l as string} direction="row" alignItems="center" spacing={1}>
                     <Box sx={{ width: 11, height: 11, borderRadius: 0.5, bgcolor: c as string }} />
                     <Typography variant="caption" flexGrow={1}>{l as string}</Typography>
@@ -210,16 +210,16 @@ export default function SellerPerformancePage() {
       {/* leaderboard */}
       <Paper sx={{ mt: 2 }}>
         <Typography variant="subtitle1" fontWeight={700} sx={{ p: 2, pb: 1 }}>
-          อันดับเซลส์ (เยี่ยมเดือนนี้)
+          {t('sp.leaderboard')}
         </Typography>
         <Table size="small">
           <TableHead>
             <TableRow>
               <TableCell>#</TableCell>
-              <TableCell>เซลส์</TableCell>
-              <TableCell align="right">เยี่ยม</TableCell>
+              <TableCell>{t('c.seller')}</TableCell>
+              <TableCell align="right">{t('sp.visits')}</TableCell>
               <TableCell align="right">Agency</TableCell>
-              <TableCell align="right">ใหม่</TableCell>
+              <TableCell align="right">{t('sp.new')}</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
