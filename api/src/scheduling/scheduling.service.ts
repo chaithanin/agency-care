@@ -8,9 +8,10 @@ const RULES = {
   VISITS_PER_AGENCY: 2, // ต้องเยี่ยม ≥2 ครั้ง/เดือน
   NEW_AGENCY_TARGET: 2, // เซลส์เพิ่ม agency ใหม่ /เดือน
   WORK_DAYS: 24,
-  OFFICE_MIN_SALES: 1, // คนอยู่ออฟฟิศขั้นต่ำ
+  OFFICE_MIN_SALES: 1, // standby ออฟฟิศขั้นต่ำ/วัน
   OFFICE_MIN_CLOSER: 2,
-  VISITS_PER_DAY: 8, // เพดานเยี่ยม/คน/วัน
+  VISITS_PER_DAY: 3, // เยี่ยม 2-3 ร้าน/คน/วัน
+  AGENCIES_PER_SALES: 30, // เซลส์ละ 30 ร้านศักยภาพ
 };
 
 @Injectable()
