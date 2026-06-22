@@ -3,6 +3,8 @@ import {
   Body,
   Controller,
   Get,
+  Headers,
+  Ip,
   Param,
   Patch,
   Post,
@@ -17,6 +19,7 @@ import { VisitService } from './visit.service';
 import {
   CheckinDto,
   CreatePlanDto,
+  FollowUpDto,
   ReportDto,
   UpdatePlanStatusDto,
 } from './dto/visit.dto';
@@ -65,8 +68,46 @@ export class VisitController {
     @CurrentUser() user: RequestUser,
     @Param('id') id: string,
     @Body() dto: CheckinDto,
+    @Ip() ip: string,
+    @Headers('user-agent') ua: string,
   ) {
-    return this.service.checkin(user, id, dto);
+    return this.service.checkin(user, id, dto, { ip, userAgent: ua });
+  }
+
+  // ---- Check-out ----
+  @Post('checkins/:checkinId/checkout')
+  checkout(@CurrentUser() user: RequestUser, @Param('checkinId') checkinId: string) {
+    return this.service.checkout(user, checkinId);
+  }
+
+  // ---- ผู้เข้าพบ ----
+  @Patch('checkins/:checkinId/contact')
+  setContact(
+    @CurrentUser() user: RequestUser,
+    @Param('checkinId') checkinId: string,
+    @Body() dto: { contactName?: string; contactPosition?: string; contactPhone?: string },
+  ) {
+    return this.service.setContact(user, checkinId, dto);
+  }
+
+  // ---- Follow-up tasks ----
+  @Post('plans/:id/followups')
+  createFollowUp(
+    @CurrentUser() user: RequestUser,
+    @Param('id') id: string,
+    @Body() dto: FollowUpDto,
+  ) {
+    return this.service.createFollowUp(user, id, dto);
+  }
+
+  @Get('plans/:id/followups')
+  listFollowUps(@Param('id') id: string) {
+    return this.service.listFollowUps(id);
+  }
+
+  @Patch('followups/:taskId/toggle')
+  toggleFollowUp(@CurrentUser() user: RequestUser, @Param('taskId') taskId: string) {
+    return this.service.toggleFollowUp(user, taskId);
   }
 
   // ---- Photo upload (multipart) ----
@@ -89,9 +130,8 @@ export class VisitController {
     @Body('longitude') longitude?: string,
   ) {
     if (!file) throw new BadRequestException('กรุณาแนบรูปภาพ');
-    const ph: PhotoPhase = (['before', 'during', 'after'].includes(phase as string)
-      ? phase
-      : 'during') as PhotoPhase;
+    const valid = ['before', 'during', 'after', 'office', 'activity', 'material', 'selfie'];
+    const ph: PhotoPhase = (valid.includes(phase as string) ? phase : 'during') as PhotoPhase;
     return this.service.addPhoto(user, checkinId, file, ph, {
       latitude: latitude ? Number(latitude) : undefined,
       longitude: longitude ? Number(longitude) : undefined,

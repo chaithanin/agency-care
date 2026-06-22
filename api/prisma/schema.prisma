@@ -42,6 +42,10 @@ enum PhotoPhase {
   before // ก่อนเข้า
   during // ระหว่างเข้า
   after // หลังเข้า
+  office // หน้าออฟฟิศ Agency
+  activity // กิจกรรมที่ทำ
+  material // สื่อที่ติดตั้ง
+  selfie // selfie คู่ผู้ดูแล Agency
 }
 
 enum AuditAction {
@@ -238,6 +242,9 @@ model VisitCheckin {
   employeeId  String   @map("employee_id")
   checkinAt   DateTime @default(now()) @map("checkin_at")
 
+  checkOutAt      DateTime? @map("check_out_at") // เวลาเช็กเอาต์
+  durationMinutes Int?      @map("duration_minutes") // ระยะเวลาอยู่หน้างาน (นาที)
+
   // ตำแหน่งที่ผู้ใช้ check-in จริง
   latitude  Float
   longitude Float
@@ -245,6 +252,18 @@ model VisitCheckin {
   // ผลตรวจระยะห่างจากพิกัด Agency (เมตร)
   distanceMeters Int     @map("distance_meters")
   withinRadius   Boolean @map("within_radius") // ผ่านเงื่อนไขรัศมีหรือไม่
+  gpsStatus      String  @default("in_area") @map("gps_status") // in_area / near / out (3 ระดับ)
+  accuracyMeters Float?  @map("accuracy_meters") // ความแม่นยำ GPS
+
+  // ผู้เข้าพบ (ผู้ดูแล Agency)
+  contactName     String? @map("contact_name")
+  contactPosition String? @map("contact_position")
+  contactPhone    String? @map("contact_phone")
+
+  // กันปลอมการเช็กอิน
+  deviceInfo String?  @map("device_info") // user-agent
+  ipAddress  String?  @map("ip_address")
+  isMockGps  Boolean  @default(false) @map("is_mock_gps") // ตรวจจับ Fake GPS
 
   visitPlan VisitPlan    @relation(fields: [visitPlanId], references: [id], onDelete: Cascade)
   employee  Employee     @relation(fields: [employeeId], references: [id], onDelete: Cascade)
@@ -293,6 +312,29 @@ model VisitReport {
   visitPlan VisitPlan @relation(fields: [visitPlanId], references: [id], onDelete: Cascade)
 
   @@map("visit_reports")
+}
+
+// ============================================================
+// Follow-up Task — งานติดตามต่อเนื่องหลังเข้าเยี่ยม
+// ============================================================
+model FollowUpTask {
+  id          String    @id @default(cuid())
+  agencyId    String    @map("agency_id")
+  visitPlanId String?   @map("visit_plan_id") // มาจากการเยี่ยมไหน (ถ้ามี)
+  assigneeId  String?   @map("assignee_id") // employee ผู้รับผิดชอบ
+  createdById String?   @map("created_by_id")
+  title       String
+  detail      String?
+  dueDate     DateTime? @map("due_date") @db.Date
+  status      String    @default("open") // open / done
+  doneAt      DateTime? @map("done_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  @@index([agencyId])
+  @@index([assigneeId, status])
+  @@index([status, dueDate])
+  @@map("follow_up_tasks")
 }
 
 // ============================================================

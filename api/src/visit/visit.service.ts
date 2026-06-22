@@ -31,8 +31,12 @@ export class VisitService {
     private storage: StorageService,
   ) {}
 
-  private get maxRadius(): number {
-    return Number(this.config.get('CHECKIN_MAX_RADIUS_METERS', 200));
+  // รัศมี 3 ระดับ: ≤pass ผ่าน, ≤warn แจ้งเตือน, >warn ไม่อนุญาต
+  private get passRadius(): number {
+    return Number(this.config.get('CHECKIN_PASS_RADIUS_METERS', 100));
+  }
+  private get warnRadius(): number {
+    return Number(this.config.get('CHECKIN_WARN_RADIUS_METERS', 300));
   }
 
   // หา employee ของ user ที่ login (เซลส์)
@@ -118,8 +122,13 @@ export class VisitService {
     });
   }
 
-  // ---- Check-in (GPS) ----
-  async checkin(user: RequestUser, planId: string, dto: CheckinDto) {
+  // ---- Check-in (GPS 3 ระดับ + กันปลอม) ----
+  async checkin(
+    user: RequestUser,
+    planId: string,
+    dto: CheckinDto,
+    meta?: { ip?: string; userAgent?: string },
+  ) {
     const emp = await this.requireEmployee(user.id);
     const plan = await this.prisma.visitPlan.findUnique({
       where: { id: planId },
@@ -132,16 +141,27 @@ export class VisitService {
       throw new BadRequestException('Agency ยังไม่ได้ตั้งพิกัด GPS — ติดต่อแอดมิน');
     }
 
-    const dist = distanceMeters(
-      dto.latitude,
-      dto.longitude,
-      plan.agency.latitude,
-      plan.agency.longitude,
-    );
-    const within = dist <= this.maxRadius;
-    if (!within) {
+    // กันเช็กอินซ้ำร้านเดิมในวันเดียวกัน
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
+    const dup = await this.prisma.visitCheckin.findFirst({
+      where: {
+        employeeId: emp.id,
+        checkinAt: { gte: startOfDay },
+        visitPlan: { agencyId: plan.agencyId },
+      },
+    });
+    if (dup) throw new BadRequestException('คุณเช็กอินร้านนี้ไปแล้ววันนี้');
+
+    const dist = distanceMeters(dto.latitude, dto.longitude, plan.agency.latitude, plan.agency.longitude);
+    // 3 ระดับ
+    let gpsStatus: 'in_area' | 'near' | 'out';
+    if (dist <= this.passRadius) gpsStatus = 'in_area';
+    else if (dist <= this.warnRadius) gpsStatus = 'near';
+    else gpsStatus = 'out';
+    if (gpsStatus === 'out') {
       throw new BadRequestException(
-        `อยู่ห่างจาก Agency ${dist} เมตร (เกิน ${this.maxRadius} เมตร) — ไม่อนุญาตให้ check-in`,
+        `อยู่ห่างจาก Agency ${dist} เมตร (เกิน ${this.warnRadius} เมตร) — ไม่อนุญาตให้ check-in`,
       );
     }
 
@@ -152,12 +172,84 @@ export class VisitService {
         latitude: dto.latitude,
         longitude: dto.longitude,
         distanceMeters: dist,
-        withinRadius: within,
+        withinRadius: gpsStatus === 'in_area',
+        gpsStatus,
+        accuracyMeters: dto.accuracy,
+        isMockGps: dto.isMock ?? false,
+        contactName: dto.contactName,
+        contactPosition: dto.contactPosition,
+        contactPhone: dto.contactPhone,
+        deviceInfo: meta?.userAgent?.slice(0, 300),
+        ipAddress: meta?.ip,
       },
     });
-    // check-in สำเร็จ -> mark plan = done
     await this.prisma.visitPlan.update({ where: { id: plan.id }, data: { status: 'done' } });
-    return { ...checkin, message: `Check-in สำเร็จ (ห่าง ${dist} เมตร)` };
+    const warn = gpsStatus === 'near' ? ' (⚠️ ใกล้เคียง นอกรัศมีแม่นยำ)' : '';
+    const mockWarn = dto.isMock ? ' ⚠️ ตรวจพบสัญญาณ Fake GPS' : '';
+    return { ...checkin, message: `Check-in สำเร็จ (ห่าง ${dist} เมตร)${warn}${mockWarn}` };
+  }
+
+  // ---- Check-out (คำนวณระยะเวลาหน้างาน) ----
+  async checkout(user: RequestUser, checkinId: string) {
+    const emp = await this.requireEmployee(user.id);
+    const checkin = await this.prisma.visitCheckin.findUnique({ where: { id: checkinId } });
+    if (!checkin) throw new NotFoundException('ไม่พบการ check-in');
+    if (checkin.employeeId !== emp.id) throw new ForbiddenException('ไม่ใช่งานของคุณ');
+    if (checkin.checkOutAt) throw new BadRequestException('เช็กเอาต์ไปแล้ว');
+    const now = new Date();
+    const minutes = Math.max(1, Math.round((now.getTime() - checkin.checkinAt.getTime()) / 60000));
+    return this.prisma.visitCheckin.update({
+      where: { id: checkinId },
+      data: { checkOutAt: now, durationMinutes: minutes },
+    });
+  }
+
+  // ---- Contact (ผู้เข้าพบ) — อัปเดตหลัง check-in ได้ ----
+  async setContact(
+    user: RequestUser,
+    checkinId: string,
+    dto: { contactName?: string; contactPosition?: string; contactPhone?: string },
+  ) {
+    const emp = await this.requireEmployee(user.id);
+    const checkin = await this.prisma.visitCheckin.findUnique({ where: { id: checkinId } });
+    if (!checkin) throw new NotFoundException('ไม่พบการ check-in');
+    if (checkin.employeeId !== emp.id) throw new ForbiddenException('ไม่ใช่งานของคุณ');
+    return this.prisma.visitCheckin.update({ where: { id: checkinId }, data: dto });
+  }
+
+  // ---- Follow-up tasks ----
+  async createFollowUp(user: RequestUser, planId: string, dto: import('./dto/visit.dto').FollowUpDto) {
+    const plan = await this.getPlan(user, planId);
+    const emp = await this.prisma.employee.findUnique({ where: { userId: user.id } });
+    return this.prisma.followUpTask.create({
+      data: {
+        agencyId: plan.agencyId,
+        visitPlanId: plan.id,
+        assigneeId: dto.assigneeId ?? plan.employeeId,
+        createdById: emp?.id,
+        title: dto.title,
+        detail: dto.detail,
+        dueDate: dto.dueDate ? new Date(dto.dueDate) : undefined,
+      },
+    });
+  }
+
+  async listFollowUps(planId: string) {
+    return this.prisma.followUpTask.findMany({
+      where: { visitPlanId: planId },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async toggleFollowUp(user: RequestUser, taskId: string) {
+    await this.requireEmployee(user.id);
+    const t = await this.prisma.followUpTask.findUnique({ where: { id: taskId } });
+    if (!t) throw new NotFoundException('ไม่พบงานติดตาม');
+    const done = t.status !== 'done';
+    return this.prisma.followUpTask.update({
+      where: { id: taskId },
+      data: { status: done ? 'done' : 'open', doneAt: done ? new Date() : null },
+    });
   }
 
   // ---- Photo ----

@@ -1,9 +1,11 @@
 import {
   IsArray,
+  IsBoolean,
   IsDateString,
   IsEnum,
   IsLatitude,
   IsLongitude,
+  IsNumber,
   IsOptional,
   IsString,
 } from 'class-validator';
@@ -39,6 +41,43 @@ export class CheckinDto {
 
   @IsLongitude()
   longitude!: number;
+
+  @IsOptional()
+  @IsNumber()
+  accuracy?: number; // ความแม่นยำ GPS (เมตร)
+
+  @IsOptional()
+  @IsBoolean()
+  isMock?: boolean; // client แจ้งว่าตรวจพบ mock location
+
+  @IsOptional()
+  @IsString()
+  contactName?: string;
+
+  @IsOptional()
+  @IsString()
+  contactPosition?: string;
+
+  @IsOptional()
+  @IsString()
+  contactPhone?: string;
+}
+
+export class FollowUpDto {
+  @IsString()
+  title!: string;
+
+  @IsOptional()
+  @IsString()
+  detail?: string;
+
+  @IsOptional()
+  @IsDateString()
+  dueDate?: string;
+
+  @IsOptional()
+  @IsString()
+  assigneeId?: string;
 }
 
 export class ReportDto {
