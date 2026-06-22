@@ -52,6 +52,14 @@ export class CreateAgencyDto {
   lineId?: string;
 
   @IsOptional()
+  @IsString()
+  tier?: string; // platinum/gold/silver/bronze/new
+
+  @IsOptional()
+  @IsString()
+  pipelineStage?: string; // new/prospect/onboarding/active/grade_a/at_risk/inactive
+
+  @IsOptional()
   @IsLatitude()
   latitude?: number;
 

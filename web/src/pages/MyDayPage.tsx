@@ -15,6 +15,7 @@ import {
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
+import { useT } from '../i18n';
 
 interface Visit {
   visitPlanId: string;
@@ -50,6 +51,7 @@ function Stat({ label, value, target }: { label: string; value: number; target?:
 }
 
 export default function MyDayPage() {
+  const { t } = useT();
   const [date, setDate] = useState(today());
   const [data, setData] = useState<MyDay | null>(null);
   const nav = useNavigate();
@@ -69,7 +71,7 @@ export default function MyDayPage() {
     <Box>
       <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2} flexWrap="wrap" gap={1}>
         <Box>
-          <Typography variant="h5" fontWeight={700}>ตารางของฉัน</Typography>
+          <Typography variant="h5" fontWeight={700}>{t('page.myDay')}</Typography>
           <Typography variant="caption" color="text.secondary">
             {data.employee.name} · {data.employee.position === 'closer' ? 'Closer' : 'Sales'}
           </Typography>

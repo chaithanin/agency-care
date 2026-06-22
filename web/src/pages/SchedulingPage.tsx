@@ -19,6 +19,7 @@ import {
 } from '@mui/material';
 import { api, errMsg } from '../api/client';
 import { PdfExportButton } from '../utils/pdf';
+import { useT } from '../i18n';
 
 interface TeamRow {
   teamId: string;
@@ -93,6 +94,7 @@ function StatCard({ label, value, color }: { label: string; value: string | numb
 }
 
 export default function SchedulingPage() {
+  const { t } = useT();
   const [month, setMonth] = useState(thisMonth());
   const [teams, setTeams] = useState<TeamRow[]>([]);
   const [coverage, setCoverage] = useState<Coverage | null>(null);
@@ -160,7 +162,7 @@ export default function SchedulingPage() {
     <Box ref={pdfRef}>
       <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2} flexWrap="wrap" gap={1}>
         <Typography variant="h5" fontWeight={700}>
-          ตารางงาน & ทีม (Phase 5)
+          {t('page.scheduling')}
         </Typography>
         <Stack direction="row" spacing={1} alignItems="center">
           <TextField type="month" size="small" value={month} onChange={(e) => setMonth(e.target.value)} />

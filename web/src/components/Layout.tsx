@@ -30,6 +30,7 @@ export default function Layout({ children }: { children: ReactNode }) {
         { to: '/route', label: t('nav.route') },
         { to: '/scheduling', label: t('nav.scheduling') },
         { to: '/seller-performance', label: t('nav.sellerPerf') },
+        { to: '/pipeline', label: t('nav.pipeline') },
         { to: '/kpi', label: t('nav.kpi') },
         { to: '/auto-assign', label: t('nav.autoassign') },
         { to: '/analytics', label: t('nav.ai') },

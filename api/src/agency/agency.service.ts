@@ -47,6 +47,20 @@ export class AgencyService {
     return agency;
   }
 
+  // Phase 7: สรุป pipeline (จำนวนต่อ stage + tier)
+  async pipelineStats() {
+    const [byStage, byTier, total] = await Promise.all([
+      this.prisma.agency.groupBy({ by: ['pipelineStage'], where: { status: 'active' }, _count: { _all: true } }),
+      this.prisma.agency.groupBy({ by: ['tier'], where: { status: 'active' }, _count: { _all: true } }),
+      this.prisma.agency.count({ where: { status: 'active' } }),
+    ]);
+    return {
+      total,
+      stages: Object.fromEntries(byStage.map((s) => [s.pipelineStage, s._count._all])),
+      tiers: Object.fromEntries(byTier.map((t) => [t.tier, t._count._all])),
+    };
+  }
+
   async create(dto: CreateAgencyDto) {
     const dup = await this.prisma.agency.findUnique({ where: { code: dto.code } });
     if (dup) throw new BadRequestException(`รหัส Agency ${dto.code} ถูกใช้แล้ว`);

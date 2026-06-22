@@ -134,6 +134,7 @@ model Agency {
   type   String? // ประเภทร้าน
   level  AgencyLevel  @default(C) // ระดับ A/B/C/D (คุมความถี่เยี่ยม)
   tier   String       @default("gold") // platinum/gold/silver/bronze/new — คุมความถี่เยี่ยม/เดือน
+  pipelineStage String  @default("active") @map("pipeline_stage") // Phase 7: new/prospect/onboarding/active/grade_a/at_risk/inactive
   status AgencyStatus @default(active)
 
   // พื้นที่

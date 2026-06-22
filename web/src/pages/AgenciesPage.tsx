@@ -20,6 +20,7 @@ import {
   Alert,
 } from '@mui/material';
 import { api, errMsg } from '../api/client';
+import { useT } from '../i18n';
 
 interface Agency {
   id: string;
@@ -32,8 +33,18 @@ interface Agency {
   latitude?: number;
   longitude?: number;
   geocodeSource?: string | null;
+  tier?: string;
+  pipelineStage?: string;
   assignments: { employee: { id: string; name: string; code: string } }[];
 }
+
+const STAGES = ['new', 'prospect', 'onboarding', 'active', 'grade_a', 'at_risk', 'inactive'];
+const STAGE_LABEL: Record<string, string> = {
+  new: 'ใหม่', prospect: 'Prospect', onboarding: 'Onboarding', active: 'Active',
+  grade_a: 'Grade A', at_risk: 'เสี่ยงหลุด', inactive: 'ไม่เคลื่อนไหว',
+};
+const tierColor = (t?: string) =>
+  t === 'platinum' ? 'secondary' : t === 'gold' ? 'warning' : t === 'new' ? 'info' : 'default';
 
 const empty = {
   code: '',
@@ -53,6 +64,7 @@ interface EmpOpt {
 }
 
 export default function AgenciesPage() {
+  const { t } = useT();
   const [rows, setRows] = useState<Agency[]>([]);
   const [employees, setEmployees] = useState<EmpOpt[]>([]);
   const [open, setOpen] = useState(false);
@@ -67,6 +79,9 @@ export default function AgenciesPage() {
   const [gpsFor, setGpsFor] = useState<Agency | null>(null);
   const [gpsText, setGpsText] = useState('');
   const [gpsErr, setGpsErr] = useState('');
+
+  // tier/stage dialog (Phase 7)
+  const [tierFor, setTierFor] = useState<Agency | null>(null);
 
   // bulk geocode
   const [geocoding, setGeocoding] = useState(false);
@@ -140,6 +155,13 @@ export default function AgenciesPage() {
     load();
   };
 
+  const saveTier = async () => {
+    if (!tierFor) return;
+    await api.patch(`/agencies/${tierFor.id}`, { tier: tierFor.tier, pipelineStage: tierFor.pipelineStage });
+    setTierFor(null);
+    load();
+  };
+
   const save = async () => {
     setError('');
     try {
@@ -165,7 +187,7 @@ export default function AgenciesPage() {
     <Box>
       <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2}>
         <Typography variant="h5" fontWeight={700}>
-          Master Agency
+          {t('page.agencies')}
         </Typography>
         <Stack direction="row" spacing={1}>
           <Button variant="outlined" onClick={runGeocode} disabled={geocoding}>
@@ -189,7 +211,7 @@ export default function AgenciesPage() {
             <TableRow>
               <TableCell>รหัส</TableCell>
               <TableCell>ชื่อ</TableCell>
-              <TableCell>ระดับ</TableCell>
+              <TableCell>Tier / Stage</TableCell>
               <TableCell>โซน</TableCell>
               <TableCell>GPS</TableCell>
               <TableCell>เซลส์ที่ดูแล</TableCell>
@@ -202,7 +224,12 @@ export default function AgenciesPage() {
                 <TableCell>{a.code}</TableCell>
                 <TableCell>{a.name}</TableCell>
                 <TableCell>
-                  <Chip size="small" label={a.level} />
+                  <Stack direction="row" spacing={0.5}>
+                    <Chip size="small" clickable color={tierColor(a.tier)} label={a.tier ?? 'gold'}
+                      onClick={() => setTierFor({ ...a })} />
+                    <Chip size="small" variant="outlined" label={STAGE_LABEL[a.pipelineStage ?? 'active']}
+                      onClick={() => setTierFor({ ...a })} />
+                  </Stack>
                 </TableCell>
                 <TableCell>{a.zone || '-'}</TableCell>
                 <TableCell>
@@ -403,6 +430,33 @@ export default function AgenciesPage() {
           <Button variant="contained" onClick={saveGps}>
             บันทึกพิกัด
           </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* ---- Tier / Pipeline Stage (Phase 7) ---- */}
+      <Dialog open={!!tierFor} onClose={() => setTierFor(null)} fullWidth maxWidth="xs">
+        <DialogTitle>Tier / Stage — {tierFor?.name}</DialogTitle>
+        <DialogContent>
+          {tierFor && (
+            <Stack spacing={2} mt={1}>
+              <TextField select label="Tier (ความถี่เยี่ยม/เดือน)" value={tierFor.tier ?? 'gold'}
+                onChange={(e) => setTierFor({ ...tierFor, tier: e.target.value })}>
+                <MenuItem value="platinum">Platinum — 4 ครั้ง/เดือน</MenuItem>
+                <MenuItem value="gold">Gold — 2 ครั้ง/เดือน</MenuItem>
+                <MenuItem value="silver">Silver — 1 ครั้ง/เดือน</MenuItem>
+                <MenuItem value="bronze">Bronze — 1 ครั้ง/2 เดือน</MenuItem>
+                <MenuItem value="new">New — 2 ครั้ง/เดือน</MenuItem>
+              </TextField>
+              <TextField select label="Pipeline Stage" value={tierFor.pipelineStage ?? 'active'}
+                onChange={(e) => setTierFor({ ...tierFor, pipelineStage: e.target.value })}>
+                {STAGES.map((s) => <MenuItem key={s} value={s}>{STAGE_LABEL[s]}</MenuItem>)}
+              </TextField>
+            </Stack>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setTierFor(null)}>ยกเลิก</Button>
+          <Button variant="contained" onClick={saveTier}>บันทึก</Button>
         </DialogActions>
       </Dialog>
     </Box>

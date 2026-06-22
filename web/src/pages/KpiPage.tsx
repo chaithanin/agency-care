@@ -15,6 +15,7 @@ import {
 } from '@mui/material';
 import { api } from '../api/client';
 import { PdfExportButton } from '../utils/pdf';
+import { useT } from '../i18n';
 
 interface Row {
   employeeId: string;
@@ -44,6 +45,7 @@ function pctChip(value: number, target: number) {
 }
 
 export default function KpiPage() {
+  const { t } = useT();
   const [data, setData] = useState<Kpi | null>(null);
   const [month, setMonth] = useState(thisMonth());
   const pdfRef = useRef<HTMLDivElement>(null);
@@ -60,7 +62,7 @@ export default function KpiPage() {
     <Box ref={pdfRef}>
       <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2}>
         <Typography variant="h5" fontWeight={700}>
-          KPI ประสิทธิภาพเซลส์
+          {t('page.kpi')}
         </Typography>
         <Stack direction="row" spacing={1} alignItems="center">
           <TextField

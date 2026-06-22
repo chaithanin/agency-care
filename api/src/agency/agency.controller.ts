@@ -17,6 +17,13 @@ export class AgencyController {
     return this.service.list({ zone, status, q });
   }
 
+  // Phase 7: สรุป pipeline (ต้องอยู่ก่อน :id)
+  @Roles('admin', 'manager')
+  @Get('pipeline')
+  pipeline() {
+    return this.service.pipelineStats();
+  }
+
   @Get(':id')
   get(@Param('id') id: string) {
     return this.service.get(id);

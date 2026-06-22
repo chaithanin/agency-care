@@ -17,6 +17,7 @@ import {
 } from '@mui/material';
 import { api, errMsg } from '../api/client';
 import { PdfExportButton } from '../utils/pdf';
+import { useT } from '../i18n';
 
 interface ProposalRow {
   agencyId: string;
@@ -34,6 +35,7 @@ interface SummaryRow {
 }
 
 export default function AutoAssignPage() {
+  const { t } = useT();
   const [proposal, setProposal] = useState<ProposalRow[] | null>(null);
   const [summary, setSummary] = useState<SummaryRow[]>([]);
   const [loading, setLoading] = useState(false);
@@ -82,7 +84,7 @@ export default function AutoAssignPage() {
     <Box ref={pdfRef}>
       <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2}>
         <Typography variant="h5" fontWeight={700}>
-          จัดทีมอัตโนมัติ (AI)
+          {t('page.autoassign')}
         </Typography>
         <Stack direction="row" spacing={1} className="no-pdf" alignItems="center">
           <TextField

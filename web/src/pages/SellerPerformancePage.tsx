@@ -16,6 +16,7 @@ import {
 } from '@mui/material';
 import { api } from '../api/client';
 import { PdfExportButton } from '../utils/pdf';
+import { useT } from '../i18n';
 
 interface Seller {
   id: string;
@@ -66,6 +67,7 @@ function Kpi({ value, sub, label, color }: { value: number | string; sub?: strin
 }
 
 export default function SellerPerformancePage() {
+  const { t } = useT();
   const [data, setData] = useState<Perf | null>(null);
   const [selId, setSelId] = useState<string | undefined>();
   const pdfRef = useRef<HTMLDivElement>(null);
@@ -90,7 +92,7 @@ export default function SellerPerformancePage() {
     <Box ref={pdfRef}>
       <Stack direction="row" justifyContent="space-between" alignItems="flex-start" mb={0.5}>
         <Box>
-          <Typography variant="h5" fontWeight={700}>Seller Performance</Typography>
+          <Typography variant="h5" fontWeight={700}>{t('page.sellerPerf')}</Typography>
           <Typography variant="caption" color="text.secondary">ผลงาน + ตารางงานรายคน (เดือนนี้)</Typography>
         </Box>
         <PdfExportButton targetRef={pdfRef} filename={`seller-${data.selected?.name ?? 'performance'}.pdf`} />

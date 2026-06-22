@@ -24,6 +24,7 @@ import {
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import { api, errMsg } from '../api/client';
+import { useT } from '../i18n';
 
 interface Employee {
   id: string;
@@ -45,6 +46,7 @@ interface Team { id: string; name: string }
 const emptyCreate = { code: '', name: '', phone: '', zone: '', lineUserId: '', email: '', password: '' };
 
 export default function EmployeesPage() {
+  const { t } = useT();
   const [rows, setRows] = useState<Employee[]>([]);
   const [teams, setTeams] = useState<Team[]>([]);
   const [createOpen, setCreateOpen] = useState(false);
@@ -118,7 +120,7 @@ export default function EmployeesPage() {
   return (
     <Box>
       <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2}>
-        <Typography variant="h5" fontWeight={700}>พนักงาน / เซลส์</Typography>
+        <Typography variant="h5" fontWeight={700}>{t('page.employees')}</Typography>
         <Stack direction="row" spacing={1}>
           <Button variant="outlined" onClick={runNotify} disabled={notifying}>
             {notifying ? 'กำลังส่ง...' : '🔔 แจ้งเตือนงานค้าง'}
