@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post } from '@nestjs/common';
+import { Body, Controller, Get, Post, Query } from '@nestjs/common';
 import { AutoAssignService, ApplyAssignmentDto } from './autoassign.service';
 import { Roles } from '../auth/guards';
 
@@ -8,8 +8,8 @@ export class AutoAssignController {
   constructor(private service: AutoAssignService) {}
 
   @Get('propose')
-  propose() {
-    return this.service.propose();
+  propose(@Query('maxPerSales') maxPerSales?: string) {
+    return this.service.propose(maxPerSales ? parseInt(maxPerSales, 10) : undefined);
   }
 
   @Post('apply')

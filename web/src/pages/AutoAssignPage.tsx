@@ -13,6 +13,7 @@ import {
   Chip,
   Alert,
   LinearProgress,
+  TextField,
 } from '@mui/material';
 import { api, errMsg } from '../api/client';
 import { PdfExportButton } from '../utils/pdf';
@@ -38,16 +39,22 @@ export default function AutoAssignPage() {
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState('');
   const [filterEmp, setFilterEmp] = useState<string | null>(null); // คลิกชื่อเพื่อฟิลเตอร์
+  const [maxPerSales, setMaxPerSales] = useState('30'); // Phase 5: จำกัด/คน
+  const [unassigned, setUnassigned] = useState(0);
   const pdfRef = useRef<HTMLDivElement>(null);
 
   const propose = async () => {
     setLoading(true);
     setMsg('');
     try {
-      const { data } = await api.get('/auto-assign/propose');
+      const { data } = await api.get('/auto-assign/propose', {
+        params: maxPerSales ? { maxPerSales } : {},
+      });
       setProposal(data.proposal);
       setSummary(data.summary);
+      setUnassigned(data.unassigned ?? 0);
       setFilterEmp(null);
+      if (data.note) setMsg(data.note);
     } catch (e) {
       setMsg(errMsg(e));
     } finally {
@@ -77,7 +84,16 @@ export default function AutoAssignPage() {
         <Typography variant="h5" fontWeight={700}>
           จัดทีมอัตโนมัติ (AI)
         </Typography>
-        <Stack direction="row" spacing={1} className="no-pdf">
+        <Stack direction="row" spacing={1} className="no-pdf" alignItems="center">
+          <TextField
+            label="จำกัด/คน"
+            type="number"
+            size="small"
+            value={maxPerSales}
+            onChange={(e) => setMaxPerSales(e.target.value)}
+            sx={{ width: 110 }}
+            helperText="เว้นว่าง=ทั้งหมด"
+          />
           <Button variant="outlined" onClick={propose} disabled={loading}>
             เสนอการแบ่ง
           </Button>
@@ -91,7 +107,7 @@ export default function AutoAssignPage() {
       </Stack>
 
       <Typography variant="body2" color="text.secondary" mb={2}>
-        ระบบเสนอการแบ่ง Agency ให้เซลส์โดยบาลานซ์ตามโซนและภาระงาน — ตรวจสอบก่อนกดยืนยัน
+        แบ่ง Agency ให้เฉพาะ <b>Sales</b> (ไม่รวม Closer) บาลานซ์ตามโซน — จำกัด {maxPerSales || '∞'} ร้าน/คน ตามกฎ Phase 5
       </Typography>
 
       {loading && <LinearProgress sx={{ mb: 2 }} />}
@@ -119,6 +135,9 @@ export default function AutoAssignPage() {
                 onClick={() => setFilterEmp(filterEmp === s.employeeId ? null : s.employeeId)}
               />
             ))}
+            {unassigned > 0 && (
+              <Chip label={`เหลือไม่มอบหมาย: ${unassigned} ร้าน`} color="warning" />
+            )}
             {filterEmp && (
               <Chip label="✕ ล้างตัวกรอง" color="error" variant="outlined" onClick={() => setFilterEmp(null)} />
             )}
