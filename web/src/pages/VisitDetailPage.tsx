@@ -20,7 +20,12 @@ import {
   ListItem,
   ListItemText,
   IconButton,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from '@mui/material';
+import EventBusyIcon from '@mui/icons-material/EventBusy';
 import MyLocationIcon from '@mui/icons-material/MyLocation';
 import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
 import LogoutIcon from '@mui/icons-material/Logout';
@@ -47,6 +52,7 @@ interface Checkin {
   photos: Photo[];
 }
 interface Report { purposes: string[]; summary?: string; problems?: string; actionPlan?: string }
+interface WorkPhoto { id: string; url: string; caption?: string | null }
 interface Plan {
   id: string;
   status: string;
@@ -55,6 +61,7 @@ interface Plan {
   employee: { name: string };
   checkin?: Checkin | null;
   report?: Report | null;
+  workPhotos?: WorkPhoto[];
 }
 interface FollowUp { id: string; title: string; detail?: string; dueDate?: string; status: string }
 
@@ -110,6 +117,13 @@ export default function VisitDetailPage() {
   const [plan, setPlan] = useState<Plan | null>(null);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  // เลื่อนนัด
+  const [rsOpen, setRsOpen] = useState(false);
+  const [reason, setReason] = useState('');
+  const [newDate, setNewDate] = useState('');
+  // อัปโหลดรูปการทำงาน
+  const workRef = useRef<HTMLInputElement>(null);
+  const [uploadingWork, setUploadingWork] = useState(false);
 
   const load = () => api.get(`/visits/plans/${id}`).then((r) => setPlan(r.data));
   useEffect(() => {
@@ -141,6 +155,34 @@ export default function VisitDetailPage() {
       },
       { enableHighAccuracy: true, timeout: 15000 },
     );
+  };
+
+  const doReschedule = async () => {
+    if (!reason.trim()) return;
+    setError('');
+    try {
+      await api.post(`/visits/plans/${id}/reschedule`, { reason, newDate: newDate || undefined });
+      setRsOpen(false); setReason(''); setNewDate('');
+      await load();
+    } catch (e) { setError(errMsg(e)); }
+  };
+
+  const onWorkPhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    setError(''); setUploadingWork(true);
+    try {
+      const loc = await new Promise<GeolocationCoordinates | null>((res) => {
+        if (!navigator.geolocation) return res(null);
+        navigator.geolocation.getCurrentPosition((p) => res(p.coords), () => res(null), { timeout: 8000 });
+      });
+      const fd = new FormData();
+      fd.append('photo', file);
+      if (loc) { fd.append('latitude', String(loc.latitude)); fd.append('longitude', String(loc.longitude)); }
+      await api.post(`/visits/plans/${id}/work-photos`, fd);
+      await load();
+    } catch (e) { setError(errMsg(e)); } finally { setUploadingWork(false); }
   };
 
   if (!plan) return <CircularProgress />;
@@ -179,6 +221,10 @@ export default function VisitDetailPage() {
               onClick={checkin}>
               {busy ? 'กำลังอ่านตำแหน่ง...' : 'Check-in ที่นี่'}
             </Button>
+            <Button variant="text" color="warning" startIcon={<EventBusyIcon />} sx={{ mt: 1 }}
+              onClick={() => { setError(''); setRsOpen(true); }}>
+              เลื่อนการเข้าพบ
+            </Button>
           </Paper>
         ) : (
           <Alert severity="info" sx={{ mb: 2 }}>ยังไม่มีการ check-in</Alert>
@@ -186,6 +232,52 @@ export default function VisitDetailPage() {
       ) : (
         <CheckedInSection plan={plan} isSales={isSales} reload={load} salesName={plan.employee.name} agencyName={plan.agency.name} />
       )}
+
+      {/* ---- รูปการทำงาน (อัปโหลดได้ทุกเมื่อ) ---- */}
+      <Paper sx={{ p: 2, mt: 2 }}>
+        <Stack direction="row" justifyContent="space-between" alignItems="center" mb={1}>
+          <Typography variant="h6" fontWeight={700}>รูปการทำงาน</Typography>
+          {isSales && (
+            <Button variant="outlined" size="small" startIcon={<PhotoCameraIcon />}
+              disabled={uploadingWork} onClick={() => workRef.current?.click()}>
+              {uploadingWork ? 'กำลังอัปโหลด...' : 'อัปโหลดรูป'}
+            </Button>
+          )}
+          <input ref={workRef} type="file" accept="image/*" capture="environment" hidden onChange={onWorkPhoto} />
+        </Stack>
+        {!plan.workPhotos?.length ? (
+          <Typography variant="body2" color="text.secondary">ยังไม่มีรูป</Typography>
+        ) : (
+          <ImageList cols={3} gap={8} sx={{ m: 0 }}>
+            {plan.workPhotos.map((ph) => (
+              <ImageListItem key={ph.id}>
+                <MuiLink href={ph.url} target="_blank">
+                  <img src={ph.url} alt={ph.caption ?? 'work'} loading="lazy" style={{ borderRadius: 8 }} />
+                </MuiLink>
+              </ImageListItem>
+            ))}
+          </ImageList>
+        )}
+      </Paper>
+
+      {/* ---- dialog เลื่อนนัด ---- */}
+      <Dialog open={rsOpen} onClose={() => setRsOpen(false)} fullWidth maxWidth="xs">
+        <DialogTitle>เลื่อนการเข้าพบ — {plan.agency.name}</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} mt={1}>
+            <TextField label="เหตุผลที่เลื่อน" multiline minRows={2} value={reason}
+              onChange={(e) => setReason(e.target.value)} required autoFocus
+              placeholder="เช่น ร้านปิด / ติดประชุม / ลูกค้าขอเลื่อน" />
+            <TextField label="วันใหม่ (ถ้ามี)" type="date" value={newDate}
+              onChange={(e) => setNewDate(e.target.value)} InputLabelProps={{ shrink: true }}
+              helperText="เว้นว่าง = เลื่อนแบบยังไม่กำหนดวัน" />
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setRsOpen(false)}>ยกเลิก</Button>
+          <Button variant="contained" color="warning" onClick={doReschedule} disabled={!reason.trim()}>ยืนยันเลื่อน</Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

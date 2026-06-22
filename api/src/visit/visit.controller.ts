@@ -21,6 +21,7 @@ import {
   CreatePlanDto,
   FollowUpDto,
   ReportDto,
+  RescheduleDto,
   UpdatePlanStatusDto,
 } from './dto/visit.dto';
 import { Roles } from '../auth/guards';
@@ -72,6 +73,40 @@ export class VisitController {
     @Headers('user-agent') ua: string,
   ) {
     return this.service.checkin(user, id, dto, { ip, userAgent: ua });
+  }
+
+  // ---- เลื่อนการเข้าพบ (พร้อมเหตุผล) ----
+  @Post('plans/:id/reschedule')
+  reschedule(
+    @CurrentUser() user: RequestUser,
+    @Param('id') id: string,
+    @Body() dto: RescheduleDto,
+  ) {
+    return this.service.reschedule(user, id, dto);
+  }
+
+  // ---- อัปโหลดรูปการทำงาน (ไม่ต้อง check-in) ----
+  @Post('plans/:id/work-photos')
+  @UseInterceptors(
+    FileInterceptor('photo', {
+      storage: memoryStorage(),
+      limits: { fileSize: 8 * 1024 * 1024 },
+      fileFilter: (_req, file, cb) => cb(null, /^image\//.test(file.mimetype)),
+    }),
+  )
+  addWorkPhoto(
+    @CurrentUser() user: RequestUser,
+    @Param('id') id: string,
+    @UploadedFile() file: Express.Multer.File,
+    @Body('caption') caption?: string,
+    @Body('latitude') latitude?: string,
+    @Body('longitude') longitude?: string,
+  ) {
+    if (!file) throw new BadRequestException('กรุณาแนบรูปภาพ');
+    return this.service.addWorkPhoto(user, id, file, caption, {
+      latitude: latitude ? Number(latitude) : undefined,
+      longitude: longitude ? Number(longitude) : undefined,
+    });
   }
 
   // ---- Check-out ----

@@ -63,6 +63,15 @@ export class CheckinDto {
   contactPhone?: string;
 }
 
+export class RescheduleDto {
+  @IsString()
+  reason!: string; // เหตุผลที่เลื่อน
+
+  @IsOptional()
+  @IsDateString()
+  newDate?: string; // วันใหม่ (ถ้าไม่ใส่ = เลื่อนแบบ postponed)
+}
+
 export class FollowUpDto {
   @IsString()
   title!: string;

@@ -185,6 +185,22 @@ model Agency {
   @@map("agencies")
 }
 
+// รูปการทำงาน ผูกกับแผนเยี่ยม (อัปโหลดได้ทุกเมื่อ เช่น ตอนเลื่อนนัด)
+model VisitWorkPhoto {
+  id          String   @id @default(cuid())
+  visitPlanId String   @map("visit_plan_id")
+  url         String
+  caption     String?
+  latitude    Float?
+  longitude   Float?
+  takenAt     DateTime @default(now()) @map("taken_at")
+
+  visitPlan VisitPlan @relation(fields: [visitPlanId], references: [id], onDelete: Cascade)
+
+  @@index([visitPlanId])
+  @@map("visit_work_photos")
+}
+
 // ============================================================
 // 4) agency_assignments — มอบหมาย Agency ให้เซลส์
 // ============================================================
@@ -228,6 +244,7 @@ model VisitPlan {
   posmTransactions PosmTransaction[]
   salesActivities  SalesActivity[]
   modelTransactions ModelTransaction[]
+  workPhotos       VisitWorkPhoto[] // รูปการทำงาน (อัปโหลดได้โดยไม่ต้อง check-in)
 
   @@index([employeeId, planDate])
   @@index([agencyId, planDate])

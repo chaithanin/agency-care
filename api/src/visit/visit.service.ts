@@ -104,6 +104,7 @@ export class VisitService {
         employee: { select: { id: true, code: true, name: true } },
         checkin: { include: { photos: true } },
         report: true,
+        workPhotos: { orderBy: { takenAt: 'asc' } },
       },
     });
     if (!plan) throw new NotFoundException('ไม่พบแผนการเยี่ยม');
@@ -119,6 +120,37 @@ export class VisitService {
     return this.prisma.visitPlan.update({
       where: { id: plan.id },
       data: { status: dto.status, note: dto.note ?? plan.note },
+    });
+  }
+
+  // ---- เลื่อนการเข้าพบ (พร้อมเหตุผล) ----
+  async reschedule(user: RequestUser, id: string, dto: import('./dto/visit.dto').RescheduleDto) {
+    const plan = await this.getPlan(user, id);
+    if (plan.checkin) throw new BadRequestException('เยี่ยมไปแล้ว เลื่อนไม่ได้');
+    const stamp = `[เลื่อนนัด ${new Date().toISOString().slice(0, 10)}] ${dto.reason}`;
+    const note = plan.note ? `${plan.note}\n${stamp}` : stamp;
+    return this.prisma.visitPlan.update({
+      where: { id: plan.id },
+      data: {
+        note,
+        // มีวันใหม่ = เลื่อนไปวันนั้น (pending), ไม่มี = postponed
+        ...(dto.newDate ? { planDate: new Date(dto.newDate), status: 'pending' } : { status: 'postponed' }),
+      },
+    });
+  }
+
+  // ---- อัปโหลดรูปการทำงาน (ไม่ต้อง check-in) ----
+  async addWorkPhoto(
+    user: RequestUser,
+    planId: string,
+    file: UploadFile,
+    caption?: string,
+    coords?: { latitude?: number; longitude?: number },
+  ) {
+    const plan = await this.getPlan(user, planId);
+    const url = await this.storage.save(file);
+    return this.prisma.visitWorkPhoto.create({
+      data: { visitPlanId: plan.id, url, caption, latitude: coords?.latitude, longitude: coords?.longitude },
     });
   }
 
