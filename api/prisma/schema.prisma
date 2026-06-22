@@ -51,6 +51,23 @@ enum AuditAction {
   login
 }
 
+// Phase 5: ตำแหน่งพนักงาน
+enum EmployeePosition {
+  sales // เซลส์ — ดูแล agency, เข้าเยี่ยม, หาลูกค้าใหม่, ทำยอดขาย
+  closer // Closer — ปิดการขาย, ตามผลงาน, ดูแลคุณภาพงาน
+}
+
+// Phase 5: ชนิดงานในตารางรายวัน
+enum ScheduleItemType {
+  meeting // ประชุมทีม
+  visit // เข้าเยี่ยม agency
+  followup // ติดตามงาน
+  newAgency // หา/เพิ่ม agency ใหม่
+  report // บันทึกรายงาน
+  office // งานในออฟฟิศ
+  other
+}
+
 // ============================================================
 // 1) users — บัญชีเข้าระบบ (auth)
 // ============================================================
@@ -81,17 +98,24 @@ model Employee {
   name       String
   phone      String?
   zone       String? // โซน/พื้นที่ดูแล
+  position   EmployeePosition @default(sales) // Phase 5: sales / closer
+  teamId     String?  @map("team_id") // Phase 5: สังกัดทีม
   lineUserId String?  @map("line_user_id") // ผูก LINE เพื่อรับแจ้งเตือน
   isActive   Boolean  @default(true) @map("is_active")
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
   user        User?              @relation(fields: [userId], references: [id], onDelete: SetNull)
+  team        Team?              @relation(fields: [teamId], references: [id], onDelete: SetNull)
   assignments AgencyAssignment[]
   visitPlans  VisitPlan[]
   checkins    VisitCheckin[]
+  monthlyPlans   MonthlyPlan[]
+  dailySchedules DailySchedule[]
+  addedAgencies  Agency[]        @relation("AgencyAddedBy")
 
   @@index([zone])
+  @@index([teamId])
   @@map("employees")
 }
 
@@ -125,6 +149,7 @@ model Agency {
   source            String? // Source of Customer
   tags              String? // Extra tags
   lastVisitAt       DateTime? @map("last_visit_at") // วันเข้าเยี่ยมล่าสุด (ก่อนใช้ระบบ)
+  addedById         String? @map("added_by_id") // Phase 5: เซลส์ที่เพิ่ม agency นี้เข้าระบบ
 
   // พิกัด (ใช้ตรวจ check-in)
   latitude       Float?
@@ -143,10 +168,13 @@ model Agency {
   visitPlans  VisitPlan[]
   models      Model[] // อุปกรณ์ที่อยู่ที่ร้านนี้ตอนนี้
   modelTxns   ModelTransaction[]
+  addedBy       Employee?           @relation("AgencyAddedBy", fields: [addedById], references: [id], onDelete: SetNull)
+  scheduleItems DailyScheduleItem[]
 
   @@index([zone])
   @@index([province])
   @@index([status])
+  @@index([addedById])
   @@map("agencies")
 }
 
@@ -406,4 +434,94 @@ model AuditLog {
   @@index([userId])
   @@index([entity, entityId])
   @@map("audit_logs")
+}
+
+// ============================================================
+// Phase 5 — Workforce Scheduling & AI Automation
+// ============================================================
+
+// ทีม (เช่น ทีม A / ทีม B) รวม sales + closer
+model Team {
+  id        String   @id @default(cuid())
+  code      String   @unique // TEAM-A
+  name      String
+  zone      String? // โซนหลักที่ทีมดูแล
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  members Employee[]
+
+  @@map("teams")
+}
+
+// ปฏิทินทำงานบริษัท — กำหนดวันหยุด (กฎ: ทำงาน 24 วัน/เดือน หยุด 6-7)
+model WorkCalendar {
+  id        String   @id @default(cuid())
+  date      DateTime @unique @db.Date
+  isHoliday Boolean  @default(false) @map("is_holiday")
+  note      String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([date])
+  @@map("work_calendar")
+}
+
+// แผน/เป้าระดับเดือน ต่อพนักงาน
+model MonthlyPlan {
+  id              String @id @default(cuid())
+  employeeId      String @map("employee_id")
+  year            Int
+  month           Int // 1-12
+  workDayTarget   Int    @default(24) @map("work_day_target")
+  visitTarget     Int    @default(0) @map("visit_target") // จำนวนเยี่ยมเป้าทั้งเดือน
+  newAgencyTarget Int    @default(2) @map("new_agency_target") // เพิ่ม agency ใหม่
+  note            String?
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@unique([employeeId, year, month])
+  @@index([year, month])
+  @@map("monthly_plans")
+}
+
+// ตารางงานรายวัน ต่อพนักงาน
+model DailySchedule {
+  id         String   @id @default(cuid())
+  employeeId String   @map("employee_id")
+  date       DateTime @db.Date
+  inOffice   Boolean  @default(false) @map("in_office") // อยู่ประจำออฟฟิศวันนี้ (กฎคนประจำ)
+  status     String   @default("planned") // planned / done
+  note       String?
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  employee Employee            @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  items    DailyScheduleItem[]
+
+  @@unique([employeeId, date])
+  @@index([date])
+  @@map("daily_schedules")
+}
+
+// รายการงานในตารางรายวัน
+model DailyScheduleItem {
+  id         String           @id @default(cuid())
+  scheduleId String           @map("schedule_id")
+  startTime  String?          @map("start_time") // "10:00"
+  endTime    String?          @map("end_time") // "12:00"
+  type       ScheduleItemType @default(visit)
+  agencyId   String?          @map("agency_id") // ถ้าเป็นงานเยี่ยม
+  title      String
+  done       Boolean          @default(false)
+  createdAt  DateTime         @default(now()) @map("created_at")
+
+  schedule DailySchedule @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+  agency   Agency?       @relation(fields: [agencyId], references: [id], onDelete: SetNull)
+
+  @@index([scheduleId])
+  @@index([agencyId])
+  @@map("daily_schedule_items")
 }

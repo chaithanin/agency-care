@@ -16,6 +16,8 @@ import AutoAssignPage from './pages/AutoAssignPage';
 import AnalyticsPage from './pages/AnalyticsPage';
 import MyVisitsPage from './pages/MyVisitsPage';
 import VisitDetailPage from './pages/VisitDetailPage';
+import SchedulingPage from './pages/SchedulingPage';
+import MyDayPage from './pages/MyDayPage';
 
 function Splash() {
   return (
@@ -53,10 +55,14 @@ export default function App() {
             <Route path="/models" element={<ModelsPage />} />
             <Route path="/kpi" element={<KpiPage />} />
             <Route path="/auto-assign" element={<AutoAssignPage />} />
+            <Route path="/scheduling" element={<SchedulingPage />} />
             <Route path="/analytics" element={<AnalyticsPage />} />
           </>
         ) : (
-          <Route path="/" element={<MyVisitsPage />} />
+          <>
+            <Route path="/" element={<MyVisitsPage />} />
+            <Route path="/my-day" element={<MyDayPage />} />
+          </>
         )}
         <Route path="/route" element={<RoutePage />} />
         <Route path="/visits/:id" element={<VisitDetailPage />} />

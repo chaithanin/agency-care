@@ -26,12 +26,14 @@ export default function Layout({ children }: { children: ReactNode }) {
         { to: '/products', label: 'สินค้า' },
         { to: '/models', label: 'อุปกรณ์' },
         { to: '/route', label: 'เส้นทาง' },
+        { to: '/scheduling', label: 'ตารางงาน' },
         { to: '/kpi', label: 'KPI' },
         { to: '/auto-assign', label: 'จัดทีม' },
         { to: '/analytics', label: 'AI' },
       ]
     : [
         { to: '/', label: 'งานของฉัน' },
+        { to: '/my-day', label: 'ตารางของฉัน' },
         { to: '/route', label: 'เส้นทาง' },
       ];
 
