@@ -91,8 +91,8 @@ export default function UsersPage() {
                   <Chip size="small" label={u.isActive ? t('usr.active') : t('usr.off')} color={u.isActive ? 'success' : 'default'} />
                 </TableCell>
                 <TableCell align="center">
-                  <IconButton size="small" title="แก้ไข" onClick={() => { setError(''); setEdit({ ...u }); }}><EditIcon fontSize="small" /></IconButton>
-                  <IconButton size="small" title="รีเซ็ตรหัสผ่าน" onClick={() => { setError(''); setPwFor(u); setPw(''); }}><KeyIcon fontSize="small" /></IconButton>
+                  <IconButton size="small" title={t('common.edit')} onClick={() => { setError(''); setEdit({ ...u }); }}><EditIcon fontSize="small" /></IconButton>
+                  <IconButton size="small" title={t('usr.resetTitle')} onClick={() => { setError(''); setPwFor(u); setPw(''); }}><KeyIcon fontSize="small" /></IconButton>
                 </TableCell>
               </TableRow>
             ))}
@@ -102,57 +102,57 @@ export default function UsersPage() {
 
       {/* เพิ่มผู้ใช้ */}
       <Dialog open={createOpen} onClose={() => setCreateOpen(false)} fullWidth maxWidth="xs">
-        <DialogTitle>เพิ่มผู้ใช้</DialogTitle>
+        <DialogTitle>{t('usr.addTitle')}</DialogTitle>
         <DialogContent>
           <Stack spacing={2} mt={1}>
             {error && <Alert severity="error">{error}</Alert>}
-            <TextField label="อีเมล" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required />
-            <TextField label="ชื่อ-สกุล" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
-            <TextField select label="สิทธิ์" value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}>
+            <TextField label={t('usr.email')} type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required />
+            <TextField label={t('d.fullName')} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
+            <TextField select label={t('usr.role')} value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}>
               {ROLES.map((r) => <MenuItem key={r} value={r}>{r}</MenuItem>)}
             </TextField>
-            <TextField label="รหัสผ่าน" type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required helperText="อย่างน้อย 6 ตัว" />
+            <TextField label={t('d.password')} type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required helperText={t('d.minChars')} />
           </Stack>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setCreateOpen(false)}>ยกเลิก</Button>
-          <Button variant="contained" onClick={create}>บันทึก</Button>
+          <Button onClick={() => setCreateOpen(false)}>{t('common.cancel')}</Button>
+          <Button variant="contained" onClick={create}>{t('common.save')}</Button>
         </DialogActions>
       </Dialog>
 
       {/* แก้ไขผู้ใช้ */}
       <Dialog open={!!edit} onClose={() => setEdit(null)} fullWidth maxWidth="xs">
-        <DialogTitle>แก้ไข: {edit?.email}</DialogTitle>
+        <DialogTitle>{t('common.edit')}: {edit?.email}</DialogTitle>
         <DialogContent>
           {edit && (
             <Stack spacing={2} mt={1}>
               {error && <Alert severity="error">{error}</Alert>}
-              <TextField label="ชื่อ-สกุล" value={edit.name} onChange={(e) => setEdit({ ...edit, name: e.target.value })} />
-              <TextField select label="สิทธิ์" value={edit.role} onChange={(e) => setEdit({ ...edit, role: e.target.value })}>
+              <TextField label={t('d.fullName')} value={edit.name} onChange={(e) => setEdit({ ...edit, name: e.target.value })} />
+              <TextField select label={t('usr.role')} value={edit.role} onChange={(e) => setEdit({ ...edit, role: e.target.value })}>
                 {ROLES.map((r) => <MenuItem key={r} value={r}>{r}</MenuItem>)}
               </TextField>
-              <FormControlLabel control={<Checkbox checked={edit.isActive} onChange={(e) => setEdit({ ...edit, isActive: e.target.checked })} />} label="เปิดใช้งาน" />
+              <FormControlLabel control={<Checkbox checked={edit.isActive} onChange={(e) => setEdit({ ...edit, isActive: e.target.checked })} />} label={t('usr.enable')} />
             </Stack>
           )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setEdit(null)}>ยกเลิก</Button>
-          <Button variant="contained" onClick={saveEdit}>บันทึก</Button>
+          <Button onClick={() => setEdit(null)}>{t('common.cancel')}</Button>
+          <Button variant="contained" onClick={saveEdit}>{t('common.save')}</Button>
         </DialogActions>
       </Dialog>
 
       {/* รีเซ็ตรหัสผ่าน */}
       <Dialog open={!!pwFor} onClose={() => setPwFor(null)} fullWidth maxWidth="xs">
-        <DialogTitle>รีเซ็ตรหัสผ่าน: {pwFor?.email}</DialogTitle>
+        <DialogTitle>{t('usr.resetTitle')}: {pwFor?.email}</DialogTitle>
         <DialogContent>
           <Stack spacing={2} mt={1}>
             {error && <Alert severity="error">{error}</Alert>}
-            <TextField label="รหัสผ่านใหม่" type="password" value={pw} onChange={(e) => setPw(e.target.value)} helperText="อย่างน้อย 6 ตัว" autoFocus />
+            <TextField label={t('usr.newPw')} type="password" value={pw} onChange={(e) => setPw(e.target.value)} helperText={t('d.minChars')} autoFocus />
           </Stack>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setPwFor(null)}>ยกเลิก</Button>
-          <Button variant="contained" color="warning" onClick={resetPw} disabled={pw.length < 6}>รีเซ็ต</Button>
+          <Button onClick={() => setPwFor(null)}>{t('common.cancel')}</Button>
+          <Button variant="contained" color="warning" onClick={resetPw} disabled={pw.length < 6}>{t('usr.reset')}</Button>
         </DialogActions>
       </Dialog>
     </Box>

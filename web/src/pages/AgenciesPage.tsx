@@ -39,10 +39,6 @@ interface Agency {
 }
 
 const STAGES = ['new', 'prospect', 'onboarding', 'active', 'grade_a', 'at_risk', 'inactive'];
-const STAGE_LABEL: Record<string, string> = {
-  new: 'ใหม่', prospect: 'Prospect', onboarding: 'Onboarding', active: 'Active',
-  grade_a: 'Grade A', at_risk: 'เสี่ยงหลุด', inactive: 'ไม่เคลื่อนไหว',
-};
 const tierColor = (t?: string) =>
   t === 'platinum' ? 'secondary' : t === 'gold' ? 'warning' : t === 'new' ? 'info' : 'default';
 
@@ -227,7 +223,7 @@ export default function AgenciesPage() {
                   <Stack direction="row" spacing={0.5}>
                     <Chip size="small" clickable color={tierColor(a.tier)} label={a.tier ?? 'gold'}
                       onClick={() => setTierFor({ ...a })} />
-                    <Chip size="small" variant="outlined" label={STAGE_LABEL[a.pipelineStage ?? 'active']}
+                    <Chip size="small" variant="outlined" label={t('st.' + (a.pipelineStage ?? 'active'))}
                       onClick={() => setTierFor({ ...a })} />
                   </Stack>
                 </TableCell>
@@ -293,13 +289,13 @@ export default function AgenciesPage() {
       </Paper>
 
       <Dialog open={open} onClose={() => setOpen(false)} fullWidth maxWidth="sm">
-        <DialogTitle>เพิ่ม Agency</DialogTitle>
+        <DialogTitle>{t('ag.addTitle')}</DialogTitle>
         <DialogContent>
           <Stack spacing={2} mt={1}>
             {error && <Alert severity="error">{error}</Alert>}
             <Stack direction="row" spacing={2}>
               <TextField
-                label="รหัส Agency"
+                label={t('ag.codeLabel')}
                 value={form.code}
                 onChange={(e) => setForm({ ...form, code: e.target.value })}
                 required
@@ -307,7 +303,7 @@ export default function AgenciesPage() {
               />
               <TextField
                 select
-                label="ระดับ"
+                label={t('ag.level')}
                 value={form.level}
                 onChange={(e) => setForm({ ...form, level: e.target.value })}
                 sx={{ width: 120 }}
@@ -320,27 +316,27 @@ export default function AgenciesPage() {
               </TextField>
             </Stack>
             <TextField
-              label="ชื่อ Agency"
+              label={t('ag.nameLabel')}
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
               required
             />
             <Stack direction="row" spacing={2}>
               <TextField
-                label="จังหวัด"
+                label={t('ag.province')}
                 value={form.province}
                 onChange={(e) => setForm({ ...form, province: e.target.value })}
                 sx={{ flex: 1 }}
               />
               <TextField
-                label="โซน"
+                label={t('c.zone')}
                 value={form.zone}
                 onChange={(e) => setForm({ ...form, zone: e.target.value })}
                 sx={{ flex: 1 }}
               />
             </Stack>
             <TextField
-              label="เบอร์โทร"
+              label={t('c.phone')}
               value={form.phone}
               onChange={(e) => setForm({ ...form, phone: e.target.value })}
             />
@@ -361,25 +357,25 @@ export default function AgenciesPage() {
               />
             </Stack>
             <Typography variant="caption" color="text.secondary">
-              พิกัด GPS ใช้ตรวจสอบตอนเซลส์ check-in (ต้องอยู่ในรัศมีที่กำหนด)
+              {t('ag.gpsHint')}
             </Typography>
           </Stack>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpen(false)}>ยกเลิก</Button>
+          <Button onClick={() => setOpen(false)}>{t('common.cancel')}</Button>
           <Button variant="contained" onClick={save}>
-            บันทึก
+            {t('common.save')}
           </Button>
         </DialogActions>
       </Dialog>
 
       {/* ---- มอบหมายเซลส์ ---- */}
       <Dialog open={!!assignFor} onClose={() => setAssignFor(null)} fullWidth maxWidth="xs">
-        <DialogTitle>มอบหมายเซลส์ — {assignFor?.name}</DialogTitle>
+        <DialogTitle>{t('ag.assignTitle')} — {assignFor?.name}</DialogTitle>
         <DialogContent>
           <TextField
             select
-            label="เลือกเซลส์"
+            label={t('ag.selectSeller')}
             value={assignEmp}
             onChange={(e) => setAssignEmp(e.target.value)}
             fullWidth
@@ -393,25 +389,25 @@ export default function AgenciesPage() {
           </TextField>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setAssignFor(null)}>ยกเลิก</Button>
+          <Button onClick={() => setAssignFor(null)}>{t('common.cancel')}</Button>
           <Button variant="contained" onClick={doAssign} disabled={!assignEmp}>
-            มอบหมาย
+            {t('ag.doAssign')}
           </Button>
         </DialogActions>
       </Dialog>
 
       {/* ---- ตั้งพิกัด GPS ---- */}
       <Dialog open={!!gpsFor} onClose={() => setGpsFor(null)} fullWidth maxWidth="sm">
-        <DialogTitle>ตั้งพิกัด GPS — {gpsFor?.name}</DialogTitle>
+        <DialogTitle>{t('ag.gpsTitle')} — {gpsFor?.name}</DialogTitle>
         <DialogContent>
           <Stack spacing={2} mt={1}>
             {gpsErr && <Alert severity="error">{gpsErr}</Alert>}
             <Typography variant="body2" color="text.secondary">
-              เปิด Google Maps → หาที่ตั้งร้าน → คลิกขวา "คัดลอกพิกัด" หรือคัดลอกลิงก์ แล้ววางที่นี่
+              {t('ag.gpsHowto')}
             </Typography>
             <TextField
-              label="พิกัด หรือ ลิงก์ Google Maps"
-              placeholder="13.7563, 100.5018  หรือ  https://maps.google.com/...@13.75,100.50"
+              label={t('ag.gpsLabel')}
+              placeholder="13.7563, 100.5018  /  https://maps.google.com/...@13.75,100.50"
               value={gpsText}
               onChange={(e) => setGpsText(e.target.value)}
               multiline
@@ -420,43 +416,43 @@ export default function AgenciesPage() {
             />
             {gpsFor?.latitude != null && (
               <Typography variant="caption" color="text.secondary">
-                ปัจจุบัน: {gpsFor.latitude}, {gpsFor.longitude}
+                {t('ag.current')}: {gpsFor.latitude}, {gpsFor.longitude}
               </Typography>
             )}
           </Stack>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setGpsFor(null)}>ยกเลิก</Button>
+          <Button onClick={() => setGpsFor(null)}>{t('common.cancel')}</Button>
           <Button variant="contained" onClick={saveGps}>
-            บันทึกพิกัด
+            {t('ag.saveGps')}
           </Button>
         </DialogActions>
       </Dialog>
 
       {/* ---- Tier / Pipeline Stage (Phase 7) ---- */}
       <Dialog open={!!tierFor} onClose={() => setTierFor(null)} fullWidth maxWidth="xs">
-        <DialogTitle>Tier / Stage — {tierFor?.name}</DialogTitle>
+        <DialogTitle>{t('ag.tierTitle')} — {tierFor?.name}</DialogTitle>
         <DialogContent>
           {tierFor && (
             <Stack spacing={2} mt={1}>
-              <TextField select label="Tier (ความถี่เยี่ยม/เดือน)" value={tierFor.tier ?? 'gold'}
+              <TextField select label={t('ag.tierFreqLabel')} value={tierFor.tier ?? 'gold'}
                 onChange={(e) => setTierFor({ ...tierFor, tier: e.target.value })}>
-                <MenuItem value="platinum">Platinum — 4 ครั้ง/เดือน</MenuItem>
-                <MenuItem value="gold">Gold — 2 ครั้ง/เดือน</MenuItem>
-                <MenuItem value="silver">Silver — 1 ครั้ง/เดือน</MenuItem>
-                <MenuItem value="bronze">Bronze — 1 ครั้ง/2 เดือน</MenuItem>
-                <MenuItem value="new">New — 2 ครั้ง/เดือน</MenuItem>
+                <MenuItem value="platinum">{t('ag.tierPlatinum')}</MenuItem>
+                <MenuItem value="gold">{t('ag.tierGold')}</MenuItem>
+                <MenuItem value="silver">{t('ag.tierSilver')}</MenuItem>
+                <MenuItem value="bronze">{t('ag.tierBronze')}</MenuItem>
+                <MenuItem value="new">{t('ag.tierNew')}</MenuItem>
               </TextField>
               <TextField select label="Pipeline Stage" value={tierFor.pipelineStage ?? 'active'}
                 onChange={(e) => setTierFor({ ...tierFor, pipelineStage: e.target.value })}>
-                {STAGES.map((s) => <MenuItem key={s} value={s}>{STAGE_LABEL[s]}</MenuItem>)}
+                {STAGES.map((s) => <MenuItem key={s} value={s}>{t('st.' + s)}</MenuItem>)}
               </TextField>
             </Stack>
           )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setTierFor(null)}>ยกเลิก</Button>
-          <Button variant="contained" onClick={saveTier}>บันทึก</Button>
+          <Button onClick={() => setTierFor(null)}>{t('common.cancel')}</Button>
+          <Button variant="contained" onClick={saveTier}>{t('common.save')}</Button>
         </DialogActions>
       </Dialog>
     </Box>

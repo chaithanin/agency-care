@@ -90,24 +90,24 @@ export default function ProductsPage() {
       </Paper>
 
       <Dialog open={open} onClose={() => setOpen(false)} fullWidth maxWidth="xs">
-        <DialogTitle>เพิ่มสินค้า</DialogTitle>
+        <DialogTitle>{t('pr.addTitle')}</DialogTitle>
         <DialogContent>
           <Stack spacing={2} mt={1}>
             {error && <Alert severity="error">{error}</Alert>}
             <TextField
-              label="รหัส"
+              label={t('c.code')}
               value={form.code}
               onChange={(e) => setForm({ ...form, code: e.target.value })}
               required
             />
             <TextField
-              label="ชื่อสินค้า"
+              label={t('pr.name')}
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
               required
             />
             <TextField
-              label="ราคา/หน่วย"
+              label={t('pr.price')}
               type="number"
               value={form.price}
               onChange={(e) => setForm({ ...form, price: e.target.value })}
@@ -115,9 +115,9 @@ export default function ProductsPage() {
           </Stack>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpen(false)}>ยกเลิก</Button>
+          <Button onClick={() => setOpen(false)}>{t('common.cancel')}</Button>
           <Button variant="contained" onClick={save}>
-            บันทึก
+            {t('common.save')}
           </Button>
         </DialogActions>
       </Dialog>

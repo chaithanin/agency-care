@@ -174,62 +174,62 @@ export default function EmployeesPage() {
 
       {/* ---- เพิ่มพนักงาน ---- */}
       <Dialog open={createOpen} onClose={() => setCreateOpen(false)} fullWidth maxWidth="sm">
-        <DialogTitle>เพิ่มพนักงาน</DialogTitle>
+        <DialogTitle>{t('emp.addTitle')}</DialogTitle>
         <DialogContent>
           <Stack spacing={2} mt={1}>
             {error && <Alert severity="error">{error}</Alert>}
             <Stack direction="row" spacing={2}>
-              <TextField label="รหัสพนักงาน" placeholder="SALE-001" value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} required sx={{ flex: 1 }} />
-              <TextField label="โซน" value={form.zone} onChange={(e) => setForm({ ...form, zone: e.target.value })} sx={{ flex: 1 }} />
+              <TextField label={t('emp.empCode')} placeholder="SALE-001" value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} required sx={{ flex: 1 }} />
+              <TextField label={t('c.zone')} value={form.zone} onChange={(e) => setForm({ ...form, zone: e.target.value })} sx={{ flex: 1 }} />
             </Stack>
-            <TextField label="ชื่อ-สกุล" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
-            <TextField label="เบอร์โทร" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+            <TextField label={t('d.fullName')} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
+            <TextField label={t('c.phone')} value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
             <TextField label="LINE User ID" value={form.lineUserId} onChange={(e) => setForm({ ...form, lineUserId: e.target.value })} placeholder="Uxxxxxxxx..." />
-            <Typography variant="subtitle2" color="text.secondary">บัญชีเข้าระบบ (ถ้าต้องการให้ login)</Typography>
-            <TextField label="อีเมล" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
-            <TextField label="รหัสผ่าน" type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
+            <Typography variant="subtitle2" color="text.secondary">{t('emp.loginHint')}</Typography>
+            <TextField label={t('usr.email')} type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+            <TextField label={t('d.password')} type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
           </Stack>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setCreateOpen(false)}>ยกเลิก</Button>
-          <Button variant="contained" onClick={create}>บันทึก</Button>
+          <Button onClick={() => setCreateOpen(false)}>{t('common.cancel')}</Button>
+          <Button variant="contained" onClick={create}>{t('common.save')}</Button>
         </DialogActions>
       </Dialog>
 
       {/* ---- แก้ไขพนักงาน ---- */}
       <Dialog open={!!edit} onClose={() => setEdit(null)} fullWidth maxWidth="sm">
-        <DialogTitle>แก้ไขข้อมูล: {edit?.code}</DialogTitle>
+        <DialogTitle>{t('emp.editTitle')}: {edit?.code}</DialogTitle>
         <DialogContent>
           {edit && (
             <Stack spacing={2} mt={1}>
               {error && <Alert severity="error">{error}</Alert>}
-              <TextField label="ชื่อ-สกุล" value={edit.name} onChange={(e) => setEdit({ ...edit, name: e.target.value })} />
+              <TextField label={t('d.fullName')} value={edit.name} onChange={(e) => setEdit({ ...edit, name: e.target.value })} />
               <Stack direction="row" spacing={2}>
-                <TextField label="เบอร์โทร" value={edit.phone ?? ''} onChange={(e) => setEdit({ ...edit, phone: e.target.value })} sx={{ flex: 1 }} />
-                <TextField label="โซน" value={edit.zone ?? ''} onChange={(e) => setEdit({ ...edit, zone: e.target.value })} sx={{ flex: 1 }} />
+                <TextField label={t('c.phone')} value={edit.phone ?? ''} onChange={(e) => setEdit({ ...edit, phone: e.target.value })} sx={{ flex: 1 }} />
+                <TextField label={t('c.zone')} value={edit.zone ?? ''} onChange={(e) => setEdit({ ...edit, zone: e.target.value })} sx={{ flex: 1 }} />
               </Stack>
               <Stack direction="row" spacing={2}>
-                <TextField select label="ตำแหน่ง" value={edit.position ?? 'sales'} onChange={(e) => setEdit({ ...edit, position: e.target.value })} sx={{ flex: 1 }}>
+                <TextField select label={t('c.position')} value={edit.position ?? 'sales'} onChange={(e) => setEdit({ ...edit, position: e.target.value })} sx={{ flex: 1 }}>
                   <MenuItem value="sales">Sales</MenuItem>
                   <MenuItem value="closer">Closer</MenuItem>
                 </TextField>
-                <TextField select label="ทีม" value={edit.teamId ?? ''} onChange={(e) => setEdit({ ...edit, teamId: e.target.value })} sx={{ flex: 1 }}>
-                  <MenuItem value="">— ไม่สังกัด —</MenuItem>
-                  {teams.map((t) => <MenuItem key={t.id} value={t.id}>{t.name}</MenuItem>)}
+                <TextField select label={t('c.team')} value={edit.teamId ?? ''} onChange={(e) => setEdit({ ...edit, teamId: e.target.value })} sx={{ flex: 1 }}>
+                  <MenuItem value="">{t('emp.noTeam')}</MenuItem>
+                  {teams.map((tm) => <MenuItem key={tm.id} value={tm.id}>{tm.name}</MenuItem>)}
                 </TextField>
               </Stack>
               <TextField label="LINE User ID" value={edit.lineUserId ?? ''} onChange={(e) => setEdit({ ...edit, lineUserId: e.target.value })} placeholder="Uxxxxxxxx..." />
               <Stack direction="row" spacing={2}>
-                <FormControlLabel control={<Checkbox checked={!!edit.inTraining} onChange={(e) => setEdit({ ...edit, inTraining: e.target.checked })} />} label="กำลังเทรน 🎓" />
-                <FormControlLabel control={<Checkbox checked={edit.isActive} onChange={(e) => setEdit({ ...edit, isActive: e.target.checked })} />} label="ใช้งานอยู่" />
+                <FormControlLabel control={<Checkbox checked={!!edit.inTraining} onChange={(e) => setEdit({ ...edit, inTraining: e.target.checked })} />} label={t('emp.training2')} />
+                <FormControlLabel control={<Checkbox checked={edit.isActive} onChange={(e) => setEdit({ ...edit, isActive: e.target.checked })} />} label={t('emp.activeUse')} />
               </Stack>
-              {edit.user && <Typography variant="caption" color="text.secondary">บัญชี login: {edit.user.email}</Typography>}
+              {edit.user && <Typography variant="caption" color="text.secondary">{t('emp.loginAcct')}: {edit.user.email}</Typography>}
             </Stack>
           )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setEdit(null)}>ยกเลิก</Button>
-          <Button variant="contained" onClick={saveEdit}>บันทึก</Button>
+          <Button onClick={() => setEdit(null)}>{t('common.cancel')}</Button>
+          <Button variant="contained" onClick={saveEdit}>{t('common.save')}</Button>
         </DialogActions>
       </Dialog>
     </Box>

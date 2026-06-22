@@ -71,7 +71,7 @@ export default function AutoAssignPage() {
     try {
       const assignments = proposal.map((p) => ({ agencyId: p.agencyId, employeeId: p.employeeId }));
       const { data } = await api.post('/auto-assign/apply', { assignments });
-      setMsg(`ยืนยันการแบ่งแล้ว ${data.applied} ร้าน`);
+      setMsg(lang === 'th' ? `ยืนยันการแบ่งแล้ว ${data.applied} ร้าน` : `Applied to ${data.applied} agencies`);
       setProposal(null);
     } catch (e) {
       setMsg(errMsg(e));
@@ -132,7 +132,7 @@ export default function AutoAssignPage() {
             {summary.map((s) => (
               <Chip
                 key={s.employeeId}
-                label={`${s.name}: ${s.count} ร้าน`}
+                label={`${s.name}: ${s.count}`}
                 color={filterEmp === s.employeeId ? 'primary' : 'default'}
                 variant={filterEmp === s.employeeId ? 'filled' : 'outlined'}
                 onClick={() => setFilterEmp(filterEmp === s.employeeId ? null : s.employeeId)}
@@ -171,7 +171,7 @@ export default function AutoAssignPage() {
                   <TableCell>{p.employeeName}</TableCell>
                   <TableCell>
                     {p.matchedZone ? (
-                      <Chip size="small" color="success" label="ตรง" />
+                      <Chip size="small" color="success" label={lang === 'th' ? 'ตรง' : 'Match'} />
                     ) : (
                       <Chip size="small" label="-" />
                     )}

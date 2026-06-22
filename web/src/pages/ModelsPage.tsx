@@ -148,44 +148,44 @@ export default function ModelsPage() {
       </Paper>
 
       <Dialog open={open} onClose={() => setOpen(false)} fullWidth maxWidth="xs">
-        <DialogTitle>เพิ่มอุปกรณ์</DialogTitle>
+        <DialogTitle>{t('m.addTitle')}</DialogTitle>
         <DialogContent>
           <Stack spacing={2} mt={1}>
             {error && <Alert severity="error">{error}</Alert>}
             <TextField
-              label="รหัส"
+              label={t('c.code')}
               value={form.code}
               onChange={(e) => setForm({ ...form, code: e.target.value })}
               required
             />
             <TextField
-              label="ชื่ออุปกรณ์"
+              label={t('m.itemName')}
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
               required
             />
             <TextField
-              label="ประเภท"
-              placeholder="Demo Unit / Stand / ป้าย"
+              label={t('m.type')}
+              placeholder={t('m.typePh')}
               value={form.category}
               onChange={(e) => setForm({ ...form, category: e.target.value })}
             />
           </Stack>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpen(false)}>ยกเลิก</Button>
+          <Button onClick={() => setOpen(false)}>{t('common.cancel')}</Button>
           <Button variant="contained" onClick={save}>
-            บันทึก
+            {t('common.save')}
           </Button>
         </DialogActions>
       </Dialog>
 
       <Dialog open={!!deployFor} onClose={() => setDeployFor(null)} fullWidth maxWidth="xs">
-        <DialogTitle>ส่งอุปกรณ์ไปร้าน — {deployFor?.name}</DialogTitle>
+        <DialogTitle>{t('m.deployTitle')} — {deployFor?.name}</DialogTitle>
         <DialogContent>
           <TextField
             select
-            label="เลือกร้าน"
+            label={t('m.selectShop')}
             value={deployAgency}
             onChange={(e) => setDeployAgency(e.target.value)}
             fullWidth
@@ -199,9 +199,9 @@ export default function ModelsPage() {
           </TextField>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setDeployFor(null)}>ยกเลิก</Button>
+          <Button onClick={() => setDeployFor(null)}>{t('common.cancel')}</Button>
           <Button variant="contained" onClick={doDeploy} disabled={!deployAgency}>
-            ส่งไป
+            {t('m.deploy')}
           </Button>
         </DialogActions>
       </Dialog>
