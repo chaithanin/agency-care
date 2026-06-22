@@ -25,4 +25,10 @@ export class NotificationController {
   dailySchedule(@Body() dto: RunDto) {
     return this.service.notifyDailySchedule(dto.date);
   }
+
+  // สรุปงานประจำวัน → LINE + Email ผู้ดูแล (ทดสอบ/รันมือ)
+  @Post('daily-summary')
+  dailySummary(@Body() dto: RunDto) {
+    return this.service.dailyAdminSummary(dto.date);
+  }
 }

@@ -89,6 +89,7 @@ const dict: Record<Lang, Record<string, string>> = {
     'pl2.date': 'วันที่', 'pl2.report': 'รายงาน', 'pl2.title': 'แผนการเข้าเยี่ยม', 'pl2.add': '+ เพิ่มแผน',
     'mv.pending': 'รอเข้าเยี่ยม', 'mv.title': 'งานเข้าเยี่ยมของฉัน',
     'an.title': 'AI วิเคราะห์ทีมขาย', 'an.run': 'วิเคราะห์ด้วย AI', 'an.running': 'กำลังวิเคราะห์...',
+    'an.sub': 'ใช้ Gemini วิเคราะห์ภาระงาน, Agency ที่ขาดการเยี่ยม และยอดขายที่ตก แล้วสรุปเป็นข้อเสนอแนะ',
     'va.media': 'สื่อ', 'va.qty': 'จำนวน', 'va.product': 'สินค้า', 'va.offered': 'เสนอ', 'va.sold': 'ขายได้',
     'va.amount': 'ยอด (บาท)', 'va.amountShort': 'ยอด',
     'va.posmTitle': 'แจกสื่อ POSM', 'va.salesTitle': 'บันทึกการขาย', 'va.noPosm': 'ยังไม่มีการแจกสื่อ',
@@ -103,6 +104,10 @@ const dict: Record<Lang, Record<string, string>> = {
     'vd.followup': 'งานติดตามต่อ (Follow-up)', 'vd.task': 'งานที่ต้องทำ', 'vd.due': 'ครบกำหนด', 'vd.noFollow': 'ยังไม่มีงานติดตาม',
     'vd.openMap': 'เปิดแผนที่', 'vd.noGps': 'Agency ยังไม่ตั้งพิกัด', 'vd.reason': 'เหตุผลที่เลื่อน', 'vd.newDate': 'วันใหม่ (ถ้ามี)',
     'vd.confirmResched': 'ยืนยันเลื่อน', 'vd.statusLbl': 'สถานะ', 'vd.contactName': 'ชื่อ', 'vd.contactPos': 'ตำแหน่ง',
+    'st.new': 'ใหม่', 'st.prospect': 'Prospect', 'st.onboarding': 'Onboarding', 'st.active': 'Active',
+    'st.grade_a': 'Grade A', 'st.at_risk': 'เสี่ยงหลุด', 'st.inactive': 'ไม่เคลื่อนไหว',
+    'pl.tierFreq': 'Platinum 4 · Gold 2 · Silver 1 · Bronze 0.5 · New 2 ครั้ง/เดือน',
+    'mst.in_stock': 'อยู่คลัง', 'mst.deployed': 'ติดตั้งแล้ว', 'mst.repair': 'ส่งซ่อม', 'mst.lost': 'สูญหาย',
   },
   en: {
     'app.name': 'Agency Care',
@@ -190,6 +195,7 @@ const dict: Record<Lang, Record<string, string>> = {
     'pl2.date': 'Date', 'pl2.report': 'Report', 'pl2.title': 'Visit Plans', 'pl2.add': '+ Add Plan',
     'mv.pending': 'Pending visit', 'mv.title': 'My Visits',
     'an.title': 'AI Sales Analysis', 'an.run': 'Analyze with AI', 'an.running': 'Analyzing...',
+    'an.sub': 'Gemini analyzes workload, stale agencies and sales drops into actionable insights',
     'va.media': 'Media', 'va.qty': 'Qty', 'va.product': 'Product', 'va.offered': 'Offered', 'va.sold': 'Sold',
     'va.amount': 'Amount (THB)', 'va.amountShort': 'Amount',
     'va.posmTitle': 'Hand out POSM', 'va.salesTitle': 'Record Sale', 'va.noPosm': 'No POSM handed out',
@@ -204,6 +210,10 @@ const dict: Record<Lang, Record<string, string>> = {
     'vd.followup': 'Follow-up Tasks', 'vd.task': 'Task', 'vd.due': 'Due', 'vd.noFollow': 'No follow-up tasks',
     'vd.openMap': 'Open map', 'vd.noGps': 'No GPS set', 'vd.reason': 'Reschedule reason', 'vd.newDate': 'New date (optional)',
     'vd.confirmResched': 'Confirm', 'vd.statusLbl': 'Status', 'vd.contactName': 'Name', 'vd.contactPos': 'Position',
+    'st.new': 'New', 'st.prospect': 'Prospect', 'st.onboarding': 'Onboarding', 'st.active': 'Active',
+    'st.grade_a': 'Grade A', 'st.at_risk': 'At Risk', 'st.inactive': 'Inactive',
+    'pl.tierFreq': 'Platinum 4 · Gold 2 · Silver 1 · Bronze 0.5 · New 2 visits/month',
+    'mst.in_stock': 'In Stock', 'mst.deployed': 'Deployed', 'mst.repair': 'In Repair', 'mst.lost': 'Lost',
   },
 };
 

@@ -59,7 +59,7 @@ export default function CalendarPage() {
   const [exporting, setExporting] = useState(false);
   const pdfRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
-  const { t } = useT();
+  const { t, lang } = useT();
   const isSales = user?.role === 'sales';
 
   // PDF: มุมมองปัจจุบัน (ทั้งหมด หรือเซลส์ที่เลือก)
@@ -118,7 +118,8 @@ export default function CalendarPage() {
     } else if (empId) {
       await api.post('/scheduling/holidays/toggle', { employeeId: empId, date: ds });
     } else {
-      if (!window.confirm(`ตั้ง/ยกเลิก "วันหยุดบริษัท" วันที่ ${ds}? (มีผลทุกคน)`)) return;
+      const msg = lang === 'th' ? `ตั้ง/ยกเลิก "วันหยุดบริษัท" วันที่ ${ds}? (มีผลทุกคน)` : `Toggle "company holiday" on ${ds}? (affects everyone)`;
+      if (!window.confirm(msg)) return;
       await api.post('/scheduling/company-holidays/toggle', { date: ds });
     }
     load();
@@ -245,12 +246,10 @@ export default function CalendarPage() {
       <Paper sx={{ p: 1.5 }} ref={pdfRef}>{content}</Paper>
 
       <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
-        15 ร้าน/สัปดาห์ · ทำงานทุกวัน ·{' '}
-        {isSales
-          ? 'คลิกวันเพื่อตั้ง/ยกเลิกวันหยุดของคุณ (🔴)'
-          : empId
-            ? 'คลิกวันเพื่อตั้งวันหยุดของเซลส์คนนี้ (🔴)'
-            : 'คลิกวันเพื่อตั้ง “วันหยุดบริษัท” (เทา · มีผลทุกคน)'}
+        {lang === 'th' ? '15 ร้าน/สัปดาห์ · ทำงานทุกวัน · ' : '15 visits/week · work every day · '}
+        {lang === 'th'
+          ? (isSales ? 'คลิกวันเพื่อตั้ง/ยกเลิกวันหยุดของคุณ (🔴)' : empId ? 'คลิกวันเพื่อตั้งวันหยุดของเซลส์คนนี้ (🔴)' : 'คลิกวันเพื่อตั้ง “วันหยุดบริษัท” (เทา · มีผลทุกคน)')
+          : (isSales ? 'Tap a day to toggle your day off (🔴)' : empId ? "Tap a day to toggle this seller's day off (🔴)" : 'Tap a day to set a company holiday (grey · affects all)')}
       </Typography>
     </Box>
   );

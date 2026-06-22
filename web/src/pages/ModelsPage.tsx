@@ -42,13 +42,6 @@ const statusColor: Record<string, 'default' | 'success' | 'warning' | 'error'> =
   repair: 'warning',
   lost: 'error',
 };
-const statusLabel: Record<string, string> = {
-  in_stock: 'อยู่คลัง',
-  deployed: 'ติดตั้งแล้ว',
-  repair: 'ส่งซ่อม',
-  lost: 'สูญหาย',
-};
-
 const empty = { code: '', name: '', category: '' };
 
 export default function ModelsPage() {
@@ -128,7 +121,7 @@ export default function ModelsPage() {
                 <TableCell>{m.name}</TableCell>
                 <TableCell>{m.category || '-'}</TableCell>
                 <TableCell>
-                  <Chip size="small" label={statusLabel[m.status]} color={statusColor[m.status]} />
+                  <Chip size="small" label={t('mst.' + m.status)} color={statusColor[m.status]} />
                 </TableCell>
                 <TableCell>{m.currentAgency ? m.currentAgency.name : '-'}</TableCell>
                 <TableCell align="right">

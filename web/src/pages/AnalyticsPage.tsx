@@ -65,7 +65,7 @@ export default function AnalyticsPage() {
       </Stack>
 
       <Typography variant="body2" color="text.secondary" mb={2}>
-        ใช้ Claude วิเคราะห์ภาระงาน, Agency ที่ขาดการเยี่ยม และยอดขายที่ตก แล้วสรุปเป็นข้อเสนอแนะ
+        {t('an.sub')}
       </Typography>
 
       {loading && <LinearProgress sx={{ mb: 2 }} />}

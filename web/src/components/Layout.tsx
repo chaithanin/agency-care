@@ -1,4 +1,4 @@
-import { type ReactNode } from 'react';
+import { type ReactNode, useEffect, useState } from 'react';
 import {
   AppBar,
   Toolbar,
@@ -7,16 +7,39 @@ import {
   Button,
   Container,
   Stack,
+  Snackbar,
+  Alert,
 } from '@mui/material';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import { useT } from '../i18n';
+import { api } from '../api/client';
 
 export default function Layout({ children }: { children: ReactNode }) {
   const { user, logout } = useAuth();
   const { t, lang, setLang } = useT();
   const loc = useLocation();
   const isManager = user?.role === 'admin' || user?.role === 'manager';
+
+  // แจ้งเตือนงานเมื่อ sale/closer เข้าระบบ (ครั้งเดียวต่อ session)
+  const [loginMsg, setLoginMsg] = useState('');
+  useEffect(() => {
+    if (!user || isManager) return;
+    if (sessionStorage.getItem('loginNotified')) return;
+    sessionStorage.setItem('loginNotified', '1');
+    api.get('/scheduling/my-day').then((r) => {
+      const d = r.data;
+      if (d?.error) return;
+      const n = d.visits?.length ?? 0;
+      const office = d.inOffice ? (lang === 'th' ? ' (วันนี้เวรออฟฟิศ)' : ' (office duty)') : '';
+      setLoginMsg(
+        lang === 'th'
+          ? `สวัสดี ${user.name} — วันนี้มี ${n} นัดเยี่ยม${office}`
+          : `Hi ${user.name} — ${n} visits today${office}`,
+      );
+    }).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
 
   const navItems = isManager
     ? [
@@ -88,6 +111,16 @@ export default function Layout({ children }: { children: ReactNode }) {
       <Container maxWidth="lg" sx={{ py: 2 }}>
         {children}
       </Container>
+      <Snackbar
+        open={!!loginMsg}
+        autoHideDuration={6000}
+        onClose={() => setLoginMsg('')}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <Alert severity="info" onClose={() => setLoginMsg('')} sx={{ width: '100%' }}>
+          🔔 {loginMsg}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 }

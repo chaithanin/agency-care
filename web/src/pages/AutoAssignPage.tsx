@@ -35,7 +35,7 @@ interface SummaryRow {
 }
 
 export default function AutoAssignPage() {
-  const { t } = useT();
+  const { t, lang } = useT();
   const [proposal, setProposal] = useState<ProposalRow[] | null>(null);
   const [summary, setSummary] = useState<SummaryRow[]>([]);
   const [loading, setLoading] = useState(false);
@@ -108,7 +108,9 @@ export default function AutoAssignPage() {
       </Stack>
 
       <Typography variant="body2" color="text.secondary" mb={2}>
-        แบ่ง Agency ให้เฉพาะ <b>Sales</b> (ไม่รวม Closer) บาลานซ์ตามโซน — จำกัด {maxPerSales || '∞'} ร้าน/คน ตามกฎ Phase 5
+        {lang === 'th'
+          ? <>แบ่ง Agency ให้เฉพาะ <b>Sales</b> (ไม่รวม Closer) บาลานซ์ตามโซน — จำกัด {maxPerSales || '∞'} ร้าน/คน ตามกฎ Phase 5</>
+          : <>Distribute agencies to <b>Sales</b> only (no Closers), balanced by zone — limit {maxPerSales || '∞'}/person (Phase 5)</>}
       </Typography>
 
       {loading && <LinearProgress sx={{ mb: 2 }} />}

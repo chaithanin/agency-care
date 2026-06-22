@@ -59,7 +59,7 @@ export default function PipelinePage() {
                 return (
                   <Box key={s.key}>
                     <Stack direction="row" justifyContent="space-between" mb={0.3}>
-                      <Typography variant="body2" fontWeight={600}>{s.label}</Typography>
+                      <Typography variant="body2" fontWeight={600}>{t('st.' + s.key)}</Typography>
                       <Typography variant="body2" color="text.secondary">{n.toLocaleString()}</Typography>
                     </Stack>
                     <Box sx={{ height: 22, bgcolor: '#f0f0f0', borderRadius: 1, overflow: 'hidden' }}>
@@ -87,7 +87,7 @@ export default function PipelinePage() {
               ))}
             </Stack>
             <Typography variant="caption" color="text.secondary" sx={{ mt: 2, display: 'block' }}>
-              Platinum 4 · Gold 2 · Silver 1 · Bronze 0.5 · New 2 ครั้ง/เดือน
+              {t('pl.tierFreq')}
             </Typography>
           </Paper>
         </Grid>
