@@ -34,6 +34,7 @@ export default function Layout({ children }: { children: ReactNode }) {
         { to: '/kpi', label: t('nav.kpi') },
         { to: '/auto-assign', label: t('nav.autoassign') },
         { to: '/analytics', label: t('nav.ai') },
+        ...(user?.role === 'admin' ? [{ to: '/users', label: t('nav.users') }] : []),
       ]
     : [
         { to: '/', label: t('nav.myWork') },

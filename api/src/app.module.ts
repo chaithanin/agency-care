@@ -24,6 +24,7 @@ import { AutoAssignModule } from './autoassign/autoassign.module';
 import { AnalyticsModule } from './analytics/analytics.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { SchedulingModule } from './scheduling/scheduling.module';
+import { UserModule } from './user/user.module';
 
 @Module({
   imports: [
@@ -59,6 +60,7 @@ import { SchedulingModule } from './scheduling/scheduling.module';
     AnalyticsModule,
     DashboardModule,
     SchedulingModule,
+    UserModule,
   ],
   controllers: [AppController],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
