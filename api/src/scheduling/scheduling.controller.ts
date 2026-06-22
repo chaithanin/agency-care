@@ -35,6 +35,12 @@ export class SchedulingController {
   }
 
   @Roles('admin', 'manager')
+  @Get('calendar')
+  calendar(@Query('year') y?: string, @Query('month') m?: string, @Query('employeeId') employeeId?: string) {
+    return this.service.calendar(toInt(y), toInt(m), employeeId);
+  }
+
+  @Roles('admin', 'manager')
   @Get('office')
   office(@Query('date') date?: string) {
     return this.service.officeStatus(date);

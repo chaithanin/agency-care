@@ -7,12 +7,18 @@ import { PrismaService } from '../prisma/prisma.service';
 const RULES = {
   VISITS_PER_AGENCY: 2, // ต้องเยี่ยม ≥2 ครั้ง/เดือน
   NEW_AGENCY_TARGET: 2, // เซลส์เพิ่ม agency ใหม่ /เดือน
-  WORK_DAYS: 24,
+  WORK_DAYS: 24, // วันทำงาน/เดือน
   OFFICE_MIN_SALES: 1, // standby ออฟฟิศขั้นต่ำ/วัน
   OFFICE_MIN_CLOSER: 2,
   VISITS_PER_DAY: 3, // เยี่ยม 2-3 ร้าน/คน/วัน
+  VISITS_PER_WEEK: 15, // เซลส์เยี่ยม 15 ร้าน/สัปดาห์
   AGENCIES_PER_SALES: 30, // เซลส์ละ 30 ร้านศักยภาพ
 };
+
+// เลขสัปดาห์ (bucket รายสัปดาห์จาก epoch — จันทร์เป็นต้นสัปดาห์)
+function weekKey(d: Date): number {
+  return Math.floor((d.getTime() / 86400000 + 3) / 7); // +3 ให้ขึ้นสัปดาห์วันจันทร์
+}
 
 @Injectable()
 export class SchedulingService {
@@ -389,6 +395,32 @@ export class SchedulingService {
     };
   }
 
+  // ===== ปฏิทินรายเดือน — VisitPlan ต่อวัน (ดูตารางงานทั้งเดือน) =====
+  async calendar(year?: number, month?: number, employeeId?: string) {
+    const { y, m, gte, lt } = this.ym(year, month);
+    const [plans, holidays, sales] = await Promise.all([
+      this.prisma.visitPlan.findMany({
+        where: { planDate: { gte, lt }, ...(employeeId ? { employeeId } : {}) },
+        include: { agency: { select: { name: true } }, employee: { select: { name: true } } },
+        orderBy: { planDate: 'asc' },
+      }),
+      this.prisma.workCalendar.findMany({ where: { date: { gte, lt }, isHoliday: true }, select: { date: true } }),
+      this.prisma.employee.findMany({ where: { position: 'sales', isActive: true }, select: { id: true, name: true }, orderBy: { code: 'asc' } }),
+    ]);
+    const days: Record<string, { agencyName: string; status: string; employeeName: string }[]> = {};
+    for (const p of plans) {
+      const ds = p.planDate.toISOString().slice(0, 10);
+      (days[ds] ??= []).push({ agencyName: p.agency.name, status: p.status, employeeName: p.employee.name });
+    }
+    return {
+      year: y,
+      month: m,
+      days,
+      holidays: holidays.map((h) => h.date.toISOString().slice(0, 10)),
+      sales,
+    };
+  }
+
   // ความถี่เยี่ยม/เดือน ตาม tier ของ agency
   private tierFreq(tier: string, month: number): number {
     switch (tier) {
@@ -460,6 +492,8 @@ export class SchedulingService {
       const queue: string[] = [];
       for (let r = 0; r < maxF; r++) for (const a of freqs) if (r < a.f) queue.push(a.id);
       let qi = 0;
+      const weekCount = new Map<number, number>(); // คุมเพดาน 15 ร้าน/สัปดาห์
+      const weekCap = Math.round(RULES.VISITS_PER_WEEK * scale);
       for (let di = 0; di < workdays.length; di++) {
         const date = workdays[di].date;
         if (di % sales.length === si) {
@@ -467,10 +501,14 @@ export class SchedulingService {
           standby.push({ employeeId: s.id, date });
           continue;
         }
-        for (let v = 0; v < RULES.VISITS_PER_DAY && qi < queue.length; v++) {
+        const wk = weekKey(date);
+        const wkUsed = weekCount.get(wk) ?? 0;
+        const dayCap = Math.min(RULES.VISITS_PER_DAY, weekCap - wkUsed); // ไม่เกิน 15/สัปดาห์
+        for (let v = 0; v < dayCap && qi < queue.length; v++) {
           const agencyId = queue[qi++];
           coveredAgency.add(agencyId);
           visitPlans.push({ agencyId, employeeId: s.id, planDate: date, note: 'AI auto-plan' });
+          weekCount.set(wk, (weekCount.get(wk) ?? 0) + 1);
         }
       }
     }

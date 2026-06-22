@@ -21,6 +21,7 @@ import MyDayPage from './pages/MyDayPage';
 import SellerPerformancePage from './pages/SellerPerformancePage';
 import PipelinePage from './pages/PipelinePage';
 import UsersPage from './pages/UsersPage';
+import CalendarPage from './pages/CalendarPage';
 
 function Splash() {
   return (
@@ -59,6 +60,7 @@ export default function App() {
             <Route path="/kpi" element={<KpiPage />} />
             <Route path="/auto-assign" element={<AutoAssignPage />} />
             <Route path="/scheduling" element={<SchedulingPage />} />
+            <Route path="/calendar" element={<CalendarPage />} />
             <Route path="/seller-performance" element={<SellerPerformancePage />} />
             <Route path="/pipeline" element={<PipelinePage />} />
             {user.role === 'admin' && <Route path="/users" element={<UsersPage />} />}

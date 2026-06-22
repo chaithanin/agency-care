@@ -29,6 +29,7 @@ export default function Layout({ children }: { children: ReactNode }) {
         { to: '/models', label: t('nav.models') },
         { to: '/route', label: t('nav.route') },
         { to: '/scheduling', label: t('nav.scheduling') },
+        { to: '/calendar', label: t('nav.calendar') },
         { to: '/seller-performance', label: t('nav.sellerPerf') },
         { to: '/pipeline', label: t('nav.pipeline') },
         { to: '/kpi', label: t('nav.kpi') },
