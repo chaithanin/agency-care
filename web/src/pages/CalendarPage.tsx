@@ -1,11 +1,15 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Box, Typography, Paper, Stack, TextField, MenuItem, LinearProgress, Chip, Tooltip,
-  ToggleButton, ToggleButtonGroup, IconButton,
+  ToggleButton, ToggleButtonGroup, IconButton, Button,
 } from '@mui/material';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
+import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 import { api } from '../api/client';
+import { exportElementToPdf } from '../utils/pdf';
 
 interface DayVisit { agencyName: string; status: string; employeeName: string }
 interface CalData {
@@ -21,12 +25,76 @@ const thisMonth = () => new Date().toISOString().slice(0, 7);
 const DOW = ['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส'];
 const fmt = (d: Date) => d.toISOString().slice(0, 10);
 
+// สร้าง HTML ปฏิทินเดือน (สำหรับ PDF รายคน)
+function buildMonthHTML(d: CalData, title: string, month: string): string {
+  const [y, m] = month.split('-').map(Number);
+  const dim = new Date(y, m, 0).getDate();
+  const lead = new Date(Date.UTC(y, m - 1, 1)).getUTCDay();
+  const empHol = new Set(d.empHolidays ?? []);
+  let cells = '<tr>';
+  let col = 0;
+  for (let i = 0; i < lead; i++) { cells += '<td style="border:1px solid #ddd"></td>'; col++; }
+  for (let day = 1; day <= dim; day++) {
+    const ds = `${month}-${String(day).padStart(2, '0')}`;
+    const visits = d.days[ds] ?? [];
+    const hol = empHol.has(ds);
+    const list = visits.slice(0, 8).map((v) => `<div style="font-size:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${v.agencyName}</div>`).join('');
+    cells += `<td style="border:1px solid #ddd;vertical-align:top;height:78px;width:14%;padding:2px;background:${hol ? '#fdecea' : '#fff'}"><b>${day}</b> ${visits.length ? `<span style="color:#1565c0">(${visits.length})</span>` : ''} ${hol ? '<span style="color:#c00;font-size:8px">หยุด</span>' : ''}${list}</td>`;
+    col++;
+    if (col % 7 === 0) cells += '</tr><tr>';
+  }
+  cells += '</tr>';
+  const head = DOW.map((x) => `<th style="border:1px solid #ddd;background:#f2f2f2;font-size:11px">${x}</th>`).join('');
+  return `<div style="font-family:sans-serif"><h3 style="margin:0 0 6px">${title} — ${month}</h3><table style="width:100%;border-collapse:collapse;table-layout:fixed"><tr>${head}</tr>${cells}</table></div>`;
+}
+
 export default function CalendarPage() {
   const [month, setMonth] = useState(thisMonth());
   const [empId, setEmpId] = useState('');
   const [view, setView] = useState<View>('month');
   const [anchor, setAnchor] = useState(0); // index offset (วัน/สัปดาห์)
   const [data, setData] = useState<CalData | null>(null);
+  const [exporting, setExporting] = useState(false);
+  const pdfRef = useRef<HTMLDivElement>(null);
+
+  // PDF: มุมมองปัจจุบัน (ทั้งหมด หรือเซลส์ที่เลือก)
+  const exportCurrent = async () => {
+    if (!pdfRef.current) return;
+    setExporting(true);
+    try {
+      const who = empId ? data?.sales.find((s) => s.id === empId)?.name ?? 'seller' : 'ทุกคน';
+      await exportElementToPdf(pdfRef.current, `ปฏิทิน-${who}-${month}.pdf`);
+    } finally { setExporting(false); }
+  };
+
+  // PDF: แยกทุกคน (หน้าละคน)
+  const exportPerPerson = async () => {
+    if (!data) return;
+    setExporting(true);
+    const holder = document.createElement('div');
+    holder.style.cssText = 'position:fixed;left:-9999px;top:0;width:1000px;background:#fff;padding:16px';
+    document.body.appendChild(holder);
+    try {
+      const [yy, mm] = month.split('-').map(Number);
+      const pdf = new jsPDF('l', 'mm', 'a4');
+      const pw = pdf.internal.pageSize.getWidth();
+      let first = true;
+      for (const s of data.sales) {
+        const r = await api.get('/scheduling/calendar', { params: { year: yy, month: mm, employeeId: s.id } });
+        holder.innerHTML = buildMonthHTML(r.data, s.name, month);
+        const canvas = await html2canvas(holder, { scale: 2, backgroundColor: '#ffffff' });
+        const img = canvas.toDataURL('image/jpeg', 0.9);
+        const h = (canvas.height * pw) / canvas.width;
+        if (!first) pdf.addPage();
+        first = false;
+        pdf.addImage(img, 'JPEG', 0, 0, pw, h);
+      }
+      pdf.save(`ปฏิทิน-รายคน-${month}.pdf`);
+    } finally {
+      document.body.removeChild(holder);
+      setExporting(false);
+    }
+  };
 
   const load = useCallback(async () => {
     setData(null);
@@ -139,6 +207,12 @@ export default function CalendarPage() {
             {data.sales.map((s) => <MenuItem key={s.id} value={s.id}>{s.name}</MenuItem>)}
           </TextField>
           <TextField type="month" size="small" value={month} onChange={(e) => setMonth(e.target.value)} />
+          <Button size="small" variant="outlined" startIcon={<PictureAsPdfIcon />} disabled={exporting} onClick={exportCurrent}>
+            {empId ? 'PDF คนนี้' : 'PDF ทั้งหมด'}
+          </Button>
+          <Button size="small" variant="outlined" color="secondary" startIcon={<PictureAsPdfIcon />} disabled={exporting} onClick={exportPerPerson}>
+            PDF แยกทุกคน
+          </Button>
         </Stack>
       </Stack>
 
@@ -150,7 +224,7 @@ export default function CalendarPage() {
         </Stack>
       )}
 
-      <Paper sx={{ p: 1.5 }}>{content}</Paper>
+      <Paper sx={{ p: 1.5 }} ref={pdfRef}>{content}</Paper>
 
       <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
         เซลส์เยี่ยม 15 ร้าน/สัปดาห์ · ทำงานทุกวัน (ไม่หยุดเสาร์-อาทิตย์) ·{' '}
