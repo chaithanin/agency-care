@@ -12,6 +12,7 @@ export class EmployeeService {
       orderBy: { code: 'asc' },
       include: {
         user: { select: { email: true, role: true, isActive: true } },
+        team: { select: { id: true, name: true } },
         _count: { select: { assignments: true } },
       },
     });
@@ -58,6 +59,8 @@ export class EmployeeService {
 
   async update(id: string, dto: UpdateEmployeeDto) {
     await this.get(id);
-    return this.prisma.employee.update({ where: { id }, data: dto });
+    // teamId '' -> null (ไม่สังกัดทีม)
+    const data = { ...dto, teamId: dto.teamId === '' ? null : dto.teamId };
+    return this.prisma.employee.update({ where: { id }, data });
   }
 }

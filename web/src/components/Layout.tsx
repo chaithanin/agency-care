@@ -10,32 +10,34 @@ import {
 } from '@mui/material';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
+import { useT } from '../i18n';
 
 export default function Layout({ children }: { children: ReactNode }) {
   const { user, logout } = useAuth();
+  const { t, lang, setLang } = useT();
   const loc = useLocation();
   const isManager = user?.role === 'admin' || user?.role === 'manager';
 
   const navItems = isManager
     ? [
-        { to: '/', label: 'Dashboard' },
-        { to: '/agencies', label: 'Agency' },
-        { to: '/employees', label: 'พนักงาน' },
-        { to: '/plans', label: 'แผนเยี่ยม' },
-        { to: '/posm', label: 'POSM' },
-        { to: '/products', label: 'สินค้า' },
-        { to: '/models', label: 'อุปกรณ์' },
-        { to: '/route', label: 'เส้นทาง' },
-        { to: '/scheduling', label: 'ตารางงาน' },
-        { to: '/seller-performance', label: 'ผลงานเซลส์' },
-        { to: '/kpi', label: 'KPI' },
-        { to: '/auto-assign', label: 'จัดทีม' },
-        { to: '/analytics', label: 'AI' },
+        { to: '/', label: t('nav.dashboard') },
+        { to: '/agencies', label: t('nav.agency') },
+        { to: '/employees', label: t('nav.employees') },
+        { to: '/plans', label: t('nav.plans') },
+        { to: '/posm', label: t('nav.posm') },
+        { to: '/products', label: t('nav.products') },
+        { to: '/models', label: t('nav.models') },
+        { to: '/route', label: t('nav.route') },
+        { to: '/scheduling', label: t('nav.scheduling') },
+        { to: '/seller-performance', label: t('nav.sellerPerf') },
+        { to: '/kpi', label: t('nav.kpi') },
+        { to: '/auto-assign', label: t('nav.autoassign') },
+        { to: '/analytics', label: t('nav.ai') },
       ]
     : [
-        { to: '/', label: 'งานของฉัน' },
-        { to: '/my-day', label: 'ตารางของฉัน' },
-        { to: '/route', label: 'เส้นทาง' },
+        { to: '/', label: t('nav.myWork') },
+        { to: '/my-day', label: t('nav.myDay') },
+        { to: '/route', label: t('nav.route') },
       ];
 
   return (
@@ -63,11 +65,19 @@ export default function Layout({ children }: { children: ReactNode }) {
               </Button>
             ))}
           </Stack>
+          <Button
+            color="inherit"
+            size="small"
+            onClick={() => setLang(lang === 'th' ? 'en' : 'th')}
+            sx={{ mr: 1, border: '1px solid rgba(255,255,255,0.5)', minWidth: 44 }}
+          >
+            {lang === 'th' ? 'EN' : 'ไทย'}
+          </Button>
           <Typography variant="body2" sx={{ mr: 2, opacity: 0.9 }}>
             {user?.name}
           </Typography>
           <Button color="inherit" size="small" onClick={logout}>
-            ออก
+            {t('common.logout')}
           </Button>
         </Toolbar>
       </AppBar>
