@@ -412,13 +412,44 @@ export class SchedulingService {
       const ds = p.planDate.toISOString().slice(0, 10);
       (days[ds] ??= []).push({ agencyName: p.agency.name, status: p.status, employeeName: p.employee.name });
     }
+    // วันหยุดราย user (ถ้าเลือกเซลส์)
+    const empHolidays = employeeId
+      ? (await this.prisma.employeeHoliday.findMany({ where: { employeeId, date: { gte, lt } }, select: { date: true } }))
+          .map((h) => h.date.toISOString().slice(0, 10))
+      : [];
     return {
       year: y,
       month: m,
       days,
       holidays: holidays.map((h) => h.date.toISOString().slice(0, 10)),
+      empHolidays,
       sales,
     };
+  }
+
+  // ===== วันหยุดราย user =====
+  async toggleHoliday(employeeId: string, dateStr: string) {
+    const n = new Date(dateStr);
+    const date = new Date(Date.UTC(n.getUTCFullYear(), n.getUTCMonth(), n.getUTCDate()));
+    const existing = await this.prisma.employeeHoliday.findUnique({
+      where: { employeeId_date: { employeeId, date } },
+    });
+    if (existing) {
+      await this.prisma.employeeHoliday.delete({ where: { id: existing.id } });
+      return { date: dateStr, holiday: false };
+    }
+    await this.prisma.employeeHoliday.create({ data: { employeeId, date } });
+    return { date: dateStr, holiday: true };
+  }
+
+  async listHolidays(employeeId: string, year?: number, month?: number) {
+    const { gte, lt } = this.ym(year, month);
+    const rows = await this.prisma.employeeHoliday.findMany({
+      where: { employeeId, date: { gte, lt } },
+      orderBy: { date: 'asc' },
+      select: { date: true },
+    });
+    return rows.map((r) => r.date.toISOString().slice(0, 10));
   }
 
   // ความถี่เยี่ยม/เดือน ตาม tier ของ agency
@@ -448,12 +479,6 @@ export class SchedulingService {
   }
 
   private async _generate(gte: Date, lt: Date, scale: number, y: number, m: number) {
-    const workdays = await this.prisma.workCalendar.findMany({
-      where: { date: { gte, lt }, isHoliday: false },
-      orderBy: { date: 'asc' },
-    });
-    if (!workdays.length) return { error: `ไม่มีวันทำงานในปฏิทิน ${y}-${m} (seed ปฏิทินก่อน)` };
-
     const sales = await this.prisma.employee.findMany({
       where: { position: 'sales', isActive: true },
       include: { assignments: { where: { isActive: true }, select: { agencyId: true } } },
@@ -464,12 +489,39 @@ export class SchedulingService {
       orderBy: { code: 'asc' },
     });
     const allEmpIds = [...sales, ...closers].map((e) => e.id);
-    // tier ของทุก agency
+
+    // วันทั้งหมดในช่วง = ทำงานทุกวัน ยกเว้น "วันหยุดบริษัท"
+    const companyHol = new Set(
+      (await this.prisma.workCalendar.findMany({ where: { date: { gte, lt }, isHoliday: true }, select: { date: true } }))
+        .map((h) => h.date.getTime()),
+    );
+    const allDates: Date[] = [];
+    for (let t = gte.getTime(); t < lt.getTime(); t += 86400000) {
+      const d = new Date(t);
+      if (!companyHol.has(d.getTime())) allDates.push(d);
+    }
+    if (!allDates.length) return { error: 'ไม่มีวันทำงานในช่วงนี้ (วันหยุดบริษัทเต็ม)' };
+
+    // วันหยุดราย user
+    const empHol = await this.prisma.employeeHoliday.findMany({
+      where: { employeeId: { in: allEmpIds }, date: { gte, lt } },
+      select: { employeeId: true, date: true },
+    });
+    const holByEmp = new Map<string, Set<number>>();
+    for (const h of empHol) {
+      if (!holByEmp.has(h.employeeId)) holByEmp.set(h.employeeId, new Set());
+      holByEmp.get(h.employeeId)!.add(h.date.getTime());
+    }
+    const workdaysOf = (empId: string) => {
+      const hol = holByEmp.get(empId);
+      return hol ? allDates.filter((d) => !hol.has(d.getTime())) : allDates;
+    };
+
     const tierMap = new Map(
       (await this.prisma.agency.findMany({ where: { status: 'active' }, select: { id: true, tier: true } })).map((a) => [a.id, a.tier]),
     );
 
-    // ล้างแผนเดิมในช่วง: VisitPlan ที่ยัง pending (เก็บที่ done ไว้) + DailySchedule
+    // ล้างแผนเดิม pending (เก็บที่ done) + DailySchedule
     await this.prisma.visitPlan.deleteMany({
       where: { employeeId: { in: allEmpIds }, status: 'pending', planDate: { gte, lt } },
     });
@@ -479,11 +531,13 @@ export class SchedulingService {
     const standby: { employeeId: string; date: Date }[] = [];
     const coveredAgency = new Set<string>();
     let totalAgencies = 0;
+    const weekCap = Math.round(RULES.VISITS_PER_WEEK * scale);
 
     for (let si = 0; si < sales.length; si++) {
       const s = sales[si];
       totalAgencies += s.assignments.length;
-      // คิวเยี่ยมตาม tier — interleave เป็นรอบ (ครั้งของร้านเดียวกันจะห่างกัน ~ครึ่งเดือน ไม่ซ้ำวันเดียว)
+      const myDays = workdaysOf(s.id);
+      // คิวเยี่ยมตาม tier — interleave เป็นรอบ
       const freqs = s.assignments.map((a) => ({
         id: a.agencyId,
         f: Math.max(0, Math.round(this.tierFreq(tierMap.get(a.agencyId) ?? 'gold', m) * scale)),
@@ -492,18 +546,15 @@ export class SchedulingService {
       const queue: string[] = [];
       for (let r = 0; r < maxF; r++) for (const a of freqs) if (r < a.f) queue.push(a.id);
       let qi = 0;
-      const weekCount = new Map<number, number>(); // คุมเพดาน 15 ร้าน/สัปดาห์
-      const weekCap = Math.round(RULES.VISITS_PER_WEEK * scale);
-      for (let di = 0; di < workdays.length; di++) {
-        const date = workdays[di].date;
+      const weekCount = new Map<number, number>();
+      for (let di = 0; di < myDays.length; di++) {
+        const date = myDays[di];
         if (di % sales.length === si) {
-          // วัน standby ประจำออฟฟิศ — ไม่จัดเยี่ยม
-          standby.push({ employeeId: s.id, date });
+          standby.push({ employeeId: s.id, date }); // standby ประจำออฟฟิศ
           continue;
         }
         const wk = weekKey(date);
-        const wkUsed = weekCount.get(wk) ?? 0;
-        const dayCap = Math.min(RULES.VISITS_PER_DAY, weekCap - wkUsed); // ไม่เกิน 15/สัปดาห์
+        const dayCap = Math.min(RULES.VISITS_PER_DAY, weekCap - (weekCount.get(wk) ?? 0)); // ≤15/สัปดาห์
         for (let v = 0; v < dayCap && qi < queue.length; v++) {
           const agencyId = queue[qi++];
           coveredAgency.add(agencyId);
@@ -513,11 +564,12 @@ export class SchedulingService {
       }
     }
 
-    // closers: หมุนเวร 2 คน/วัน standby
-    for (let di = 0; di < workdays.length; di++) {
-      for (let ci = 0; ci < closers.length; ci++) {
+    // closers: หมุนเวร 2 คน/วัน standby (ตามวันทำงานของแต่ละคน)
+    for (let ci = 0; ci < closers.length; ci++) {
+      const cDays = workdaysOf(closers[ci].id);
+      for (let di = 0; di < cDays.length; di++) {
         const inOffice = (((ci - di) % closers.length) + closers.length) % closers.length < 2;
-        if (inOffice) standby.push({ employeeId: closers[ci].id, date: workdays[di].date });
+        if (inOffice) standby.push({ employeeId: closers[ci].id, date: cDays[di] });
       }
     }
 
@@ -531,7 +583,7 @@ export class SchedulingService {
     return {
       year: y,
       month: m,
-      workdays: workdays.length,
+      workdays: allDates.length,
       sales: sales.length,
       closers: closers.length,
       scheduledVisits: visitPlans.length,
@@ -540,7 +592,7 @@ export class SchedulingService {
       shortfall: Math.max(0, totalAgencies - coveredAgency.size),
       note:
         totalAgencies > coveredAgency.size
-          ? `⚠️ จัดเยี่ยมได้ ${coveredAgency.size}/${totalAgencies} ร้าน (เพดาน ${RULES.VISITS_PER_DAY}/คน/วัน) — เพิ่มเซลส์หรือลดร้าน/คน`
+          ? `⚠️ จัดเยี่ยมได้ ${coveredAgency.size}/${totalAgencies} ร้าน — เพิ่มเซลส์หรือลดร้าน/คน`
           : 'จัดแผนครบทุก agency',
     };
   }

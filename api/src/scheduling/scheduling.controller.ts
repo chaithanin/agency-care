@@ -40,6 +40,19 @@ export class SchedulingController {
     return this.service.calendar(toInt(y), toInt(m), employeeId);
   }
 
+  // วันหยุดราย user
+  @Roles('admin', 'manager')
+  @Get('holidays')
+  listHolidays(@Query('employeeId') employeeId: string, @Query('year') y?: string, @Query('month') m?: string) {
+    return this.service.listHolidays(employeeId, toInt(y), toInt(m));
+  }
+
+  @Roles('admin', 'manager')
+  @Post('holidays/toggle')
+  toggleHoliday(@Body() body: { employeeId: string; date: string }) {
+    return this.service.toggleHoliday(body.employeeId, body.date);
+  }
+
   @Roles('admin', 'manager')
   @Get('office')
   office(@Query('date') date?: string) {

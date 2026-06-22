@@ -501,7 +501,7 @@ model Team {
   @@map("teams")
 }
 
-// ปฏิทินทำงานบริษัท — กำหนดวันหยุด (กฎ: ทำงาน 24 วัน/เดือน หยุด 6-7)
+// วันหยุดบริษัท (นักขัตฤกษ์ — มีผลทุกคน) — ทำงานทุกวันยกเว้นที่ระบุไว้
 model WorkCalendar {
   id        String   @id @default(cuid())
   date      DateTime @unique @db.Date
@@ -511,6 +511,19 @@ model WorkCalendar {
 
   @@index([date])
   @@map("work_calendar")
+}
+
+// วันหยุดราย user — แต่ละพนักงานตั้งวันหยุดตัวเองได้ (ให้ทำงาน 24 วัน/เดือน)
+model EmployeeHoliday {
+  id         String   @id @default(cuid())
+  employeeId String   @map("employee_id")
+  date       DateTime @db.Date
+  note       String?
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@unique([employeeId, date])
+  @@index([employeeId, date])
+  @@map("employee_holidays")
 }
 
 // แผน/เป้าระดับเดือน ต่อพนักงาน

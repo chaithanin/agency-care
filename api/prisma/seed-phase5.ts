@@ -73,20 +73,14 @@ async function main() {
   const salesList = STAFF.filter((s) => s.position === 'sales');
   console.log(`✅ Closer 3 (harry/anna/dee@agencycare.local / Closer@1234) · Sales ${salesList.length} (nick/thomas/ice/taisa/jack/chu/kat@ / Sale@1234)`);
 
-  // 3) ปฏิทินทำงานเดือนนี้ (เสาร์/อาทิตย์ = หยุด)
+  // 3) ปฏิทิน — ทำงานทุกวัน (ไม่หยุดเสาร์-อาทิตย์); วันหยุดบริษัทเพิ่มเองภายหลัง,
+  //    วันหยุดส่วนตัวตั้งราย user (EmployeeHoliday) เพื่อให้ได้ 24 วันทำงาน/เดือน
   const daysInMonth = new Date(year, month, 0).getDate();
-  let holidays = 0;
   for (let d = 1; d <= daysInMonth; d++) {
     const date = new Date(Date.UTC(year, month - 1, d));
-    const isHoliday = date.getUTCDay() === 0 || date.getUTCDay() === 6;
-    if (isHoliday) holidays++;
-    await prisma.workCalendar.upsert({
-      where: { date },
-      update: { isHoliday },
-      create: { date, isHoliday, note: isHoliday ? 'วันหยุดสุดสัปดาห์' : null },
-    });
+    await prisma.workCalendar.upsert({ where: { date }, update: { isHoliday: false }, create: { date, isHoliday: false } });
   }
-  console.log(`✅ ปฏิทิน ${year}-${String(month).padStart(2, '0')}: ทำงาน ${daysInMonth - holidays} วัน หยุด ${holidays}`);
+  console.log(`✅ ปฏิทิน ${year}-${String(month).padStart(2, '0')}: ทำงานทุกวัน ${daysInMonth} วัน (ไม่หยุดเสาร์-อาทิตย์)`);
 
   // 4) มอบหมาย 30 ร้าน/เซลส์ (เลือกร้านที่มีพิกัด GPS ก่อน) + แผนเดือน
   const need = salesList.length * AGENCIES_PER_SALES;
