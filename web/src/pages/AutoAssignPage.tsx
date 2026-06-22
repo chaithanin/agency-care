@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import {
   Box,
   Typography,
@@ -15,6 +15,7 @@ import {
   LinearProgress,
 } from '@mui/material';
 import { api, errMsg } from '../api/client';
+import { PdfExportButton } from '../utils/pdf';
 
 interface ProposalRow {
   agencyId: string;
@@ -37,6 +38,7 @@ export default function AutoAssignPage() {
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState('');
   const [filterEmp, setFilterEmp] = useState<string | null>(null); // คลิกชื่อเพื่อฟิลเตอร์
+  const pdfRef = useRef<HTMLDivElement>(null);
 
   const propose = async () => {
     setLoading(true);
@@ -70,12 +72,12 @@ export default function AutoAssignPage() {
   };
 
   return (
-    <Box>
+    <Box ref={pdfRef}>
       <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2}>
         <Typography variant="h5" fontWeight={700}>
           จัดทีมอัตโนมัติ (AI)
         </Typography>
-        <Stack direction="row" spacing={1}>
+        <Stack direction="row" spacing={1} className="no-pdf">
           <Button variant="outlined" onClick={propose} disabled={loading}>
             เสนอการแบ่ง
           </Button>
@@ -84,6 +86,7 @@ export default function AutoAssignPage() {
               ยืนยันใช้จริง
             </Button>
           )}
+          {summary.length > 0 && <PdfExportButton targetRef={pdfRef} filename="จัดทีม-AI.pdf" />}
         </Stack>
       </Stack>
 

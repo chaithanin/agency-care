@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Box,
   Typography,
@@ -14,6 +14,7 @@ import {
   LinearProgress,
 } from '@mui/material';
 import { api } from '../api/client';
+import { PdfExportButton } from '../utils/pdf';
 
 interface Row {
   employeeId: string;
@@ -45,6 +46,7 @@ function pctChip(value: number, target: number) {
 export default function KpiPage() {
   const [data, setData] = useState<Kpi | null>(null);
   const [month, setMonth] = useState(thisMonth());
+  const pdfRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setData(null);
@@ -55,17 +57,20 @@ export default function KpiPage() {
   }, [month]);
 
   return (
-    <Box>
+    <Box ref={pdfRef}>
       <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2}>
         <Typography variant="h5" fontWeight={700}>
           KPI ประสิทธิภาพเซลส์
         </Typography>
-        <TextField
-          type="month"
-          size="small"
-          value={month}
-          onChange={(e) => setMonth(e.target.value)}
-        />
+        <Stack direction="row" spacing={1} alignItems="center">
+          <TextField
+            type="month"
+            size="small"
+            value={month}
+            onChange={(e) => setMonth(e.target.value)}
+          />
+          <PdfExportButton targetRef={pdfRef} filename={`kpi-${month}.pdf`} />
+        </Stack>
       </Stack>
 
       {!data ? (

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Box,
   Typography,
@@ -18,6 +18,7 @@ import {
   Snackbar,
 } from '@mui/material';
 import { api, errMsg } from '../api/client';
+import { PdfExportButton } from '../utils/pdf';
 
 interface TeamRow {
   teamId: string;
@@ -102,6 +103,7 @@ export default function SchedulingPage() {
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  const pdfRef = useRef<HTMLDivElement>(null);
 
   const ym = useCallback(() => {
     const [y, m] = month.split('-').map(Number);
@@ -155,16 +157,17 @@ export default function SchedulingPage() {
   };
 
   return (
-    <Box>
+    <Box ref={pdfRef}>
       <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2} flexWrap="wrap" gap={1}>
         <Typography variant="h5" fontWeight={700}>
           ตารางงาน & ทีม (Phase 5)
         </Typography>
         <Stack direction="row" spacing={1} alignItems="center">
           <TextField type="month" size="small" value={month} onChange={(e) => setMonth(e.target.value)} />
-          <Button variant="contained" onClick={generate} disabled={generating}>
+          <Button className="no-pdf" variant="contained" onClick={generate} disabled={generating}>
             {generating ? 'กำลังสร้าง…' : '🤖 สร้างแผนเดือน (AI)'}
           </Button>
+          <PdfExportButton targetRef={pdfRef} filename={`ตารางงาน-${month}.pdf`} />
         </Stack>
       </Stack>
 

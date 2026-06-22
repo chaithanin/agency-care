@@ -1,12 +1,17 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { json, urlencoded } from 'express';
 import { join } from 'path';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const config = app.get(ConfigService);
+
+  // เพิ่ม body limit (default 100kb เล็กไป — auto-assign apply ส่ง ~300KB) -> 404
+  app.use(json({ limit: '10mb' }));
+  app.use(urlencoded({ extended: true, limit: '10mb' }));
 
   // อยู่หลัง reverse proxy (Railway) -> ใช้ X-Forwarded-For เป็น client IP จริง
   app.getHttpAdapter().getInstance().set('trust proxy', 1);

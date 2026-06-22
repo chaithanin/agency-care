@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Box,
   Typography,
@@ -15,6 +15,7 @@ import {
   TableBody,
 } from '@mui/material';
 import { api } from '../api/client';
+import { PdfExportButton } from '../utils/pdf';
 
 interface Seller {
   id: string;
@@ -67,6 +68,7 @@ function Kpi({ value, sub, label, color }: { value: number | string; sub?: strin
 export default function SellerPerformancePage() {
   const [data, setData] = useState<Perf | null>(null);
   const [selId, setSelId] = useState<string | undefined>();
+  const pdfRef = useRef<HTMLDivElement>(null);
 
   const load = useCallback(async (id?: string) => {
     const r = await api.get('/scheduling/seller-performance', { params: { employeeId: id } });
@@ -85,13 +87,14 @@ export default function SellerPerformancePage() {
   const donut = `conic-gradient(#1C7A62 0 ${(pipeline.pass / pp) * 100}%, #E8C77E ${(pipeline.pass / pp) * 100}% ${((pipeline.pass + pipeline.partial) / pp) * 100}%, #E0E0E0 ${((pipeline.pass + pipeline.partial) / pp) * 100}% 100%)`;
 
   return (
-    <Box>
-      <Typography variant="h5" fontWeight={700} mb={0.5}>
-        Seller Performance
-      </Typography>
-      <Typography variant="caption" color="text.secondary">
-        ผลงาน + ตารางงานรายคน (เดือนนี้)
-      </Typography>
+    <Box ref={pdfRef}>
+      <Stack direction="row" justifyContent="space-between" alignItems="flex-start" mb={0.5}>
+        <Box>
+          <Typography variant="h5" fontWeight={700}>Seller Performance</Typography>
+          <Typography variant="caption" color="text.secondary">ผลงาน + ตารางงานรายคน (เดือนนี้)</Typography>
+        </Box>
+        <PdfExportButton targetRef={pdfRef} filename={`seller-${data.selected?.name ?? 'performance'}.pdf`} />
+      </Stack>
 
       {/* seller selector */}
       <Stack direction="row" spacing={1} sx={{ overflowX: 'auto', py: 2 }}>
