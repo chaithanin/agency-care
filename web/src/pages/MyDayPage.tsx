@@ -4,48 +4,37 @@ import {
   Typography,
   Paper,
   Stack,
-  TextField,
   Chip,
   LinearProgress,
   List,
-  ListItem,
+  ListItemButton,
   ListItemText,
   Grid,
+  Alert,
 } from '@mui/material';
+import ChevronRightIcon from '@mui/icons-material/ChevronRight';
+import { useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
 
-interface Item {
-  id: string;
-  startTime: string | null;
-  endTime: string | null;
-  type: string;
-  title: string;
-  done: boolean;
-  agency: { name: string; zone: string | null } | null;
+interface Visit {
+  visitPlanId: string;
+  time: string;
+  agencyName: string;
+  zone?: string | null;
+  phone?: string | null;
+  status: string;
+  checkedIn: boolean;
+  checkedOut: boolean;
 }
 interface MyDay {
-  employee: { name: string; code: string; position: string };
+  employee: { name: string; position: string };
   date: string;
-  today: { inOffice: boolean; items: Item[] } | null;
-  month: {
-    assigned: number;
-    visitTarget: number;
-    visitDone: number;
-    newAgencyTarget: number;
-    workDayTarget: number;
-  };
+  inOffice: boolean;
+  visits: Visit[];
+  month: { assigned: number; visitTarget: number; visitDone: number; newAgencyTarget: number };
   error?: string;
 }
 
-const typeLabel: Record<string, string> = {
-  meeting: '👥 ประชุม',
-  visit: '🏢 เยี่ยม',
-  followup: '📞 ติดตาม',
-  newAgency: '➕ หาลูกค้าใหม่',
-  report: '📝 รายงาน',
-  office: '🏛️ ออฟฟิศ',
-  other: '•',
-};
 const today = () => new Date().toISOString().slice(0, 10);
 
 function Stat({ label, value, target }: { label: string; value: number; target?: number }) {
@@ -63,6 +52,7 @@ function Stat({ label, value, target }: { label: string; value: number; target?:
 export default function MyDayPage() {
   const [date, setDate] = useState(today());
   const [data, setData] = useState<MyDay | null>(null);
+  const nav = useNavigate();
 
   useEffect(() => {
     setData(null);
@@ -72,61 +62,54 @@ export default function MyDayPage() {
   if (!data) return <LinearProgress />;
   if (data.error) return <Typography color="error">{data.error}</Typography>;
 
+  const visitStatus = (v: Visit) =>
+    v.checkedOut ? { c: 'success' as const, l: 'เสร็จ' } : v.checkedIn ? { c: 'info' as const, l: 'อยู่หน้างาน' } : v.status === 'done' ? { c: 'success' as const, l: 'เยี่ยมแล้ว' } : { c: 'default' as const, l: 'รอเยี่ยม' };
+
   return (
     <Box>
       <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2} flexWrap="wrap" gap={1}>
         <Box>
-          <Typography variant="h5" fontWeight={700}>
-            ตารางของฉัน
-          </Typography>
+          <Typography variant="h5" fontWeight={700}>ตารางของฉัน</Typography>
           <Typography variant="caption" color="text.secondary">
             {data.employee.name} · {data.employee.position === 'closer' ? 'Closer' : 'Sales'}
           </Typography>
         </Box>
-        <TextField type="date" size="small" value={date} onChange={(e) => setDate(e.target.value)} />
+        <input type="date" value={date} onChange={(e) => setDate(e.target.value)} style={{ padding: 8, borderRadius: 6 }} />
       </Stack>
 
-      {/* เป้าเดือน */}
       <Grid container spacing={1.5} mb={2}>
-        <Grid item xs={4}>
-          <Stat label="เยี่ยมเดือนนี้" value={data.month.visitDone} target={data.month.visitTarget} />
-        </Grid>
-        <Grid item xs={4}>
-          <Stat label="Agency ดูแล" value={data.month.assigned} />
-        </Grid>
-        <Grid item xs={4}>
-          <Stat label="เป้า Agency ใหม่" value={data.month.newAgencyTarget} />
-        </Grid>
+        <Grid item xs={4}><Stat label="เยี่ยมเดือนนี้" value={data.month.visitDone} target={data.month.visitTarget} /></Grid>
+        <Grid item xs={4}><Stat label="Agency ดูแล" value={data.month.assigned} /></Grid>
+        <Grid item xs={4}><Stat label="เป้า Agency ใหม่" value={data.month.newAgencyTarget} /></Grid>
       </Grid>
 
-      {/* ตารางวันนี้ */}
+      {data.inOffice && (
+        <Alert severity="info" sx={{ mb: 2 }}>🏛️ วันนี้คุณอยู่เวรประจำออฟฟิศ</Alert>
+      )}
+
       <Paper>
-        <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ p: 2, pb: 1 }}>
-          <Typography variant="subtitle1" fontWeight={700}>
-            แผนวัน {data.date}
-          </Typography>
-          {data.today?.inOffice && <Chip size="small" label="อยู่ประจำออฟฟิศ" color="info" />}
-        </Stack>
-        {!data.today || data.today.items.length === 0 ? (
+        <Typography variant="subtitle1" fontWeight={700} sx={{ p: 2, pb: 1 }}>
+          นัดเยี่ยมวันนี้ ({data.visits.length}) — แตะเพื่อ Check-in
+        </Typography>
+        {data.visits.length === 0 ? (
           <Typography sx={{ p: 2, color: 'text.secondary' }}>
-            ยังไม่มีแผนวันนี้ (ให้ผู้ดูแลกด "สร้างแผนเดือน")
+            ไม่มีนัดวันนี้ (ผู้ดูแลกด "สร้างแผน" หรือเป็นวันหยุด/เวรออฟฟิศ)
           </Typography>
         ) : (
-          <List dense>
-            {data.today.items.map((it) => (
-              <ListItem key={it.id} divider>
-                <ListItemText
-                  primary={
-                    <span>
-                      <b>{it.startTime ?? ''}{it.endTime ? `-${it.endTime}` : ''}</b>{' '}
-                      {typeLabel[it.type] ?? it.type} — {it.agency?.name ?? it.title}
-                    </span>
-                  }
-                  secondary={it.agency?.zone ?? undefined}
-                />
-                {it.done && <Chip size="small" label="เสร็จ" color="success" />}
-              </ListItem>
-            ))}
+          <List>
+            {data.visits.map((v) => {
+              const st = visitStatus(v);
+              return (
+                <ListItemButton key={v.visitPlanId} divider onClick={() => nav(`/visits/${v.visitPlanId}`)}>
+                  <ListItemText
+                    primary={<span><b>{v.time}</b> &nbsp; {v.agencyName}</span>}
+                    secondary={[v.zone, v.phone].filter(Boolean).join(' · ') || undefined}
+                  />
+                  <Chip size="small" color={st.c} label={st.l} sx={{ mr: 1 }} />
+                  <ChevronRightIcon color="action" />
+                </ListItemButton>
+              );
+            })}
           </List>
         )}
       </Paper>

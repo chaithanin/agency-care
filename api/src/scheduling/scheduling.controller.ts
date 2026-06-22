@@ -23,6 +23,18 @@ export class SchedulingController {
   }
 
   @Roles('admin', 'manager')
+  @Get('monthly-dashboard')
+  monthlyDashboard(@Query('year') y?: string, @Query('month') m?: string) {
+    return this.service.monthlyDashboard(toInt(y), toInt(m));
+  }
+
+  @Roles('admin', 'manager')
+  @Get('live')
+  live() {
+    return this.service.liveStatus();
+  }
+
+  @Roles('admin', 'manager')
   @Get('office')
   office(@Query('date') date?: string) {
     return this.service.officeStatus(date);

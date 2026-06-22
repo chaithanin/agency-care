@@ -55,6 +55,26 @@ interface NewAgencyRow {
   remaining: number;
   ok: boolean;
 }
+interface MonthlyRow {
+  employeeId: string;
+  name: string;
+  team: string | null;
+  inTraining: boolean;
+  agencies: number;
+  target: number;
+  visited: number;
+  remaining: number;
+  pct: number;
+  status: string;
+}
+interface LiveRow {
+  employeeId: string;
+  name: string;
+  position: string;
+  state: string;
+  detail: string;
+}
+const statusEmoji: Record<string, string> = { green: '🟢', yellow: '🟡', red: '🔴', blue: '🔵', gray: '⚪' };
 
 const thisMonth = () => new Date().toISOString().slice(0, 7);
 
@@ -77,6 +97,8 @@ export default function SchedulingPage() {
   const [coverage, setCoverage] = useState<Coverage | null>(null);
   const [office, setOffice] = useState<Office | null>(null);
   const [newAgency, setNewAgency] = useState<NewAgencyRow[]>([]);
+  const [monthly, setMonthly] = useState<MonthlyRow[]>([]);
+  const [live, setLive] = useState<LiveRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
@@ -90,16 +112,20 @@ export default function SchedulingPage() {
     setLoading(true);
     const { year, month: m } = ym();
     try {
-      const [td, cov, off, na] = await Promise.all([
+      const [td, cov, off, na, md, lv] = await Promise.all([
         api.get('/scheduling/team-dashboard', { params: { year, month: m } }),
         api.get('/scheduling/coverage', { params: { year, month: m } }),
         api.get('/scheduling/office'),
         api.get('/scheduling/new-agency', { params: { year, month: m } }),
+        api.get('/scheduling/monthly-dashboard', { params: { year, month: m } }),
+        api.get('/scheduling/live'),
       ]);
       setTeams(td.data.teams);
       setCoverage(cov.data);
       setOffice(off.data);
       setNewAgency(na.data.rows);
+      setMonthly(md.data.rows);
+      setLive(lv.data.rows);
     } catch (e) {
       setToast(errMsg(e));
     } finally {
@@ -177,6 +203,59 @@ export default function SchedulingPage() {
               )}
             </Alert>
           )}
+
+          {/* live status — เซลส์อยู่ไหนตอนนี้ */}
+          {live.length > 0 && (
+            <Paper sx={{ p: 2 }}>
+              <Typography variant="subtitle1" fontWeight={700} mb={1}>
+                สถานะเรียลไทม์วันนี้
+              </Typography>
+              <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                {live.map((l) => (
+                  <Chip key={l.employeeId} label={`${statusEmoji[l.state] ?? ''} ${l.name}: ${l.detail}`} variant="outlined" />
+                ))}
+              </Stack>
+            </Paper>
+          )}
+
+          {/* Dashboard รายเดือน (ต่อเซลส์) */}
+          <Paper>
+            <Typography variant="subtitle1" fontWeight={700} sx={{ p: 2, pb: 1 }}>
+              Dashboard รายเดือน (ต่อเซลส์)
+            </Typography>
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell>เซลส์</TableCell>
+                  <TableCell align="right">Agency ดูแล</TableCell>
+                  <TableCell align="right">เป้าเยี่ยม</TableCell>
+                  <TableCell align="right">เยี่ยมแล้ว</TableCell>
+                  <TableCell align="right">คงเหลือ</TableCell>
+                  <TableCell align="center">สถานะ</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {monthly.map((r) => (
+                  <TableRow key={r.employeeId}>
+                    <TableCell>
+                      {r.name}{r.inTraining ? ' 🎓' : ''}
+                      <Typography variant="caption" color="text.secondary" display="block">{r.team}</Typography>
+                    </TableCell>
+                    <TableCell align="right">{r.agencies}</TableCell>
+                    <TableCell align="right">{r.target}</TableCell>
+                    <TableCell align="right">{r.visited}</TableCell>
+                    <TableCell align="right">{r.remaining}</TableCell>
+                    <TableCell align="center">{statusEmoji[r.status]} {r.pct}%</TableCell>
+                  </TableRow>
+                ))}
+                {monthly.length === 0 && (
+                  <TableRow><TableCell colSpan={6} align="center" sx={{ color: 'text.secondary' }}>
+                    ยังไม่มีแผน — กด "สร้างแผนเดือน (AI)"
+                  </TableCell></TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </Paper>
 
           {/* team dashboard */}
           <Paper>

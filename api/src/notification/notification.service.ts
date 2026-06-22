@@ -82,34 +82,36 @@ export class NotificationService {
     return { date: today.toISOString().slice(0, 10), totalEmployees: results.length, results };
   }
 
-  // Phase 5: push ตารางงานวันนี้ให้พนักงานแต่ละคน (ผ่าน LINE)
+  // Phase 5: push ตารางเยี่ยมวันนี้ (VisitPlan) ให้พนักงานแต่ละคน (ผ่าน LINE)
   async notifyDailySchedule(dateStr?: string) {
     const n = dateStr ? new Date(dateStr) : new Date();
     const date = new Date(Date.UTC(n.getUTCFullYear(), n.getUTCMonth(), n.getUTCDate()));
-    const schedules = await this.prisma.dailySchedule.findMany({
-      where: { date },
+    const plans = await this.prisma.visitPlan.findMany({
+      where: { planDate: date },
       include: {
-        employee: { select: { name: true, lineUserId: true } },
-        items: { include: { agency: { select: { name: true } } }, orderBy: { startTime: 'asc' } },
+        agency: { select: { name: true } },
+        employee: { select: { id: true, name: true, lineUserId: true } },
       },
     });
+    const byEmp = new Map<string, { name: string; lineUserId: string | null; agencies: string[] }>();
+    for (const p of plans) {
+      const e = byEmp.get(p.employee.id) ?? { name: p.employee.name, lineUserId: p.employee.lineUserId, agencies: [] };
+      e.agencies.push(p.agency.name);
+      byEmp.set(p.employee.id, e);
+    }
     const results: { employee: string; sent: boolean; reason?: string }[] = [];
-    for (const s of schedules) {
-      if (!s.employee.lineUserId) {
-        results.push({ employee: s.employee.name, sent: false, reason: 'ยังไม่ผูก LINE' });
+    for (const e of byEmp.values()) {
+      if (!e.lineUserId) {
+        results.push({ employee: e.name, sent: false, reason: 'ยังไม่ผูก LINE' });
         continue;
       }
-      const visits = s.items.filter((it) => it.type === 'visit');
-      const lines = s.items
-        .map((it) => `• ${it.startTime ?? ''} ${it.agency?.name ?? it.title}`)
-        .join('\n');
-      const head = s.inOffice ? '🏛️ วันนี้คุณอยู่ประจำออฟฟิศ' : `🚗 วันนี้มี ${visits.length} ร้านต้องเยี่ยม`;
-      const text = `📅 แผนงานวันนี้ (${date.toISOString().slice(0, 10)})\nคุณ ${s.employee.name}\n${head}\n\n${lines}`;
+      const lines = e.agencies.map((a, i) => `${i + 1}. ${a}`).join('\n');
+      const text = `📅 วันนี้มี ${e.agencies.length} นัดหมาย (${date.toISOString().slice(0, 10)})\nคุณ ${e.name}\n${lines}\n\nอย่าลืม Check-in หน้างานนะครับ`;
       try {
-        await this.pushMessage(s.employee.lineUserId, text);
-        results.push({ employee: s.employee.name, sent: true });
+        await this.pushMessage(e.lineUserId, text);
+        results.push({ employee: e.name, sent: true });
       } catch (err) {
-        results.push({ employee: s.employee.name, sent: false, reason: (err as Error).message });
+        results.push({ employee: e.name, sent: false, reason: (err as Error).message });
       }
     }
     return { date: date.toISOString().slice(0, 10), total: results.length, results };

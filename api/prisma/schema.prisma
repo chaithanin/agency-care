@@ -133,6 +133,7 @@ model Agency {
   name   String
   type   String? // ประเภทร้าน
   level  AgencyLevel  @default(C) // ระดับ A/B/C/D (คุมความถี่เยี่ยม)
+  tier   String       @default("gold") // platinum/gold/silver/bronze/new — คุมความถี่เยี่ยม/เดือน
   status AgencyStatus @default(active)
 
   // พื้นที่
