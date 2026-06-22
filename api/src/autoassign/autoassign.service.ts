@@ -72,23 +72,35 @@ export class AutoAssignService {
     return { proposal, summary: summary.sort((a, b) => b.count - a.count) };
   }
 
-  // ยืนยันการแบ่ง — ปิด assignment เก่าของ agency แล้วตั้งใหม่
+  // ยืนยันการแบ่ง — bulk (เลี่ยง loop รายตัวที่ช้า/timeout กับข้อมูลจำนวนมาก)
   async apply(dto: ApplyAssignmentDto) {
-    let applied = 0;
-    for (const a of dto.assignments) {
-      await this.prisma.$transaction([
-        this.prisma.agencyAssignment.updateMany({
-          where: { agencyId: a.agencyId, employeeId: { not: a.employeeId } },
-          data: { isActive: false },
-        }),
-        this.prisma.agencyAssignment.upsert({
-          where: { agencyId_employeeId: { agencyId: a.agencyId, employeeId: a.employeeId } },
-          create: { agencyId: a.agencyId, employeeId: a.employeeId, isActive: true },
-          update: { isActive: true, assignedAt: new Date() },
-        }),
-      ]);
-      applied++;
+    const pairs = dto.assignments ?? [];
+    if (!pairs.length) return { applied: 0 };
+    const agencyIds = [...new Set(pairs.map((p) => p.agencyId))];
+
+    // 1) ปิด assignment เดิมของ agency เหล่านี้ทั้งหมด
+    await this.prisma.agencyAssignment.updateMany({
+      where: { agencyId: { in: agencyIds } },
+      data: { isActive: false },
+    });
+    // 2) สร้างคู่ใหม่ที่ยังไม่มี (คู่ที่มีอยู่จะข้าม)
+    await this.prisma.agencyAssignment.createMany({
+      data: pairs.map((p) => ({ agencyId: p.agencyId, employeeId: p.employeeId, isActive: true })),
+      skipDuplicates: true,
+    });
+    // 3) เปิดใช้คู่เป้าหมาย (รวมคู่ที่มีอยู่เดิม) — group ตามเซลส์ (~จำนวนเซลส์ query)
+    const byEmp = new Map<string, string[]>();
+    for (const p of pairs) {
+      const arr = byEmp.get(p.employeeId) ?? [];
+      arr.push(p.agencyId);
+      byEmp.set(p.employeeId, arr);
     }
-    return { applied };
+    for (const [employeeId, ids] of byEmp) {
+      await this.prisma.agencyAssignment.updateMany({
+        where: { employeeId, agencyId: { in: ids } },
+        data: { isActive: true, assignedAt: new Date() },
+      });
+    }
+    return { applied: pairs.length };
   }
 }

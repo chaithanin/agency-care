@@ -36,6 +36,7 @@ export default function AutoAssignPage() {
   const [summary, setSummary] = useState<SummaryRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState('');
+  const [filterEmp, setFilterEmp] = useState<string | null>(null); // คลิกชื่อเพื่อฟิลเตอร์
 
   const propose = async () => {
     setLoading(true);
@@ -44,6 +45,7 @@ export default function AutoAssignPage() {
       const { data } = await api.get('/auto-assign/propose');
       setProposal(data.proposal);
       setSummary(data.summary);
+      setFilterEmp(null);
     } catch (e) {
       setMsg(errMsg(e));
     } finally {
@@ -99,12 +101,24 @@ export default function AutoAssignPage() {
       {summary.length > 0 && (
         <Paper sx={{ p: 2, mb: 2 }}>
           <Typography variant="subtitle1" fontWeight={700} mb={1}>
-            สรุปภาระงานที่เสนอ
+            สรุปภาระงานที่เสนอ{' '}
+            <Typography component="span" variant="caption" color="text.secondary">
+              (คลิกชื่อเพื่อดูเฉพาะร้านของคนนั้น)
+            </Typography>
           </Typography>
           <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
             {summary.map((s) => (
-              <Chip key={s.employeeId} label={`${s.name}: ${s.count} ร้าน`} />
+              <Chip
+                key={s.employeeId}
+                label={`${s.name}: ${s.count} ร้าน`}
+                color={filterEmp === s.employeeId ? 'primary' : 'default'}
+                variant={filterEmp === s.employeeId ? 'filled' : 'outlined'}
+                onClick={() => setFilterEmp(filterEmp === s.employeeId ? null : s.employeeId)}
+              />
             ))}
+            {filterEmp && (
+              <Chip label="✕ ล้างตัวกรอง" color="error" variant="outlined" onClick={() => setFilterEmp(null)} />
+            )}
           </Stack>
         </Paper>
       )}
@@ -121,7 +135,9 @@ export default function AutoAssignPage() {
               </TableRow>
             </TableHead>
             <TableBody>
-              {proposal.map((p) => (
+              {proposal
+                .filter((p) => !filterEmp || p.employeeId === filterEmp)
+                .map((p) => (
                 <TableRow key={p.agencyId}>
                   <TableCell>
                     {p.agencyCode} — {p.agencyName}

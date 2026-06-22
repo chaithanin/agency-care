@@ -23,6 +23,7 @@ import { RouteModule } from './route/route.module';
 import { AutoAssignModule } from './autoassign/autoassign.module';
 import { AnalyticsModule } from './analytics/analytics.module';
 import { DashboardModule } from './dashboard/dashboard.module';
+import { SchedulingModule } from './scheduling/scheduling.module';
 
 @Module({
   imports: [
@@ -38,7 +39,7 @@ import { DashboardModule } from './dashboard/dashboard.module';
     // เสิร์ฟ web build (production) จากโฟลเดอร์ public — ยกเว้น /api
     ServeStaticModule.forRoot({
       rootPath: join(__dirname, '..', 'public'),
-      exclude: ['/api*'],
+      exclude: ['/api/{*path}'], // path-to-regexp v8 syntax (เดิม '/api*' พังใน v8)
     }),
     PrismaModule,
     StorageModule,
@@ -57,6 +58,7 @@ import { DashboardModule } from './dashboard/dashboard.module';
     AutoAssignModule,
     AnalyticsModule,
     DashboardModule,
+    SchedulingModule,
   ],
   controllers: [AppController],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
