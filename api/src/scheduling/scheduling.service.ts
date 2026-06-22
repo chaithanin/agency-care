@@ -451,12 +451,14 @@ export class SchedulingService {
     for (let si = 0; si < sales.length; si++) {
       const s = sales[si];
       totalAgencies += s.assignments.length;
-      // คิวเยี่ยมตาม tier
+      // คิวเยี่ยมตาม tier — interleave เป็นรอบ (ครั้งของร้านเดียวกันจะห่างกัน ~ครึ่งเดือน ไม่ซ้ำวันเดียว)
+      const freqs = s.assignments.map((a) => ({
+        id: a.agencyId,
+        f: Math.max(0, Math.round(this.tierFreq(tierMap.get(a.agencyId) ?? 'gold', m) * scale)),
+      }));
+      const maxF = freqs.reduce((mx, a) => Math.max(mx, a.f), 0);
       const queue: string[] = [];
-      for (const a of s.assignments) {
-        const freq = Math.max(0, Math.round(this.tierFreq(tierMap.get(a.agencyId) ?? 'gold', m) * scale));
-        for (let r = 0; r < freq; r++) queue.push(a.agencyId);
-      }
+      for (let r = 0; r < maxF; r++) for (const a of freqs) if (r < a.f) queue.push(a.id);
       let qi = 0;
       for (let di = 0; di < workdays.length; di++) {
         const date = workdays[di].date;
