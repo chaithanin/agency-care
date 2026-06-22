@@ -65,7 +65,7 @@ export default function MyDayPage() {
   if (data.error) return <Typography color="error">{data.error}</Typography>;
 
   const visitStatus = (v: Visit) =>
-    v.checkedOut ? { c: 'success' as const, l: 'เสร็จ' } : v.checkedIn ? { c: 'info' as const, l: 'อยู่หน้างาน' } : v.status === 'done' ? { c: 'success' as const, l: 'เยี่ยมแล้ว' } : { c: 'default' as const, l: 'รอเยี่ยม' };
+    v.checkedOut ? { c: 'success' as const, l: t('my.checkedOut') } : v.checkedIn ? { c: 'info' as const, l: t('my.atSite') } : v.status === 'done' ? { c: 'success' as const, l: t('my.visitedSt') } : { c: 'default' as const, l: t('my.waiting') };
 
   return (
     <Box>
@@ -80,22 +80,22 @@ export default function MyDayPage() {
       </Stack>
 
       <Grid container spacing={1.5} mb={2}>
-        <Grid item xs={4}><Stat label="เยี่ยมเดือนนี้" value={data.month.visitDone} target={data.month.visitTarget} /></Grid>
-        <Grid item xs={4}><Stat label="Agency ดูแล" value={data.month.assigned} /></Grid>
-        <Grid item xs={4}><Stat label="เป้า Agency ใหม่" value={data.month.newAgencyTarget} /></Grid>
+        <Grid item xs={4}><Stat label={t('my.visitMonth')} value={data.month.visitDone} target={data.month.visitTarget} /></Grid>
+        <Grid item xs={4}><Stat label={t('my.agencyDuty')} value={data.month.assigned} /></Grid>
+        <Grid item xs={4}><Stat label={t('my.newTarget')} value={data.month.newAgencyTarget} /></Grid>
       </Grid>
 
       {data.inOffice && (
-        <Alert severity="info" sx={{ mb: 2 }}>🏛️ วันนี้คุณอยู่เวรประจำออฟฟิศ</Alert>
+        <Alert severity="info" sx={{ mb: 2 }}>{t('my.office')}</Alert>
       )}
 
       <Paper>
         <Typography variant="subtitle1" fontWeight={700} sx={{ p: 2, pb: 1 }}>
-          นัดเยี่ยมวันนี้ ({data.visits.length}) — แตะเพื่อ Check-in
+          {t('my.todayAppt')} ({data.visits.length}) — {t('my.tapCheckin')}
         </Typography>
         {data.visits.length === 0 ? (
           <Typography sx={{ p: 2, color: 'text.secondary' }}>
-            ไม่มีนัดวันนี้ (ผู้ดูแลกด "สร้างแผน" หรือเป็นวันหยุด/เวรออฟฟิศ)
+            {t('my.noAppt')}
           </Typography>
         ) : (
           <List>

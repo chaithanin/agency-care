@@ -12,6 +12,7 @@ import {
   Chip,
 } from '@mui/material';
 import { api } from '../api/client';
+import { useT } from '../i18n';
 
 interface Summary {
   date: string;
@@ -47,6 +48,7 @@ function Kpi({ label, value, sub }: { label: string; value: string | number; sub
 }
 
 export default function DashboardPage() {
+  const { t } = useT();
   const [data, setData] = useState<Summary | null>(null);
 
   useEffect(() => {
@@ -58,7 +60,7 @@ export default function DashboardPage() {
   return (
     <Box>
       <Typography variant="h5" fontWeight={700} mb={2}>
-        ภาพรวมวันนี้ — {data.date}
+        {t('dash.title')} — {data.date}
       </Typography>
       <Box
         sx={{
@@ -68,22 +70,22 @@ export default function DashboardPage() {
           mb: 3,
         }}
       >
-        <Kpi label="Agency ทั้งหมด" value={data.agencies.total} sub={`Active ${data.agencies.active}`} />
-        <Kpi label="แผนเยี่ยมวันนี้" value={data.visits.planned} />
-        <Kpi label="เข้าเยี่ยมแล้ว" value={data.visits.done} sub={`คงเหลือ ${data.visits.pending}`} />
-        <Kpi label="Visit Completion" value={`${data.visits.completionPct}%`} />
+        <Kpi label={t('dash.totalAgencies')} value={data.agencies.total} sub={`Active ${data.agencies.active}`} />
+        <Kpi label={t('dash.todayPlan')} value={data.visits.planned} />
+        <Kpi label={t('dash.visited')} value={data.visits.done} sub={`${t('c.remaining')} ${data.visits.pending}`} />
+        <Kpi label={t('dash.completion')} value={`${data.visits.completionPct}%`} />
       </Box>
 
       <Paper sx={{ p: 2 }}>
         <Typography variant="h6" fontWeight={700} mb={1}>
-          ประสิทธิภาพเซลส์ (วันนี้)
+          {t('dash.sellerToday')}
         </Typography>
         <Table size="small">
           <TableHead>
             <TableRow>
-              <TableCell>เซลส์</TableCell>
-              <TableCell align="right">แผน</TableCell>
-              <TableCell align="right">เข้าแล้ว</TableCell>
+              <TableCell>{t('c.seller')}</TableCell>
+              <TableCell align="right">{t('c.plan')}</TableCell>
+              <TableCell align="right">{t('c.done')}</TableCell>
               <TableCell align="right">%</TableCell>
             </TableRow>
           </TableHead>
@@ -91,7 +93,7 @@ export default function DashboardPage() {
             {data.perEmployee.length === 0 && (
               <TableRow>
                 <TableCell colSpan={4} align="center" sx={{ color: 'text.secondary' }}>
-                  ยังไม่มีแผนเยี่ยมวันนี้
+                  {t('dash.noPlan')}
                 </TableCell>
               </TableRow>
             )}

@@ -167,7 +167,7 @@ export default function SchedulingPage() {
         <Stack direction="row" spacing={1} alignItems="center">
           <TextField type="month" size="small" value={month} onChange={(e) => setMonth(e.target.value)} />
           <Button className="no-pdf" variant="contained" onClick={generate} disabled={generating}>
-            {generating ? 'กำลังสร้าง…' : '🤖 สร้างแผนเดือน (AI)'}
+            {generating ? t('sch.generating') : t('sch.genMonth')}
           </Button>
           <PdfExportButton targetRef={pdfRef} filename={`ตารางงาน-${month}.pdf`} />
         </Stack>
@@ -181,16 +181,16 @@ export default function SchedulingPage() {
           {coverage && (
             <Grid container spacing={2}>
               <Grid item xs={6} md={3}>
-                <StatCard label="Agency ทั้งหมด" value={coverage.totalAgencies} />
+                <StatCard label={t('dash.totalAgencies')} value={coverage.totalAgencies} />
               </Grid>
               <Grid item xs={6} md={3}>
-                <StatCard label="เยี่ยมครบ ≥2 (ผ่าน)" value={coverage.pass} color="success.main" />
+                <StatCard label={t('sch.coverPass')} value={coverage.pass} color="success.main" />
               </Grid>
               <Grid item xs={6} md={3}>
-                <StatCard label="เยี่ยม 1 (ขาดอีก 1)" value={coverage.partial} color="warning.main" />
+                <StatCard label={t('sch.coverPartial')} value={coverage.partial} color="warning.main" />
               </Grid>
               <Grid item xs={6} md={3}>
-                <StatCard label="ยังไม่ถูกเยี่ยม" value={coverage.none} color="error.main" />
+                <StatCard label={t('sch.coverNone')} value={coverage.none} color="error.main" />
               </Grid>
             </Grid>
           )}
@@ -213,7 +213,7 @@ export default function SchedulingPage() {
           {live.length > 0 && (
             <Paper sx={{ p: 2 }}>
               <Typography variant="subtitle1" fontWeight={700} mb={1}>
-                สถานะเรียลไทม์วันนี้
+                {t('sch.live')}
               </Typography>
               <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
                 {live.map((l) => (
@@ -226,17 +226,17 @@ export default function SchedulingPage() {
           {/* Dashboard รายเดือน (ต่อเซลส์) */}
           <Paper>
             <Typography variant="subtitle1" fontWeight={700} sx={{ p: 2, pb: 1 }}>
-              Dashboard รายเดือน (ต่อเซลส์)
+              {t('sch.monthlyDash')}
             </Typography>
             <Table size="small">
               <TableHead>
                 <TableRow>
-                  <TableCell>เซลส์</TableCell>
-                  <TableCell align="right">Agency ดูแล</TableCell>
-                  <TableCell align="right">เป้าเยี่ยม</TableCell>
-                  <TableCell align="right">เยี่ยมแล้ว</TableCell>
-                  <TableCell align="right">คงเหลือ</TableCell>
-                  <TableCell align="center">สถานะ</TableCell>
+                  <TableCell>{t('c.seller')}</TableCell>
+                  <TableCell align="right">{t('sch.agencyDuty')}</TableCell>
+                  <TableCell align="right">{t('sch.visitTarget')}</TableCell>
+                  <TableCell align="right">{t('c.visited')}</TableCell>
+                  <TableCell align="right">{t('c.remaining')}</TableCell>
+                  <TableCell align="center">{t('c.status')}</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -265,19 +265,19 @@ export default function SchedulingPage() {
           {/* team dashboard */}
           <Paper>
             <Typography variant="subtitle1" fontWeight={700} sx={{ p: 2, pb: 1 }}>
-              Team Dashboard
+              {t('sch.teamDash')}
             </Typography>
             <Table size="small">
               <TableHead>
                 <TableRow>
-                  <TableCell>ทีม</TableCell>
+                  <TableCell>{t('c.team')}</TableCell>
                   <TableCell align="right">Sales</TableCell>
                   <TableCell align="right">Closer</TableCell>
                   <TableCell align="right">Agency</TableCell>
-                  <TableCell align="right">เป้าเยี่ยม</TableCell>
-                  <TableCell align="right">เยี่ยมแล้ว</TableCell>
-                  <TableCell align="right">คงเหลือ</TableCell>
-                  <TableCell align="center" sx={{ minWidth: 120 }}>ความคืบหน้า</TableCell>
+                  <TableCell align="right">{t('sch.visitTarget')}</TableCell>
+                  <TableCell align="right">{t('c.visited')}</TableCell>
+                  <TableCell align="right">{t('c.remaining')}</TableCell>
+                  <TableCell align="center" sx={{ minWidth: 120 }}>{t('sch.progress')}</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -321,16 +321,16 @@ export default function SchedulingPage() {
           {/* new agency targets */}
           <Paper>
             <Typography variant="subtitle1" fontWeight={700} sx={{ p: 2, pb: 1 }}>
-              เป้าเพิ่ม Agency ใหม่ (เซลส์ละ 1-2/เดือน)
+              {t('sch.newAgencyTarget')}
             </Typography>
             <Table size="small">
               <TableHead>
                 <TableRow>
-                  <TableCell>เซลส์</TableCell>
-                  <TableCell align="right">เป้า</TableCell>
-                  <TableCell align="right">เพิ่มแล้ว</TableCell>
-                  <TableCell align="right">คงเหลือ</TableCell>
-                  <TableCell align="center">สถานะ</TableCell>
+                  <TableCell>{t('c.seller')}</TableCell>
+                  <TableCell align="right">{t('c.target')}</TableCell>
+                  <TableCell align="right">{t('sch.added')}</TableCell>
+                  <TableCell align="right">{t('c.remaining')}</TableCell>
+                  <TableCell align="center">{t('c.status')}</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -346,7 +346,7 @@ export default function SchedulingPage() {
                     <TableCell align="right">{r.actual}</TableCell>
                     <TableCell align="right">{r.remaining}</TableCell>
                     <TableCell align="center">
-                      <Chip size="small" label={r.ok ? 'ผ่าน' : 'ยังขาด'} color={r.ok ? 'success' : 'warning'} />
+                      <Chip size="small" label={r.ok ? t('c.pass') : t('c.notyet')} color={r.ok ? 'success' : 'warning'} />
                     </TableCell>
                   </TableRow>
                 ))}

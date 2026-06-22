@@ -11,6 +11,7 @@ import html2canvas from 'html2canvas';
 import { api } from '../api/client';
 import { exportElementToPdf } from '../utils/pdf';
 import { useAuth } from '../auth/AuthContext';
+import { useT } from '../i18n';
 
 interface DayVisit { agencyName: string; status: string; employeeName: string }
 interface CalData {
@@ -58,6 +59,7 @@ export default function CalendarPage() {
   const [exporting, setExporting] = useState(false);
   const pdfRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
+  const { t } = useT();
   const isSales = user?.role === 'sales';
 
   // PDF: มุมมองปัจจุบัน (ทั้งหมด หรือเซลส์ที่เลือก)
@@ -154,8 +156,8 @@ export default function CalendarPage() {
             {view === 'month' ? d.getUTCDate() : `${DOW[d.getUTCDay()]} ${d.getUTCDate()}/${m}`}
           </Typography>
           {visits.length > 0 && <Chip size="small" label={visits.length} color="primary" sx={{ height: 16, fontSize: 10 }} />}
-          {isEmpHol && <Chip size="small" label="หยุด" color="error" sx={{ height: 16, fontSize: 9 }} />}
-          {isHoliday && !isEmpHol && <Chip size="small" label="หยุดบริษัท" sx={{ height: 16, fontSize: 9, bgcolor: 'grey.500', color: '#fff' }} />}
+          {isEmpHol && <Chip size="small" label={t('cal.holiday')} color="error" sx={{ height: 16, fontSize: 9 }} />}
+          {isHoliday && !isEmpHol && <Chip size="small" label={t('cal.companyHol')} sx={{ height: 16, fontSize: 9, bgcolor: 'grey.500', color: '#fff' }} />}
         </Stack>
         {visits.slice(0, view === 'month' ? 3 : 8).map((v, j) => (
           <Tooltip key={j} title={`${v.agencyName}${empId ? '' : ' · ' + v.employeeName} (${v.status})`}>
@@ -206,17 +208,17 @@ export default function CalendarPage() {
   return (
     <Box>
       <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2} flexWrap="wrap" gap={1}>
-        <Typography variant="h5" fontWeight={700}>ปฏิทินตารางงาน</Typography>
+        <Typography variant="h5" fontWeight={700}>{t('cal.title')}</Typography>
         <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
           <ToggleButtonGroup size="small" exclusive value={view} onChange={(_, v) => v && setView(v)}>
-            <ToggleButton value="day">วัน</ToggleButton>
-            <ToggleButton value="week">สัปดาห์</ToggleButton>
-            <ToggleButton value="biweek">2 สัปดาห์</ToggleButton>
-            <ToggleButton value="month">เดือน</ToggleButton>
+            <ToggleButton value="day">{t('cal.day')}</ToggleButton>
+            <ToggleButton value="week">{t('cal.week')}</ToggleButton>
+            <ToggleButton value="biweek">{t('cal.biweek')}</ToggleButton>
+            <ToggleButton value="month">{t('cal.month')}</ToggleButton>
           </ToggleButtonGroup>
           {!isSales && (
-            <TextField select size="small" label="เซลส์" value={empId} onChange={(e) => setEmpId(e.target.value)} sx={{ minWidth: 150 }}>
-              <MenuItem value="">ทุกคน (วันหยุดบริษัท)</MenuItem>
+            <TextField select size="small" label={t('c.seller')} value={empId} onChange={(e) => setEmpId(e.target.value)} sx={{ minWidth: 150 }}>
+              <MenuItem value="">{t('cal.allCompanyHol')}</MenuItem>
               {data.sales.map((s) => <MenuItem key={s.id} value={s.id}>{s.name}</MenuItem>)}
             </TextField>
           )}
@@ -226,7 +228,7 @@ export default function CalendarPage() {
           </Button>
           {!isSales && (
             <Button size="small" variant="outlined" color="secondary" startIcon={<PictureAsPdfIcon />} disabled={exporting} onClick={exportPerPerson}>
-              PDF แยกทุกคน
+              {t('cal.pdfAll')}
             </Button>
           )}
         </Stack>
@@ -235,7 +237,7 @@ export default function CalendarPage() {
       {view !== 'month' && (
         <Stack direction="row" alignItems="center" justifyContent="center" spacing={1} mb={1}>
           <IconButton size="small" disabled={anchor <= 0} onClick={() => setAnchor((a) => a - 1)}><ChevronLeftIcon /></IconButton>
-          <Typography variant="body2">ช่วงที่ {anchor + 1}/{maxAnchor + 1}</Typography>
+          <Typography variant="body2">{t('cal.range')} {anchor + 1}/{maxAnchor + 1}</Typography>
           <IconButton size="small" disabled={anchor >= maxAnchor} onClick={() => setAnchor((a) => a + 1)}><ChevronRightIcon /></IconButton>
         </Stack>
       )}

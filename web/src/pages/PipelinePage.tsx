@@ -51,7 +51,7 @@ export default function PipelinePage() {
         <Grid item xs={12} md={7}>
           <Paper sx={{ p: 2 }}>
             <Typography variant="subtitle1" fontWeight={700} mb={2}>
-              ขั้นความสัมพันธ์ (Pipeline Stage)
+              {t('pl.stage')}
             </Typography>
             <Stack spacing={1.5}>
               {STAGE_ORDER.map((s) => {
@@ -76,7 +76,7 @@ export default function PipelinePage() {
         <Grid item xs={12} md={5}>
           <Paper sx={{ p: 2, height: '100%' }}>
             <Typography variant="subtitle1" fontWeight={700} mb={2}>
-              ระดับ Tier (ความถี่เยี่ยม)
+              {t('pl.tier')}
             </Typography>
             <Stack spacing={1.5}>
               {TIER_ORDER.map((t) => (
