@@ -70,6 +70,7 @@ export default function App() {
           <>
             <Route path="/" element={<MyVisitsPage />} />
             <Route path="/my-day" element={<MyDayPage />} />
+            <Route path="/calendar" element={<CalendarPage />} />
           </>
         )}
         <Route path="/route" element={<RoutePage />} />

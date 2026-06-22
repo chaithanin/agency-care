@@ -10,6 +10,7 @@ import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { api } from '../api/client';
 import { exportElementToPdf } from '../utils/pdf';
+import { useAuth } from '../auth/AuthContext';
 
 interface DayVisit { agencyName: string; status: string; employeeName: string }
 interface CalData {
@@ -56,6 +57,8 @@ export default function CalendarPage() {
   const [data, setData] = useState<CalData | null>(null);
   const [exporting, setExporting] = useState(false);
   const pdfRef = useRef<HTMLDivElement>(null);
+  const { user } = useAuth();
+  const isSales = user?.role === 'sales';
 
   // PDF: มุมมองปัจจุบัน (ทั้งหมด หรือเซลส์ที่เลือก)
   const exportCurrent = async () => {
@@ -99,15 +102,23 @@ export default function CalendarPage() {
   const load = useCallback(async () => {
     setData(null);
     const [y, m] = month.split('-').map(Number);
-    const r = await api.get('/scheduling/calendar', { params: { year: y, month: m, employeeId: empId || undefined } });
+    const url = isSales ? '/scheduling/my-calendar' : '/scheduling/calendar';
+    const r = await api.get(url, { params: { year: y, month: m, employeeId: isSales ? undefined : empId || undefined } });
     setData(r.data);
-  }, [month, empId]);
+  }, [month, empId, isSales]);
   useEffect(() => { load(); }, [load]);
   useEffect(() => { setAnchor(0); }, [view, month]);
 
-  const toggleHoliday = async (ds: string) => {
-    if (!empId) return;
-    await api.post('/scheduling/holidays/toggle', { employeeId: empId, date: ds });
+  // คลิกวัน: sales=วันหยุดตัวเอง · manager+เลือกเซลส์=วันหยุด sale คนนั้น · manager+ทุกคน=วันหยุดบริษัท
+  const onDayClick = async (ds: string) => {
+    if (isSales) {
+      await api.post('/scheduling/my-holidays/toggle', { date: ds });
+    } else if (empId) {
+      await api.post('/scheduling/holidays/toggle', { employeeId: empId, date: ds });
+    } else {
+      if (!window.confirm(`ตั้ง/ยกเลิก "วันหยุดบริษัท" วันที่ ${ds}? (มีผลทุกคน)`)) return;
+      await api.post('/scheduling/company-holidays/toggle', { date: ds });
+    }
     load();
   };
 
@@ -131,12 +142,12 @@ export default function CalendarPage() {
     const isEmpHol = empHolSet.has(ds);
     const isToday = ds === todayStr;
     return (
-      <Box key={ds} onClick={() => toggleHoliday(ds)}
+      <Box key={ds} onClick={() => onDayClick(ds)}
         sx={{
           minHeight: view === 'month' ? 92 : 70, border: 1,
           borderColor: isToday ? 'primary.main' : 'divider', borderRadius: 1, p: 0.6,
-          bgcolor: isEmpHol ? 'error.50' : isHoliday ? 'grey.100' : 'background.paper',
-          cursor: empId ? 'pointer' : 'default', display: 'flex', flexDirection: 'column', gap: 0.3, overflow: 'hidden',
+          bgcolor: isEmpHol ? 'error.50' : isHoliday ? 'grey.300' : 'background.paper',
+          cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: 0.3, overflow: 'hidden',
         }}>
         <Stack direction="row" justifyContent="space-between" alignItems="center">
           <Typography variant="caption" fontWeight={isToday ? 700 : 500}>
@@ -144,6 +155,7 @@ export default function CalendarPage() {
           </Typography>
           {visits.length > 0 && <Chip size="small" label={visits.length} color="primary" sx={{ height: 16, fontSize: 10 }} />}
           {isEmpHol && <Chip size="small" label="หยุด" color="error" sx={{ height: 16, fontSize: 9 }} />}
+          {isHoliday && !isEmpHol && <Chip size="small" label="หยุดบริษัท" sx={{ height: 16, fontSize: 9, bgcolor: 'grey.500', color: '#fff' }} />}
         </Stack>
         {visits.slice(0, view === 'month' ? 3 : 8).map((v, j) => (
           <Tooltip key={j} title={`${v.agencyName}${empId ? '' : ' · ' + v.employeeName} (${v.status})`}>
@@ -202,17 +214,21 @@ export default function CalendarPage() {
             <ToggleButton value="biweek">2 สัปดาห์</ToggleButton>
             <ToggleButton value="month">เดือน</ToggleButton>
           </ToggleButtonGroup>
-          <TextField select size="small" label="เซลส์" value={empId} onChange={(e) => setEmpId(e.target.value)} sx={{ minWidth: 150 }}>
-            <MenuItem value="">ทุกคน (รวม)</MenuItem>
-            {data.sales.map((s) => <MenuItem key={s.id} value={s.id}>{s.name}</MenuItem>)}
-          </TextField>
+          {!isSales && (
+            <TextField select size="small" label="เซลส์" value={empId} onChange={(e) => setEmpId(e.target.value)} sx={{ minWidth: 150 }}>
+              <MenuItem value="">ทุกคน (วันหยุดบริษัท)</MenuItem>
+              {data.sales.map((s) => <MenuItem key={s.id} value={s.id}>{s.name}</MenuItem>)}
+            </TextField>
+          )}
           <TextField type="month" size="small" value={month} onChange={(e) => setMonth(e.target.value)} />
           <Button size="small" variant="outlined" startIcon={<PictureAsPdfIcon />} disabled={exporting} onClick={exportCurrent}>
-            {empId ? 'PDF คนนี้' : 'PDF ทั้งหมด'}
+            PDF
           </Button>
-          <Button size="small" variant="outlined" color="secondary" startIcon={<PictureAsPdfIcon />} disabled={exporting} onClick={exportPerPerson}>
-            PDF แยกทุกคน
-          </Button>
+          {!isSales && (
+            <Button size="small" variant="outlined" color="secondary" startIcon={<PictureAsPdfIcon />} disabled={exporting} onClick={exportPerPerson}>
+              PDF แยกทุกคน
+            </Button>
+          )}
         </Stack>
       </Stack>
 
@@ -227,8 +243,12 @@ export default function CalendarPage() {
       <Paper sx={{ p: 1.5 }} ref={pdfRef}>{content}</Paper>
 
       <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
-        เซลส์เยี่ยม 15 ร้าน/สัปดาห์ · ทำงานทุกวัน (ไม่หยุดเสาร์-อาทิตย์) ·{' '}
-        {empId ? 'คลิกวันเพื่อตั้ง/ยกเลิกวันหยุดของเซลส์คนนี้' : 'เลือกเซลส์เพื่อตั้งวันหยุดราย user'}
+        15 ร้าน/สัปดาห์ · ทำงานทุกวัน ·{' '}
+        {isSales
+          ? 'คลิกวันเพื่อตั้ง/ยกเลิกวันหยุดของคุณ (🔴)'
+          : empId
+            ? 'คลิกวันเพื่อตั้งวันหยุดของเซลส์คนนี้ (🔴)'
+            : 'คลิกวันเพื่อตั้ง “วันหยุดบริษัท” (เทา · มีผลทุกคน)'}
       </Typography>
     </Box>
   );

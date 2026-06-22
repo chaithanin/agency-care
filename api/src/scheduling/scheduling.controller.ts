@@ -107,9 +107,27 @@ export class SchedulingController {
     return this.service.generateFortnight(body?.from);
   }
 
+  // วันหยุดบริษัท (มีผลทุกคน)
+  @Roles('admin', 'manager')
+  @Post('company-holidays/toggle')
+  toggleCompanyHoliday(@Body() body: { date: string; note?: string }) {
+    return this.service.toggleCompanyHoliday(body.date, body.note);
+  }
+
   // ----- พนักงานดูงานตัวเอง -----
   @Get('my-day')
   myDay(@CurrentUser('id') userId: string, @Query('date') date?: string) {
     return this.service.myDay(userId, date);
+  }
+
+  // sales ดูปฏิทินตัวเอง + ตั้งวันหยุดตัวเอง
+  @Get('my-calendar')
+  myCalendar(@CurrentUser('id') userId: string, @Query('year') y?: string, @Query('month') m?: string) {
+    return this.service.myCalendar(userId, toInt(y), toInt(m));
+  }
+
+  @Post('my-holidays/toggle')
+  toggleMyHoliday(@CurrentUser('id') userId: string, @Body() body: { date: string }) {
+    return this.service.toggleMyHoliday(userId, body.date);
   }
 }

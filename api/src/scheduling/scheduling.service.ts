@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { ForbiddenException, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
@@ -440,6 +440,35 @@ export class SchedulingService {
     }
     await this.prisma.employeeHoliday.create({ data: { employeeId, date } });
     return { date: dateStr, holiday: true };
+  }
+
+  // sales ดูปฏิทินตัวเอง
+  async myCalendar(userId: string, year?: number, month?: number) {
+    const emp = await this.prisma.employee.findUnique({ where: { userId } });
+    if (!emp) return { error: 'บัญชีนี้ไม่ผูกกับพนักงาน', days: {}, holidays: [], empHolidays: [], sales: [] };
+    const cal = await this.calendar(year, month, emp.id);
+    return { ...cal, self: { id: emp.id, name: emp.name } };
+  }
+
+  // sales ตั้งวันหยุดตัวเอง
+  async toggleMyHoliday(userId: string, dateStr: string) {
+    const emp = await this.prisma.employee.findUnique({ where: { userId } });
+    if (!emp) throw new ForbiddenException('บัญชีนี้ไม่ผูกกับพนักงาน');
+    return this.toggleHoliday(emp.id, dateStr);
+  }
+
+  // วันหยุดบริษัท (มีผลทุกคน)
+  async toggleCompanyHoliday(dateStr: string, note?: string) {
+    const n = new Date(dateStr);
+    const date = new Date(Date.UTC(n.getUTCFullYear(), n.getUTCMonth(), n.getUTCDate()));
+    const existing = await this.prisma.workCalendar.findUnique({ where: { date } });
+    const isHoliday = !(existing?.isHoliday ?? false);
+    await this.prisma.workCalendar.upsert({
+      where: { date },
+      update: { isHoliday, note: isHoliday ? note ?? existing?.note ?? null : null },
+      create: { date, isHoliday, note: isHoliday ? note ?? null : null },
+    });
+    return { date: dateStr, holiday: isHoliday };
   }
 
   async listHolidays(employeeId: string, year?: number, month?: number) {

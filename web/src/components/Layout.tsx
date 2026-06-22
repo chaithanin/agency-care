@@ -40,6 +40,7 @@ export default function Layout({ children }: { children: ReactNode }) {
     : [
         { to: '/', label: t('nav.myWork') },
         { to: '/my-day', label: t('nav.myDay') },
+        { to: '/calendar', label: t('nav.calendar') },
         { to: '/route', label: t('nav.route') },
       ];
 
