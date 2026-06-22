@@ -47,6 +47,16 @@ export class SchedulingController {
   }
 
   @Roles('admin', 'manager')
+  @Get('seller-performance')
+  sellerPerformance(
+    @Query('employeeId') employeeId?: string,
+    @Query('year') y?: string,
+    @Query('month') m?: string,
+  ) {
+    return this.service.sellerPerformance(employeeId, toInt(y), toInt(m));
+  }
+
+  @Roles('admin', 'manager')
   @Get('daily')
   daily(@Query('date') date: string, @Query('employeeId') employeeId?: string) {
     return this.service.dailySchedules(date, employeeId);
@@ -57,6 +67,13 @@ export class SchedulingController {
   @Post('generate-month')
   generateMonth(@Body() body: { year?: number; month?: number }) {
     return this.service.generateMonth(body?.year, body?.month);
+  }
+
+  // วางแผนราย 2 สัปดาห์ (เริ่มจากวันที่ระบุ หรือวันนี้)
+  @Roles('admin', 'manager')
+  @Post('generate-fortnight')
+  generateFortnight(@Body() body: { from?: string }) {
+    return this.service.generateFortnight(body?.from);
   }
 
   // ----- พนักงานดูงานตัวเอง -----

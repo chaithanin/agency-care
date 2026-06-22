@@ -152,12 +152,23 @@ export class AnalyticsService {
     }
   }
 
-  // ---- Gemini (คีย์จาก aistudio.google.com) ----
+  // ---- Gemini — รองรับ 2 โหมด ----
+  // 1) Vertex AI (GEMINI_VERTEX=true) ใช้ ADC + region ของ project → ไม่โดน block ภูมิภาค (เช่น Cloud Run ฮ่องกง)
+  // 2) AI Studio API key (GEMINI_API_KEY) — ใช้นอก GCP / dev
   private async callGemini(system: string, prompt: string): Promise<Insight[] | null> {
-    const apiKey = this.config.get<string>('GEMINI_API_KEY');
-    if (!apiKey) return null;
     const model = this.config.get<string>('GEMINI_MODEL') || 'gemini-2.5-flash';
-    const ai = new GoogleGenAI({ apiKey });
+    let ai: GoogleGenAI;
+    if (this.config.get('GEMINI_VERTEX') === 'true') {
+      ai = new GoogleGenAI({
+        vertexai: true,
+        project: this.config.get<string>('GCP_PROJECT') || this.config.get<string>('GOOGLE_CLOUD_PROJECT'),
+        location: this.config.get<string>('VERTEX_LOCATION') || 'asia-southeast1',
+      });
+    } else {
+      const apiKey = this.config.get<string>('GEMINI_API_KEY');
+      if (!apiKey) return null;
+      ai = new GoogleGenAI({ apiKey });
+    }
     const res = await ai.models.generateContent({
       model,
       contents: `${prompt}\n\nตอบเป็น JSON เท่านั้น รูปแบบ: {"insights":[{"title":"","detail":"","severity":"high|medium|low","recommendation":""}]}`,

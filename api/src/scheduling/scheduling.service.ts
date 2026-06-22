@@ -242,9 +242,126 @@ export class SchedulingService {
     });
   }
 
-  // ===== กฎ 1+2+7+8: AI auto-scheduler สร้างแผนทั้งเดือน =====
+  // ===== Seller Performance Dashboard (ตาม mockup) =====
+  async sellerPerformance(employeeId?: string, year?: number, month?: number) {
+    const { y, m, gte, lt } = this.ym(year, month);
+    const sellers = await this.prisma.employee.findMany({
+      where: { isActive: true, position: { in: ['sales', 'closer'] } },
+      select: { id: true, name: true, code: true, position: true, inTraining: true, team: { select: { name: true } } },
+      orderBy: [{ position: 'asc' }, { code: 'asc' }],
+    });
+    if (!sellers.length) return { sellers: [], selected: null };
+    const sel = sellers.find((s) => s.id === employeeId) ?? sellers.find((s) => s.position === 'sales') ?? sellers[0];
+
+    // รวมตัวเลขทุกเซลส์ (leaderboard)
+    const [doneByEmp, assignByEmp, addedByEmp, plans] = await Promise.all([
+      this.prisma.visitPlan.groupBy({ by: ['employeeId'], where: { status: 'done', planDate: { gte, lt } }, _count: { _all: true } }),
+      this.prisma.agencyAssignment.groupBy({ by: ['employeeId'], where: { isActive: true }, _count: { _all: true } }),
+      this.prisma.agency.groupBy({ by: ['addedById'], where: { createdAt: { gte, lt }, addedById: { not: null } }, _count: { _all: true } }),
+      this.prisma.monthlyPlan.findMany({ where: { year: y, month: m } }),
+    ]);
+    const doneMap = new Map(doneByEmp.map((d) => [d.employeeId, d._count._all]));
+    const assignMap = new Map(assignByEmp.map((a) => [a.employeeId, a._count._all]));
+    const addedMap = new Map(addedByEmp.map((a) => [a.addedById!, a._count._all]));
+    const planMap = new Map(plans.map((p) => [p.employeeId, p]));
+
+    const leaderboard = sellers
+      .filter((s) => s.position === 'sales')
+      .map((s) => ({
+        employeeId: s.id,
+        name: s.name,
+        visitsDone: doneMap.get(s.id) || 0,
+        agencies: assignMap.get(s.id) || 0,
+        newAgencies: addedMap.get(s.id) || 0,
+        me: s.id === sel.id,
+      }))
+      .sort((a, b) => b.visitsDone - a.visitsDone)
+      .map((r, i) => ({ rank: i + 1, ...r }));
+
+    // KPI ของคนที่เลือก
+    const plan = planMap.get(sel.id);
+    const visitsDone = doneMap.get(sel.id) || 0;
+    const agencies = assignMap.get(sel.id) || 0;
+    const visitTarget = plan?.visitTarget ?? agencies * RULES.VISITS_PER_AGENCY;
+    const newAgencies = addedMap.get(sel.id) || 0;
+    const newAgencyTarget = plan?.newAgencyTarget ?? RULES.NEW_AGENCY_TARGET;
+
+    // coverage (pipeline) เฉพาะร้านของคนนี้
+    const myAgencyIds = (
+      await this.prisma.agencyAssignment.findMany({ where: { employeeId: sel.id, isActive: true }, select: { agencyId: true } })
+    ).map((a) => a.agencyId);
+    const doneByAgency = await this.prisma.visitPlan.groupBy({
+      by: ['agencyId'],
+      where: { agencyId: { in: myAgencyIds }, status: 'done', planDate: { gte, lt } },
+      _count: { _all: true },
+    });
+    let pass = 0, partial = 0;
+    for (const d of doneByAgency) {
+      if (d._count._all >= RULES.VISITS_PER_AGENCY) pass++;
+      else if (d._count._all === 1) partial++;
+    }
+    const pipeline = { pass, partial, none: agencies - pass - partial, total: agencies };
+
+    // ตารางสัปดาห์นี้ (จ-ส)
+    const ref = new Date();
+    const dow = (ref.getUTCDay() + 6) % 7; // จ=0
+    const monday = new Date(Date.UTC(ref.getUTCFullYear(), ref.getUTCMonth(), ref.getUTCDate() - dow));
+    const todayStr = new Date(Date.UTC(ref.getUTCFullYear(), ref.getUTCMonth(), ref.getUTCDate())).toISOString().slice(0, 10);
+    const weekDates = Array.from({ length: 6 }, (_, i) => new Date(monday.getTime() + i * 86400000));
+    const weekSchedules = await this.prisma.dailySchedule.findMany({
+      where: { employeeId: sel.id, date: { gte: weekDates[0], lte: weekDates[5] } },
+      include: { items: { where: { type: 'visit' }, include: { agency: { select: { name: true } } }, orderBy: { startTime: 'asc' } } },
+    });
+    const schedByDate = new Map(weekSchedules.map((s) => [s.date.toISOString().slice(0, 10), s]));
+    const dayNames = ['จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส'];
+    const week = weekDates.map((d, i) => {
+      const ds = d.toISOString().slice(0, 10);
+      const sc = schedByDate.get(ds);
+      return {
+        label: dayNames[i],
+        date: ds.slice(8),
+        today: ds === todayStr,
+        inOffice: sc?.inOffice ?? false,
+        items: (sc?.items ?? []).map((it) => ({
+          name: it.agency?.name ?? it.title,
+          status: it.done ? 'done' : ds < todayStr ? 'miss' : 'plan',
+        })),
+      };
+    });
+
+    return {
+      sellers,
+      selected: { id: sel.id, name: sel.name, code: sel.code, position: sel.position, inTraining: sel.inTraining, team: sel.team?.name ?? null },
+      month: { year: y, month: m },
+      kpis: {
+        visitsDone,
+        visitTarget,
+        completionPct: visitTarget ? Math.round((visitsDone / visitTarget) * 100) : 0,
+        agencies,
+        newAgencies,
+        newAgencyTarget,
+      },
+      pipeline,
+      week,
+      leaderboard,
+    };
+  }
+
+  // ===== กฎ 1+2+7+8: AI auto-scheduler =====
   async generateMonth(year?: number, month?: number) {
     const { y, m, gte, lt } = this.ym(year, month);
+    return this._generate(gte, lt, RULES.VISITS_PER_AGENCY, y, m);
+  }
+
+  // วางแผนราย 2 สัปดาห์ (bi-weekly) — agency ละ 1 ครั้ง/ช่วง (รวม = 2x/เดือน)
+  async generateFortnight(fromStr?: string) {
+    const f = fromStr ? new Date(fromStr) : new Date();
+    const gte = new Date(Date.UTC(f.getUTCFullYear(), f.getUTCMonth(), f.getUTCDate()));
+    const lt = new Date(gte.getTime() + 14 * 86400000);
+    return this._generate(gte, lt, 1, gte.getUTCFullYear(), gte.getUTCMonth() + 1);
+  }
+
+  private async _generate(gte: Date, lt: Date, visitsPerAgency: number, y: number, m: number) {
     const workdays = await this.prisma.workCalendar.findMany({
       where: { date: { gte, lt }, isHoliday: false },
       orderBy: { date: 'asc' },
@@ -271,7 +388,7 @@ export class SchedulingService {
     for (let si = 0; si < sales.length; si++) {
       const s = sales[si];
       const queue: string[] = [];
-      for (let r = 0; r < RULES.VISITS_PER_AGENCY; r++) {
+      for (let r = 0; r < visitsPerAgency; r++) {
         for (const a of s.assignments) queue.push(a.agencyId);
       }
       let qi = 0;
@@ -366,16 +483,16 @@ export class SchedulingService {
     return this.config.get('SCHEDULER_ENABLED') === 'true';
   }
 
-  @Cron('0 1 * * *', { timeZone: 'Asia/Bangkok' }) // วันที่ 1 สร้างแผนเดือน (เช็คในฟังก์ชัน)
-  async monthlyAuto() {
+  @Cron('0 1 * * *', { timeZone: 'Asia/Bangkok' }) // วางแผนราย 2 สัปดาห์ (วันที่ 1 และ 16)
+  async biweeklyAuto() {
     if (!this.enabled()) return;
     const now = new Date();
-    if (now.getDate() === 1) {
-      const r = await this.generateMonth();
-      this.logger.log(`[วันที่1] สร้างแผนเดือน: ${JSON.stringify(r)}`);
-    } else if (now.getDate() === 16) {
+    if (now.getDate() === 1 || now.getDate() === 16) {
+      const r = await this.generateFortnight();
       const cov = await this.coverageStatus();
-      this.logger.log(`[วันที่16] coverage กลางเดือน: ผ่าน ${cov.pass}/${cov.totalAgencies}`);
+      this.logger.log(
+        `[วันที่${now.getDate()}] วางแผน 2 สัปดาห์: ${JSON.stringify(r)} · coverage ผ่าน ${cov.pass}/${cov.totalAgencies}`,
+      );
     }
   }
 

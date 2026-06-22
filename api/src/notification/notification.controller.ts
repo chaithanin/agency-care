@@ -19,4 +19,10 @@ export class NotificationController {
   run(@Body() dto: RunDto) {
     return this.service.notifyPendingVisits(dto.date);
   }
+
+  // push ตารางงานวันนี้ให้พนักงานทุกคน (LINE)
+  @Post('daily-schedule')
+  dailySchedule(@Body() dto: RunDto) {
+    return this.service.notifyDailySchedule(dto.date);
+  }
 }

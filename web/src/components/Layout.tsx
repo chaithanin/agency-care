@@ -27,6 +27,7 @@ export default function Layout({ children }: { children: ReactNode }) {
         { to: '/models', label: 'อุปกรณ์' },
         { to: '/route', label: 'เส้นทาง' },
         { to: '/scheduling', label: 'ตารางงาน' },
+        { to: '/seller-performance', label: 'ผลงานเซลส์' },
         { to: '/kpi', label: 'KPI' },
         { to: '/auto-assign', label: 'จัดทีม' },
         { to: '/analytics', label: 'AI' },

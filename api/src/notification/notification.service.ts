@@ -82,14 +82,50 @@ export class NotificationService {
     return { date: today.toISOString().slice(0, 10), totalEmployees: results.length, results };
   }
 
+  // Phase 5: push ตารางงานวันนี้ให้พนักงานแต่ละคน (ผ่าน LINE)
+  async notifyDailySchedule(dateStr?: string) {
+    const n = dateStr ? new Date(dateStr) : new Date();
+    const date = new Date(Date.UTC(n.getUTCFullYear(), n.getUTCMonth(), n.getUTCDate()));
+    const schedules = await this.prisma.dailySchedule.findMany({
+      where: { date },
+      include: {
+        employee: { select: { name: true, lineUserId: true } },
+        items: { include: { agency: { select: { name: true } } }, orderBy: { startTime: 'asc' } },
+      },
+    });
+    const results: { employee: string; sent: boolean; reason?: string }[] = [];
+    for (const s of schedules) {
+      if (!s.employee.lineUserId) {
+        results.push({ employee: s.employee.name, sent: false, reason: 'ยังไม่ผูก LINE' });
+        continue;
+      }
+      const visits = s.items.filter((it) => it.type === 'visit');
+      const lines = s.items
+        .map((it) => `• ${it.startTime ?? ''} ${it.agency?.name ?? it.title}`)
+        .join('\n');
+      const head = s.inOffice ? '🏛️ วันนี้คุณอยู่ประจำออฟฟิศ' : `🚗 วันนี้มี ${visits.length} ร้านต้องเยี่ยม`;
+      const text = `📅 แผนงานวันนี้ (${date.toISOString().slice(0, 10)})\nคุณ ${s.employee.name}\n${head}\n\n${lines}`;
+      try {
+        await this.pushMessage(s.employee.lineUserId, text);
+        results.push({ employee: s.employee.name, sent: true });
+      } catch (err) {
+        results.push({ employee: s.employee.name, sent: false, reason: (err as Error).message });
+      }
+    }
+    return { date: date.toISOString().slice(0, 10), total: results.length, results };
+  }
+
   // cron: ทุกวัน 08:00 (Asia/Bangkok) — เปิดด้วย NOTIFY_ENABLED=true
   @Cron('0 8 * * *', { timeZone: 'Asia/Bangkok' })
   async dailyReminder() {
     if (this.config.get('NOTIFY_ENABLED') !== 'true') return;
     if (!this.token) return;
     try {
+      const sched = await this.notifyDailySchedule();
       const r = await this.notifyPendingVisits();
-      this.logger.log(`แจ้งเตือนรายวัน: ส่ง ${r.results.filter((x) => x.sent).length}/${r.totalEmployees}`);
+      this.logger.log(
+        `แจ้งเตือน 08:00: ตารางวัน ${sched.results.filter((x) => x.sent).length}/${sched.total} · งานค้าง ${r.results.filter((x) => x.sent).length}/${r.totalEmployees}`,
+      );
     } catch (e) {
       this.logger.error(`แจ้งเตือนรายวันล้มเหลว: ${(e as Error).message}`);
     }
