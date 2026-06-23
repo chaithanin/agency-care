@@ -29,8 +29,17 @@ export class PosmController {
     @Query('to') to?: string,
     @Query('agencyId') agencyId?: string,
     @Query('itemId') itemId?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
   ) {
-    return this.service.distributionLog({ from, to, agencyId, itemId });
+    return this.service.distributionLog({
+      from,
+      to,
+      agencyId,
+      itemId,
+      page: page ? Number(page) : undefined,
+      limit: limit ? Number(limit) : undefined,
+    });
   }
 
   // สรุปสื่อที่แจกต่อ Agency

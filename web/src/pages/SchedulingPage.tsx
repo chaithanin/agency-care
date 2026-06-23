@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Box,
   Typography,
@@ -16,10 +16,17 @@ import {
   Grid,
   Alert,
   Snackbar,
+  IconButton,
+  Collapse,
 } from '@mui/material';
+import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
+import ChevronRightIcon from '@mui/icons-material/ChevronRight';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import { api, errMsg } from '../api/client';
 import { PdfExportButton } from '../utils/pdf';
 import { useT } from '../i18n';
+import { useAuth } from '../auth/AuthContext';
 
 interface TeamRow {
   teamId: string;
@@ -76,7 +83,17 @@ interface LiveRow {
   state: string;
   detail: string;
 }
+interface TargetRow {
+  employeeId: string;
+  name: string;
+  code: string;
+  position: string;
+  visitTarget: number;
+  newAgencyTarget: number;
+}
 const statusEmoji: Record<string, string> = { green: '🟢', yellow: '🟡', red: '🔴', blue: '🔵', gray: '⚪' };
+
+const DOW = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
 
 const thisMonth = () => new Date().toISOString().slice(0, 7);
 
@@ -95,6 +112,8 @@ function StatCard({ label, value, color }: { label: string; value: string | numb
 
 export default function SchedulingPage() {
   const { t } = useT();
+  const { user } = useAuth();
+  const isAdmin = user?.activeRole === 'admin' || user?.activeRole === 'super_admin';
   const [month, setMonth] = useState(thisMonth());
   const [teams, setTeams] = useState<TeamRow[]>([]);
   const [coverage, setCoverage] = useState<Coverage | null>(null);
@@ -106,6 +125,107 @@ export default function SchedulingPage() {
   const [generating, setGenerating] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const pdfRef = useRef<HTMLDivElement>(null);
+
+  // Company Holidays
+  const [holidayMonth, setHolidayMonth] = useState(thisMonth());
+  const [companyHolidays, setCompanyHolidays] = useState<Set<string>>(new Set());
+  const [holidayLoading, setHolidayLoading] = useState(false);
+  const [holidayOpen, setHolidayOpen] = useState(false);
+
+  // Monthly Targets
+  const [targets, setTargets] = useState<TargetRow[]>([]);
+  const [targetsOpen, setTargetsOpen] = useState(false);
+  const [editingCell, setEditingCell] = useState<{ empId: string; field: 'visitTarget' | 'newAgencyTarget' } | null>(null);
+  const [editingValue, setEditingValue] = useState('');
+
+  const holidayCells = useMemo(() => {
+    const [y, m] = holidayMonth.split('-').map(Number);
+    const dim = new Date(y, m, 0).getDate();
+    const lead = new Date(Date.UTC(y, m - 1, 1)).getUTCDay();
+    const cells: (string | null)[] = Array(lead).fill(null);
+    for (let d = 1; d <= dim; d++) {
+      cells.push(`${holidayMonth}-${String(d).padStart(2, '0')}`);
+    }
+    while (cells.length % 7 !== 0) cells.push(null);
+    return cells;
+  }, [holidayMonth]);
+
+  const prevHolidayMonth = () => {
+    const [y, m] = holidayMonth.split('-').map(Number);
+    const d = new Date(y, m - 2, 1);
+    setHolidayMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+  };
+  const nextHolidayMonth = () => {
+    const [y, m] = holidayMonth.split('-').map(Number);
+    const d = new Date(y, m, 1);
+    setHolidayMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+  };
+
+  const loadCompanyHolidays = useCallback(async (ym: string) => {
+    const [y, m] = ym.split('-').map(Number);
+    setHolidayLoading(true);
+    try {
+      const r = await api.get('/scheduling/company-holidays', { params: { year: y, month: m } });
+      setCompanyHolidays(new Set((r.data.holidays as { date: string }[]).map((h) => h.date)));
+    } catch (e) {
+      setToast(errMsg(e));
+    } finally {
+      setHolidayLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isAdmin && holidayOpen) loadCompanyHolidays(holidayMonth);
+  }, [holidayMonth, holidayOpen, isAdmin, loadCompanyHolidays]);
+
+  const toggleCompanyHoliday = async (ds: string) => {
+    try {
+      await api.post('/scheduling/company-holidays/toggle', { date: ds });
+      loadCompanyHolidays(holidayMonth);
+    } catch (e) {
+      setToast(errMsg(e));
+    }
+  };
+
+  const loadTargets = useCallback(async (ym: string) => {
+    const [y, m] = ym.split('-').map(Number);
+    try {
+      const r = await api.get('/scheduling/targets', { params: { year: y, month: m } });
+      setTargets(r.data.rows);
+    } catch (e) {
+      setToast(errMsg(e));
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isAdmin && targetsOpen) loadTargets(month);
+  }, [month, targetsOpen, isAdmin, loadTargets]);
+
+  const startEdit = (empId: string, field: 'visitTarget' | 'newAgencyTarget', currentValue: number) => {
+    setEditingCell({ empId, field });
+    setEditingValue(String(currentValue));
+  };
+
+  const commitEdit = async (empId: string) => {
+    if (!editingCell || editingCell.empId !== empId) return;
+    const row = targets.find((r) => r.employeeId === empId);
+    if (!row) return;
+    const [y, m] = month.split('-').map(Number);
+    const updated = {
+      employeeId: empId,
+      year: y,
+      month: m,
+      visitTarget: editingCell.field === 'visitTarget' ? Number(editingValue) : row.visitTarget,
+      newAgencyTarget: editingCell.field === 'newAgencyTarget' ? Number(editingValue) : row.newAgencyTarget,
+    };
+    setEditingCell(null);
+    try {
+      await api.put('/scheduling/targets', updated);
+      loadTargets(month);
+    } catch (e) {
+      setToast(errMsg(e));
+    }
+  };
 
   const ym = useCallback(() => {
     const [y, m] = month.split('-').map(Number);
@@ -271,9 +391,9 @@ export default function SchedulingPage() {
               <TableHead>
                 <TableRow>
                   <TableCell>{t('c.team')}</TableCell>
-                  <TableCell align="right">Sales</TableCell>
-                  <TableCell align="right">Closer</TableCell>
-                  <TableCell align="right">Agency</TableCell>
+                  <TableCell align="right">{t('sched.colSales')}</TableCell>
+                  <TableCell align="right">{t('sched.colCloser')}</TableCell>
+                  <TableCell align="right">{t('sched.colAgency')}</TableCell>
                   <TableCell align="right">{t('sch.visitTarget')}</TableCell>
                   <TableCell align="right">{t('c.visited')}</TableCell>
                   <TableCell align="right">{t('c.remaining')}</TableCell>
@@ -353,6 +473,178 @@ export default function SchedulingPage() {
               </TableBody>
             </Table>
           </Paper>
+
+          {/* ===== Admin: Company Holidays ===== */}
+          {isAdmin && (
+            <Paper>
+              <Stack
+                direction="row"
+                alignItems="center"
+                justifyContent="space-between"
+                sx={{ p: 2, pb: holidayOpen ? 1 : 2, cursor: 'pointer' }}
+                onClick={() => setHolidayOpen((v) => !v)}
+              >
+                <Typography variant="subtitle1" fontWeight={700}>
+                  {t('sched.companyHolidays')}
+                </Typography>
+                <IconButton size="small">
+                  {holidayOpen ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+                </IconButton>
+              </Stack>
+              <Collapse in={holidayOpen}>
+                <Box sx={{ px: 2, pb: 2 }}>
+                  {holidayLoading && <LinearProgress sx={{ mb: 1 }} />}
+                  <Stack direction="row" alignItems="center" justifyContent="center" spacing={1} mb={1.5}>
+                    <IconButton size="small" onClick={(e) => { e.stopPropagation(); prevHolidayMonth(); }}>
+                      <ChevronLeftIcon />
+                    </IconButton>
+                    <Typography fontWeight={600}>{holidayMonth}</Typography>
+                    <IconButton size="small" onClick={(e) => { e.stopPropagation(); nextHolidayMonth(); }}>
+                      <ChevronRightIcon />
+                    </IconButton>
+                  </Stack>
+                  <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 0.5, mb: 0.5 }}>
+                    {DOW.map((d) => (
+                      <Typography key={d} variant="caption" fontWeight={700} textAlign="center" color="text.secondary">{d}</Typography>
+                    ))}
+                  </Box>
+                  <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 0.5 }}>
+                    {holidayCells.map((ds, i) =>
+                      ds ? (
+                        <Box
+                          key={ds}
+                          onClick={() => toggleCompanyHoliday(ds)}
+                          sx={{
+                            height: 44, display: 'flex', flexDirection: 'column',
+                            alignItems: 'center', justifyContent: 'center', borderRadius: 1,
+                            border: 1, borderColor: companyHolidays.has(ds) ? 'error.main' : 'divider',
+                            bgcolor: companyHolidays.has(ds) ? 'error.50' : 'background.paper',
+                            cursor: 'pointer',
+                            '&:hover': { bgcolor: companyHolidays.has(ds) ? 'error.100' : 'action.hover' },
+                          }}
+                        >
+                          <Typography variant="body2" fontWeight={companyHolidays.has(ds) ? 700 : 400}>
+                            {Number(ds.slice(8))}
+                          </Typography>
+                          {companyHolidays.has(ds) && (
+                            <Typography variant="caption" sx={{ fontSize: 9, color: 'error.main', lineHeight: 1 }}>
+                              {t('sched.holidayLabel')}
+                            </Typography>
+                          )}
+                        </Box>
+                      ) : <Box key={i} />
+                    )}
+                  </Box>
+                  <Typography variant="caption" color="text.secondary" sx={{ mt: 1.5, display: 'block' }}>
+                    {t('sched.holidayClickHint')}
+                  </Typography>
+                </Box>
+              </Collapse>
+            </Paper>
+          )}
+
+          {/* ===== Admin: Monthly Targets ===== */}
+          {isAdmin && (
+            <Paper>
+              <Stack
+                direction="row"
+                alignItems="center"
+                justifyContent="space-between"
+                sx={{ p: 2, pb: targetsOpen ? 1 : 2, cursor: 'pointer' }}
+                onClick={() => setTargetsOpen((v) => !v)}
+              >
+                <Typography variant="subtitle1" fontWeight={700}>
+                  {t('sched.monthlyTargets')}
+                </Typography>
+                <IconButton size="small">
+                  {targetsOpen ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+                </IconButton>
+              </Stack>
+              <Collapse in={targetsOpen}>
+                <Table size="small">
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>{t('sched.colEmployee')}</TableCell>
+                      <TableCell align="center">{t('sched.colPosition')}</TableCell>
+                      <TableCell align="right">{t('sched.colVisitTarget')}</TableCell>
+                      <TableCell align="right">{t('sched.colNewAgencyTarget')}</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {targets.map((r) => (
+                      <TableRow key={r.employeeId}>
+                        <TableCell>
+                          {r.name}{' '}
+                          <Typography component="span" variant="caption" color="text.secondary">
+                            ({r.code})
+                          </Typography>
+                        </TableCell>
+                        <TableCell align="center">
+                          <Chip size="small" label={r.position} color={r.position === 'closer' ? 'secondary' : 'primary'} variant="outlined" />
+                        </TableCell>
+                        <TableCell align="right">
+                          {editingCell?.empId === r.employeeId && editingCell.field === 'visitTarget' ? (
+                            <TextField
+                              size="small"
+                              type="number"
+                              value={editingValue}
+                              onChange={(e) => setEditingValue(e.target.value)}
+                              onBlur={() => commitEdit(r.employeeId)}
+                              onKeyDown={(e) => { if (e.key === 'Enter') commitEdit(r.employeeId); if (e.key === 'Escape') setEditingCell(null); }}
+                              sx={{ width: 80 }}
+                              autoFocus
+                              inputProps={{ min: 0 }}
+                            />
+                          ) : (
+                            <Typography
+                              variant="body2"
+                              sx={{ cursor: 'pointer', '&:hover': { textDecoration: 'underline' } }}
+                              onClick={() => startEdit(r.employeeId, 'visitTarget', r.visitTarget)}
+                            >
+                              {r.visitTarget}
+                            </Typography>
+                          )}
+                        </TableCell>
+                        <TableCell align="right">
+                          {editingCell?.empId === r.employeeId && editingCell.field === 'newAgencyTarget' ? (
+                            <TextField
+                              size="small"
+                              type="number"
+                              value={editingValue}
+                              onChange={(e) => setEditingValue(e.target.value)}
+                              onBlur={() => commitEdit(r.employeeId)}
+                              onKeyDown={(e) => { if (e.key === 'Enter') commitEdit(r.employeeId); if (e.key === 'Escape') setEditingCell(null); }}
+                              sx={{ width: 80 }}
+                              autoFocus
+                              inputProps={{ min: 0 }}
+                            />
+                          ) : (
+                            <Typography
+                              variant="body2"
+                              sx={{ cursor: 'pointer', '&:hover': { textDecoration: 'underline' } }}
+                              onClick={() => startEdit(r.employeeId, 'newAgencyTarget', r.newAgencyTarget)}
+                            >
+                              {r.newAgencyTarget}
+                            </Typography>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                    {targets.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={4} align="center" sx={{ color: 'text.secondary' }}>
+                          {t('sched.noEmployees')}
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+                <Typography variant="caption" color="text.secondary" sx={{ p: 2, display: 'block' }}>
+                  {t('sched.targetEditHint')}
+                </Typography>
+              </Collapse>
+            </Paper>
+          )}
         </Stack>
       )}
 

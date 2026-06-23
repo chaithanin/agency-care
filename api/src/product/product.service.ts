@@ -49,4 +49,10 @@ export class ProductService {
     if (!p) throw new NotFoundException('ไม่พบสินค้า');
     return this.prisma.product.update({ where: { id }, data: dto });
   }
+
+  async remove(id: string) {
+    const p = await this.prisma.product.findUnique({ where: { id } });
+    if (!p) throw new NotFoundException('ไม่พบสินค้า');
+    return this.prisma.product.update({ where: { id }, data: { isActive: false } });
+  }
 }

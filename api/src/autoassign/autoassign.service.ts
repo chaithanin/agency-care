@@ -40,12 +40,12 @@ export class AutoAssignService {
     ]);
 
     if (employees.length === 0) {
-      return { proposal: [], summary: [], note: 'ยังไม่มีเซลส์ (Sales) ในระบบ' };
+      return { proposal: [], summary: [], unassignedAgencies: [], note: 'ยังไม่มีเซลส์ (Sales) ในระบบ' };
     }
 
     const load = new Map<string, number>(employees.map((e) => [e.id, 0]));
     const hasRoom = (e: { id: string }) => cap === undefined || (load.get(e.id) ?? 0) < cap;
-    let unassigned = 0;
+    const unassignedAgencies: { id: string; code: string; name: string; zone?: string | null }[] = [];
 
     const proposal = agencies.map((a) => {
       // ผู้สมัครที่โซนตรง (ยังไม่เต็ม) ก่อน ถ้าไม่มีใช้ทุกคนที่ยังไม่เต็ม
@@ -53,7 +53,7 @@ export class AutoAssignService {
       const pool = sameZone.length ? sameZone : employees.filter(hasRoom);
       if (pool.length === 0) {
         // เต็มทุกคนแล้ว — เกินโควต้า เหลือไว้ไม่มอบหมาย
-        unassigned++;
+        unassignedAgencies.push({ id: a.id, code: a.code, name: a.name, zone: a.zone });
         return {
           agencyId: a.id, agencyCode: a.code, agencyName: a.name, zone: a.zone,
           employeeId: '', employeeName: '— ยังไม่มอบหมาย (เกินโควต้า) —', matchedZone: false,
@@ -75,10 +75,10 @@ export class AutoAssignService {
       proposal,
       summary: summary.sort((a, b) => b.count - a.count),
       cap: cap ?? null,
-      unassigned,
+      unassignedAgencies,
       note:
-        unassigned > 0
-          ? `แบ่งครบโควต้า ${cap}/คน แล้ว — เหลือ ${unassigned} ร้านไม่ได้มอบหมาย (เพิ่มเซลส์หรือเพิ่มโควต้า)`
+        unassignedAgencies.length > 0
+          ? `แบ่งครบโควต้า ${cap}/คน แล้ว — เหลือ ${unassignedAgencies.length} ร้านไม่ได้มอบหมาย (เพิ่มเซลส์หรือเพิ่มโควต้า)`
           : undefined,
     };
   }

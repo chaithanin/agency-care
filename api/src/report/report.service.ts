@@ -317,21 +317,69 @@ export class ReportService {
 
   // ── Report 3: Agency Performance ───────────────────────────────────────────
   async agencyPerformance(user: RequestUser, from: string, to: string) {
+    const dateFilter = { gte: new Date(from), lte: new Date(to) };
+
+    // 1) All visit plans in range (all statuses — to count done separately)
     const plans = await this.prisma.visitPlan.findMany({
-      where: { planDate: { gte: new Date(from), lte: new Date(to) } },
-      include: {
-        agency: { select: { id: true, code: true, name: true, zone: true, province: true, level: true, tier: true } },
-        report: { select: { newLeads: true, interestLevel: true, nextVisitDate: true } },
-        checkin: { select: { id: true } },
+      where: { planDate: dateFilter },
+      select: {
+        id: true,
+        agencyId: true,
+        planDate: true,
+        status: true,
+        agency: {
+          select: {
+            id: true,
+            code: true,
+            name: true,
+            zone: true,
+            level: true,
+            gradeRelationship: true,
+          },
+        },
+        report: {
+          select: { newLeads: true, interestLevel: true },
+        },
       },
     });
 
+    // 2) POSM given per agency (via visitPlan → agencyId)
+    const posmTxns = await this.prisma.posmTransaction.findMany({
+      where: { visitPlan: { planDate: dateFilter } },
+      select: { quantity: true, visitPlan: { select: { agencyId: true } } },
+    });
+    const posmByAgency = new Map<string, number>();
+    for (const t of posmTxns) {
+      const aid = t.visitPlan.agencyId;
+      posmByAgency.set(aid, (posmByAgency.get(aid) ?? 0) + t.quantity);
+    }
+
+    // 3) Sales amount per agency
+    const salesTxns = await this.prisma.salesActivity.findMany({
+      where: { visitPlan: { planDate: dateFilter } },
+      select: { amount: true, visitPlan: { select: { agencyId: true } } },
+    });
+    const salesByAgency = new Map<string, number>();
+    for (const s of salesTxns) {
+      const aid = s.visitPlan.agencyId;
+      salesByAgency.set(aid, (salesByAgency.get(aid) ?? 0) + s.amount);
+    }
+
+    // 4) Aggregate per agency
     type AgRow = {
-      id: string; code: string; name: string; zone?: string | null; province?: string | null;
-      level?: string | null; tier?: string | null;
-      visits: number; completed: number; withReport: number;
-      leads: number; avgInterest: number; lastVisit: string | null;
-      score: number;
+      agencyId: string;
+      agencyCode: string;
+      agencyName: string;
+      zone: string | null;
+      grade: string | null;
+      totalVisits: number;          // done plans
+      totalReports: number;         // plans with VisitReport
+      posmGiven: number;
+      salesAmount: number;
+      lastVisitDate: string | null; // most recent done planDate
+      interestScoreSum: number;     // accumulate numeric score for avg
+      interestCount: number;
+      newLeads: number;
     };
 
     const agMap = new Map<string, AgRow>();
@@ -340,36 +388,52 @@ export class ReportService {
       const a = p.agency;
       if (!agMap.has(a.id)) {
         agMap.set(a.id, {
-          id: a.id, code: a.code, name: a.name,
-          zone: a.zone, province: a.province, level: a.level, tier: a.tier,
-          visits: 0, completed: 0, withReport: 0, leads: 0,
-          avgInterest: 0, lastVisit: null, score: 0,
+          agencyId: a.id,
+          agencyCode: a.code,
+          agencyName: a.name,
+          zone: a.zone ?? null,
+          grade: a.level ?? null,
+          totalVisits: 0,
+          totalReports: 0,
+          posmGiven: posmByAgency.get(a.id) ?? 0,
+          salesAmount: salesByAgency.get(a.id) ?? 0,
+          lastVisitDate: null,
+          interestScoreSum: 0,
+          interestCount: 0,
+          newLeads: 0,
         });
       }
       const row = agMap.get(a.id)!;
-      row.visits++;
 
-      const planDate = p.planDate.toISOString().slice(0, 10);
-      if (!row.lastVisit || planDate > row.lastVisit) row.lastVisit = planDate;
+      if (p.status === 'done') {
+        row.totalVisits++;
+        const ds = p.planDate.toISOString().slice(0, 10);
+        if (!row.lastVisitDate || ds > row.lastVisitDate) row.lastVisitDate = ds;
+      }
 
-      if (p.status === 'done') row.completed++;
       if (p.report) {
-        row.withReport++;
-        row.leads += p.report.newLeads ?? 0;
+        row.totalReports++;
+        row.newLeads += p.report.newLeads ?? 0;
         const il = p.report.interestLevel;
         const score = il === 'high' ? 3 : il === 'medium' ? 2 : il === 'low' ? 1 : 0;
-        row.avgInterest += score;
+        if (score > 0) {
+          row.interestScoreSum += score;
+          row.interestCount++;
+        }
       }
     }
 
     const rows = [...agMap.values()]
-      .map((r) => {
-        const interestAvg = r.withReport > 0 ? r.avgInterest / r.withReport : 0;
-        const completionRate = r.visits > 0 ? r.completed / r.visits : 0;
-        const score = Math.round(r.completed * 10 + r.leads * 5 + interestAvg * 8 + completionRate * 15);
-        return { ...r, avgInterest: Math.round(interestAvg * 10) / 10, score };
-      })
-      .sort((a, b) => b.score - a.score || b.completed - a.completed);
+      .map(({ interestScoreSum, interestCount, ...r }) => ({
+        ...r,
+        interestLevel:
+          interestCount > 0
+            ? (['', 'low', 'medium', 'high'][
+                Math.round(interestScoreSum / interestCount)
+              ] ?? null)
+            : null,
+      }))
+      .sort((a, b) => b.totalVisits - a.totalVisits);
 
     return { from, to, rows };
   }

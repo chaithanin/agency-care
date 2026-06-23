@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post } from '@nestjs/common';
 import {
   ProductService,
   CreateProductDto,
@@ -25,5 +25,11 @@ export class ProductController {
   @Patch(':id')
   update(@Param('id') id: string, @Body() dto: UpdateProductDto) {
     return this.service.update(id, dto);
+  }
+
+  @Roles('admin', 'closer')
+  @Delete(':id')
+  remove(@Param('id') id: string) {
+    return this.service.remove(id);
   }
 }

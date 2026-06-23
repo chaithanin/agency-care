@@ -4,7 +4,7 @@ import {
   Dialog, DialogActions, DialogContent, DialogTitle,
   FormControl, InputLabel, LinearProgress, MenuItem,
   Paper, Select, Stack, Tab, Table, TableBody, TableCell,
-  TableHead, TableRow, Tabs, TextField, Tooltip, Typography,
+  TableHead, TablePagination, TableRow, Tabs, TextField, Tooltip, Typography,
 } from '@mui/material';
 import {
   Add, ErrorOutline, Inventory2, ListAlt,
@@ -167,7 +167,7 @@ function StockTab() {
               <TableRow sx={{ '& th': { fontWeight: 700, fontSize: 12 } }}>
                 <TableCell>{t('posm.codeAndName')}</TableCell>
                 <TableCell>{t('posm.stock')}</TableCell>
-                <TableCell>Min Stock</TableCell>
+                <TableCell>{t('posm.minStockCol')}</TableCell>
                 <TableCell>{t('c.status')}</TableCell>
                 <TableCell align="right">{t('posm.used30')}</TableCell>
                 <TableCell align="right">{t('c.manage')}</TableCell>
@@ -428,23 +428,41 @@ function LogTab() {
   const [from, setFrom] = useState(monthAgoStr());
   const [to, setTo] = useState(todayStr());
   const [rows, setRows] = useState<DistLog[]>([]);
+  const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
   const [items, setItems] = useState<{ id: string; name: string }[]>([]);
   const [itemFilter, setItemFilter] = useState('');
+  // MUI TablePagination uses 0-based page index
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(50);
 
-  const load = useCallback(() => {
+  const load = useCallback((pg: number, rpp: number) => {
     setLoading(true);
-    api.get('/posm/distribution-log', { params: { from, to, itemId: itemFilter || undefined } })
-      .then((r) => setRows(r.data))
+    api.get('/posm/distribution-log', {
+      params: { from, to, itemId: itemFilter || undefined, page: pg + 1, limit: rpp },
+    })
+      .then((r) => {
+        setRows(r.data.data);
+        setTotal(r.data.total);
+      })
       .finally(() => setLoading(false));
   }, [from, to, itemFilter]);
 
+  // Reset to page 0 and reload when filters change
+  const handleSearch = () => {
+    setPage(0);
+    load(0, rowsPerPage);
+  };
+
   useEffect(() => {
     api.get('/posm/items').then((r) => setItems(r.data));
-    load();
-  }, [load]);
+  }, []);
 
-  const total = rows.reduce((s, r) => s + r.quantity, 0);
+  useEffect(() => {
+    load(page, rowsPerPage);
+  }, [load, page, rowsPerPage]);
+
+  const quantityTotal = rows.reduce((s, r) => s + r.quantity, 0);
 
   return (
     <Box>
@@ -463,10 +481,10 @@ function LogTab() {
               {items.map((it) => <MenuItem key={it.id} value={it.id}>{it.name}</MenuItem>)}
             </Select>
           </FormControl>
-          <Button variant="contained" onClick={load} startIcon={<Refresh />}>{t('posm.viewData')}</Button>
-          {rows.length > 0 && (
+          <Button variant="contained" onClick={handleSearch} startIcon={<Refresh />}>{t('posm.viewData')}</Button>
+          {total > 0 && (
             <Typography variant="caption" color="text.secondary">
-              {rows.length} {t('posm.items')} · {t('posm.total')} {total} {t('posm.pieces')}
+              {total} {t('posm.items')} · {t('posm.total')} {quantityTotal} {t('posm.pieces')}
             </Typography>
           )}
         </Stack>
@@ -516,6 +534,18 @@ function LogTab() {
               </TableBody>
             </Table>
           </Box>
+          <TablePagination
+            component="div"
+            count={total}
+            page={page}
+            rowsPerPage={rowsPerPage}
+            rowsPerPageOptions={[25, 50, 100]}
+            onPageChange={(_, newPage) => setPage(newPage)}
+            onRowsPerPageChange={(e) => {
+              setRowsPerPage(Number(e.target.value));
+              setPage(0);
+            }}
+          />
         </Paper>
       )}
       {!loading && rows.length === 0 && (
@@ -546,14 +576,14 @@ export default function PosmPage() {
           <Tab icon={<Inventory2 fontSize="small" />} iconPosition="start"
             label={
               <Stack direction="row" alignItems="center" spacing={0.5}>
-                <span>Stock Overview</span>
+                <span>{t('posm.tabStock')}</span>
                 {lowCount > 0 && (
                   <Chip size="small" color="warning" label={lowCount} sx={{ height: 18, fontSize: 10 }} />
                 )}
               </Stack>
             } />
-          <Tab icon={<People fontSize="small" />} iconPosition="start" label="Distribution by Agency" />
-          <Tab icon={<ListAlt fontSize="small" />} iconPosition="start" label="Distribution Log" />
+          <Tab icon={<People fontSize="small" />} iconPosition="start" label={t('posm.tabByAgency')} />
+          <Tab icon={<ListAlt fontSize="small" />} iconPosition="start" label={t('posm.tabLog')} />
         </Tabs>
       </Paper>
 

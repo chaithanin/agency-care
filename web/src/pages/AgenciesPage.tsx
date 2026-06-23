@@ -209,6 +209,17 @@ const TIERS = ['platinum', 'gold', 'silver', 'bronze', 'new'];
 const tierColor = (t?: string) =>
   t === 'platinum' ? 'secondary' : t === 'gold' ? 'warning' : t === 'new' ? 'info' : 'default';
 
+const stageColor = (s?: string): 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning' => {
+  if (s === 'active') return 'success';
+  if (s === 'prospect') return 'info';
+  if (s === 'onboarding') return 'secondary';
+  if (s === 'grade_a') return 'primary';
+  if (s === 'at_risk') return 'warning';
+  if (s === 'new') return 'default';
+  if (s === 'inactive') return 'default';
+  return 'default';
+};
+
 const emptyForm = {
   // ส่วนที่ 1 — พื้นฐาน
   code: '', name: '', type: '', level: 'C', tier: 'gold', pipelineStage: 'active', status: 'active',
@@ -418,6 +429,7 @@ export default function AgenciesPage() {
   };
 
   const doUnassign = async (agencyId: string, employeeId: string) => {
+    if (!window.confirm(t('ag.confirmUnassign'))) return;
     await api.delete('/assignments', { data: { agencyId, employeeId } });
     load();
   };
@@ -435,6 +447,7 @@ export default function AgenciesPage() {
   };
 
   const runGeocode = async () => {
+    if (!window.confirm(t('ag.confirmGeocode'))) return;
     setGeocoding(true); setGeoResult('');
     try {
       const { data } = await api.post('/agencies/geocode', null, { params: { limit: 50 } });
@@ -569,10 +582,10 @@ export default function AgenciesPage() {
               </TableCell>
               <TableCell sx={{ minWidth: 90 }}>{t('c.code')}</TableCell>
               <TableCell sx={{ minWidth: 160 }}>{t('c.name')}</TableCell>
-              <TableCell sx={{ minWidth: 70 }}>Grade</TableCell>
-              <TableCell sx={{ minWidth: 130 }}>Tags</TableCell>
+              <TableCell sx={{ minWidth: 70 }}>{t('ag.colGrade')}</TableCell>
+              <TableCell sx={{ minWidth: 130 }}>{t('ag.colTags')}</TableCell>
               <TableCell sx={{ minWidth: 100 }}>{t('ag.lastVisit')}</TableCell>
-              <TableCell sx={{ minWidth: 150 }}>Tier / Stage</TableCell>
+              <TableCell sx={{ minWidth: 150 }}>{t('ag.colTierStage')}</TableCell>
               <TableCell sx={{ minWidth: 100 }}>{t('c.zone')}</TableCell>
               <TableCell sx={{ minWidth: 140 }}>{t('ag.assignedSeller')}</TableCell>
               <TableCell align="right" sx={{ minWidth: 220 }}>{t('ag.actions')}</TableCell>
@@ -626,7 +639,7 @@ export default function AgenciesPage() {
                     <Stack direction="row" spacing={0.5}>
                       <Chip size="small" clickable color={tierColor(a.tier)} label={a.tier ?? 'gold'}
                         onClick={() => setTierFor({ ...a })} />
-                      <Chip size="small" variant="outlined" label={t('st.' + (a.pipelineStage ?? 'active'))}
+                      <Chip size="small" color={stageColor(a.pipelineStage)} label={t('st.' + (a.pipelineStage ?? 'active'))}
                         onClick={() => setTierFor({ ...a })} />
                     </Stack>
                   </TableCell>
@@ -645,7 +658,7 @@ export default function AgenciesPage() {
                   </TableCell>
                   <TableCell align="right">
                     <Stack direction="row" spacing={0.5} justifyContent="flex-end">
-                      <Tooltip title="GPS">
+                      <Tooltip title={t('ag.gpsTooltip')}>
                         <Chip size="small" clickable
                           color={a.latitude == null ? 'warning' : a.geocodeSource === 'google' ? 'info' : 'success'}
                           label={a.latitude == null ? 'GPS?' : '📍'}
@@ -763,7 +776,7 @@ export default function AgenciesPage() {
                   onChange={(e) => setF('tier', e.target.value)} sx={{ flex: 1 }} size="small">
                   {TIERS.map((tier) => <MenuItem key={tier} value={tier}>{tier}</MenuItem>)}
                 </TextField>
-                <TextField select label="Pipeline Stage" value={form.pipelineStage}
+                <TextField select label={t('ag.pipelineStage')} value={form.pipelineStage}
                   onChange={(e) => setF('pipelineStage', e.target.value)} sx={{ flex: 1 }} size="small">
                   {STAGES.map((s) => <MenuItem key={s} value={s}>{t('st.' + s)}</MenuItem>)}
                 </TextField>
@@ -793,13 +806,13 @@ export default function AgenciesPage() {
               <Stack direction="row" spacing={2}>
                 <TextField label={t('c.phone')} value={form.phone}
                   onChange={(e) => setF('phone', e.target.value)} sx={{ flex: 1 }} size="small" />
-                <TextField label="Email" value={form.email}
+                <TextField label={t('ag.fieldEmail')} value={form.email}
                   onChange={(e) => setF('email', e.target.value)} sx={{ flex: 1 }} size="small" />
               </Stack>
               <Stack direction="row" spacing={2}>
-                <TextField label="LINE ID" value={form.lineId}
+                <TextField label={t('ag.fieldLineId')} value={form.lineId}
                   onChange={(e) => setF('lineId', e.target.value)} sx={{ flex: 1 }} size="small" />
-                <TextField label="Website" value={form.website}
+                <TextField label={t('ag.fieldWebsite')} value={form.website}
                   onChange={(e) => setF('website', e.target.value)} sx={{ flex: 1 }} size="small"
                   placeholder="https://" />
               </Stack>
@@ -808,19 +821,19 @@ export default function AgenciesPage() {
             {/* ส่วนที่ 4: ข้อมูลธุรกิจ */}
             <Section title={t('ag.sec4')}>
               <Stack direction="row" spacing={2}>
-                <TextField label="Classification" value={form.classification}
+                <TextField label={t('ag.fieldClassification')} value={form.classification}
                   onChange={(e) => setF('classification', e.target.value)} sx={{ flex: 1 }} size="small" />
-                <TextField label="Grade Quality" value={form.gradeQuality}
+                <TextField label={t('ag.fieldGradeQuality')} value={form.gradeQuality}
                   onChange={(e) => setF('gradeQuality', e.target.value)} sx={{ flex: 1 }} size="small" />
-                <TextField label="Grade Relationship" value={form.gradeRelationship}
+                <TextField label={t('ag.fieldGradeRelationship')} value={form.gradeRelationship}
                   onChange={(e) => setF('gradeRelationship', e.target.value)} sx={{ flex: 1 }} size="small" />
               </Stack>
               <Stack direction="row" spacing={2}>
-                <TextField label="Priority" value={form.priority}
+                <TextField label={t('ag.fieldPriority')} value={form.priority}
                   onChange={(e) => setF('priority', e.target.value)} sx={{ flex: 1 }} size="small" />
-                <TextField label="Source" value={form.source}
+                <TextField label={t('ag.fieldSource')} value={form.source}
                   onChange={(e) => setF('source', e.target.value)} sx={{ flex: 1 }} size="small" />
-                <TextField label="Tags" value={form.tags}
+                <TextField label={t('ag.fieldTags')} value={form.tags}
                   onChange={(e) => setF('tags', e.target.value)} sx={{ flex: 1 }} size="small" />
               </Stack>
             </Section>
@@ -828,10 +841,10 @@ export default function AgenciesPage() {
             {/* ส่วนที่ 5: พิกัด GPS */}
             <Section title={t('ag.sec5')}>
               <Stack direction="row" spacing={2}>
-                <TextField label="Latitude" value={form.latitude}
+                <TextField label={t('ag.fieldLatitude')} value={form.latitude}
                   onChange={(e) => setF('latitude', e.target.value)} placeholder="13.7563"
                   sx={{ flex: 1 }} size="small" />
-                <TextField label="Longitude" value={form.longitude}
+                <TextField label={t('ag.fieldLongitude')} value={form.longitude}
                   onChange={(e) => setF('longitude', e.target.value)} placeholder="100.5018"
                   sx={{ flex: 1 }} size="small" />
               </Stack>
@@ -914,7 +927,7 @@ export default function AgenciesPage() {
                 onChange={(e) => setTierFor({ ...tierFor, tier: e.target.value })}>
                 {TIERS.map((t) => <MenuItem key={t} value={t}>{t}</MenuItem>)}
               </TextField>
-              <TextField select label="Pipeline Stage" value={tierFor.pipelineStage ?? 'active'}
+              <TextField select label={t('ag.pipelineStage')} value={tierFor.pipelineStage ?? 'active'}
                 onChange={(e) => setTierFor({ ...tierFor, pipelineStage: e.target.value })}>
                 {STAGES.map((s) => <MenuItem key={s} value={s}>{t('st.' + s)}</MenuItem>)}
               </TextField>

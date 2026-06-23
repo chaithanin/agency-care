@@ -16,7 +16,12 @@ import {
   TextField,
   Stack,
   Alert,
+  IconButton,
+  Switch,
+  FormControlLabel,
 } from '@mui/material';
+import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
 import { api, errMsg } from '../api/client';
 import { useT } from '../i18n';
 
@@ -25,9 +30,11 @@ interface Product {
   code: string;
   name: string;
   price: number;
+  isActive: boolean;
 }
 
 const empty = { code: '', name: '', price: '' };
+const emptyEdit = { name: '', price: '', isActive: true };
 
 export default function ProductsPage() {
   const { t } = useT();
@@ -35,6 +42,12 @@ export default function ProductsPage() {
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ ...empty });
   const [error, setError] = useState('');
+
+  // Edit state
+  const [editOpen, setEditOpen] = useState(false);
+  const [editId, setEditId] = useState('');
+  const [editForm, setEditForm] = useState({ ...emptyEdit });
+  const [editError, setEditError] = useState('');
 
   const load = () => api.get('/products').then((r) => setRows(r.data));
   useEffect(() => {
@@ -57,6 +70,38 @@ export default function ProductsPage() {
     }
   };
 
+  const openEdit = (p: Product) => {
+    setEditId(p.id);
+    setEditForm({ name: p.name, price: String(p.price), isActive: p.isActive });
+    setEditError('');
+    setEditOpen(true);
+  };
+
+  const saveEdit = async () => {
+    setEditError('');
+    try {
+      await api.patch(`/products/${editId}`, {
+        name: editForm.name,
+        price: editForm.price ? Number(editForm.price) : undefined,
+        isActive: editForm.isActive,
+      });
+      setEditOpen(false);
+      load();
+    } catch (e) {
+      setEditError(errMsg(e));
+    }
+  };
+
+  const remove = async (p: Product) => {
+    if (!window.confirm(`${t('pr.deleteConfirm')} "${p.name}"?`)) return;
+    try {
+      await api.delete(`/products/${p.id}`);
+      load();
+    } catch (e) {
+      alert(errMsg(e));
+    }
+  };
+
   return (
     <Box>
       <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2}>
@@ -75,6 +120,8 @@ export default function ProductsPage() {
               <TableCell>{t('c.code')}</TableCell>
               <TableCell>{t('pr.name')}</TableCell>
               <TableCell align="right">{t('pr.price')}</TableCell>
+              <TableCell>{t('pr.active')}</TableCell>
+              <TableCell />
             </TableRow>
           </TableHead>
           <TableBody>
@@ -83,12 +130,22 @@ export default function ProductsPage() {
                 <TableCell>{p.code}</TableCell>
                 <TableCell>{p.name}</TableCell>
                 <TableCell align="right">{p.price.toLocaleString()}</TableCell>
+                <TableCell>{p.isActive ? t('pr.activeYes') : t('pr.activeNo')}</TableCell>
+                <TableCell align="right">
+                  <IconButton size="small" onClick={() => openEdit(p)}>
+                    <EditIcon fontSize="small" />
+                  </IconButton>
+                  <IconButton size="small" color="error" onClick={() => remove(p)}>
+                    <DeleteIcon fontSize="small" />
+                  </IconButton>
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>
         </Table>
       </Paper>
 
+      {/* Create dialog */}
       <Dialog open={open} onClose={() => setOpen(false)} fullWidth maxWidth="xs">
         <DialogTitle>{t('pr.addTitle')}</DialogTitle>
         <DialogContent>
@@ -117,6 +174,43 @@ export default function ProductsPage() {
         <DialogActions>
           <Button onClick={() => setOpen(false)}>{t('common.cancel')}</Button>
           <Button variant="contained" onClick={save}>
+            {t('common.save')}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Edit dialog */}
+      <Dialog open={editOpen} onClose={() => setEditOpen(false)} fullWidth maxWidth="xs">
+        <DialogTitle>{t('pr.editTitle')}</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} mt={1}>
+            {editError && <Alert severity="error">{editError}</Alert>}
+            <TextField
+              label={t('pr.name')}
+              value={editForm.name}
+              onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+              required
+            />
+            <TextField
+              label={t('pr.price')}
+              type="number"
+              value={editForm.price}
+              onChange={(e) => setEditForm({ ...editForm, price: e.target.value })}
+            />
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={editForm.isActive}
+                  onChange={(e) => setEditForm({ ...editForm, isActive: e.target.checked })}
+                />
+              }
+              label={t('pr.active')}
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setEditOpen(false)}>{t('common.cancel')}</Button>
+          <Button variant="contained" onClick={saveEdit}>
             {t('common.save')}
           </Button>
         </DialogActions>

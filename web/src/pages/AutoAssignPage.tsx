@@ -14,6 +14,7 @@ import {
   Alert,
   LinearProgress,
   TextField,
+  Collapse,
 } from '@mui/material';
 import { api, errMsg } from '../api/client';
 import { PdfExportButton } from '../utils/pdf';
@@ -33,6 +34,14 @@ interface SummaryRow {
   name: string;
   count: number;
 }
+interface UnassignedAgency {
+  id: string;
+  code: string;
+  name: string;
+  zone?: string | null;
+}
+
+const MAX_PER_SALES_KEY = 'autoAssign.maxPerSales';
 
 export default function AutoAssignPage() {
   const { t, lang } = useT();
@@ -41,8 +50,9 @@ export default function AutoAssignPage() {
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState('');
   const [filterEmp, setFilterEmp] = useState<string | null>(null); // คลิกชื่อเพื่อฟิลเตอร์
-  const [maxPerSales, setMaxPerSales] = useState('30'); // Phase 5: จำกัด/คน
-  const [unassigned, setUnassigned] = useState(0);
+  const [maxPerSales, setMaxPerSales] = useState(() => localStorage.getItem(MAX_PER_SALES_KEY) ?? '30'); // Phase 5: จำกัด/คน
+  const [unassignedAgencies, setUnassignedAgencies] = useState<UnassignedAgency[]>([]);
+  const [showUnassigned, setShowUnassigned] = useState(false);
   const pdfRef = useRef<HTMLDivElement>(null);
 
   const propose = async () => {
@@ -54,7 +64,8 @@ export default function AutoAssignPage() {
       });
       setProposal(data.proposal);
       setSummary(data.summary);
-      setUnassigned(data.unassigned ?? 0);
+      setUnassignedAgencies(data.unassignedAgencies ?? []);
+      setShowUnassigned(false);
       setFilterEmp(null);
       if (data.note) setMsg(data.note);
     } catch (e) {
@@ -66,6 +77,12 @@ export default function AutoAssignPage() {
 
   const apply = async () => {
     if (!proposal) return;
+    const confirmed = window.confirm(
+      lang === 'th'
+        ? `ยืนยันการแบ่ง Agency ${proposal.filter((p) => p.employeeId).length} ร้านให้เซลส์? การกระทำนี้จะเปลี่ยน Assignment ที่มีอยู่`
+        : `Apply assignment for ${proposal.filter((p) => p.employeeId).length} agencies? This will replace existing assignments.`
+    );
+    if (!confirmed) return;
     setLoading(true);
     setMsg('');
     try {
@@ -92,7 +109,10 @@ export default function AutoAssignPage() {
             type="number"
             size="small"
             value={maxPerSales}
-            onChange={(e) => setMaxPerSales(e.target.value)}
+            onChange={(e) => {
+              setMaxPerSales(e.target.value);
+              localStorage.setItem(MAX_PER_SALES_KEY, e.target.value);
+            }}
             sx={{ width: 110 }}
           />
           <Button variant="outlined" onClick={propose} disabled={loading}>
@@ -138,14 +158,46 @@ export default function AutoAssignPage() {
                 onClick={() => setFilterEmp(filterEmp === s.employeeId ? null : s.employeeId)}
               />
             ))}
-            {unassigned > 0 && (
-              <Chip label={`${t('aa.unassigned')}: ${unassigned}`} color="warning" />
+            {unassignedAgencies.length > 0 && (
+              <Chip
+                label={`${t('aa.unassigned')}: ${unassignedAgencies.length}`}
+                color="warning"
+                onClick={() => setShowUnassigned((v) => !v)}
+              />
             )}
             {filterEmp && (
               <Chip label={t('aa.clearFilter')} color="error" variant="outlined" onClick={() => setFilterEmp(null)} />
             )}
           </Stack>
         </Paper>
+      )}
+
+      {unassignedAgencies.length > 0 && (
+        <Collapse in={showUnassigned}>
+          <Paper sx={{ p: 2, mb: 2, border: '1px solid', borderColor: 'warning.main' }}>
+            <Typography variant="subtitle2" fontWeight={700} color="warning.dark" mb={1}>
+              {t('aa.unassignedAgencies')} ({unassignedAgencies.length})
+            </Typography>
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell>{t('aa.colCode')}</TableCell>
+                  <TableCell>{t('aa.colName')}</TableCell>
+                  <TableCell>{t('c.zone')}</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {unassignedAgencies.map((a) => (
+                  <TableRow key={a.id}>
+                    <TableCell>{a.code}</TableCell>
+                    <TableCell>{a.name}</TableCell>
+                    <TableCell>{a.zone || '-'}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </Paper>
+        </Collapse>
       )}
 
       {proposal && (
@@ -171,7 +223,7 @@ export default function AutoAssignPage() {
                   <TableCell>{p.employeeName}</TableCell>
                   <TableCell>
                     {p.matchedZone ? (
-                      <Chip size="small" color="success" label={lang === 'th' ? 'ตรง' : 'Match'} />
+                      <Chip size="small" color="success" label={t('aa.zoneMatchLabel')} />
                     ) : (
                       <Chip size="small" label="-" />
                     )}

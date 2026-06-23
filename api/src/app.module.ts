@@ -28,6 +28,7 @@ import { UserModule } from './user/user.module';
 import { TaskModule } from './task/task.module';
 import { AssignmentPlanModule } from './assignment-plan/assignment-plan.module';
 import { ReportModule } from './report/report.module';
+import { FollowupModule } from './followup/followup.module';
 
 @Module({
   imports: [
@@ -67,6 +68,7 @@ import { ReportModule } from './report/report.module';
     TaskModule,
     AssignmentPlanModule,
     ReportModule,
+    FollowupModule,
   ],
   controllers: [AppController],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],

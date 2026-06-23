@@ -40,6 +40,16 @@ export class UpdateModelStatusDto {
   status!: ModelStatus;
 }
 
+export class UpdateModelDto {
+  @IsOptional()
+  @IsString()
+  name?: string;
+
+  @IsOptional()
+  @IsString()
+  category?: string;
+}
+
 @Injectable()
 export class ModelService {
   constructor(private prisma: PrismaService) {}
@@ -99,6 +109,12 @@ export class ModelService {
       where: { id: dto.modelId },
       data: { currentAgencyId: null, status: 'in_stock' },
     });
+  }
+
+  async update(id: string, dto: UpdateModelDto) {
+    const model = await this.prisma.model.findUnique({ where: { id } });
+    if (!model) throw new NotFoundException('ไม่พบอุปกรณ์');
+    return this.prisma.model.update({ where: { id }, data: dto });
   }
 
   async setStatus(id: string, dto: UpdateModelStatusDto) {

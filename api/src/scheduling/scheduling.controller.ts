@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, Post, Put, Query } from '@nestjs/common';
 import { SchedulingService } from './scheduling.service';
 import { Roles } from '../auth/guards';
 import { CurrentUser } from '../common/current-user.decorator';
@@ -109,9 +109,30 @@ export class SchedulingController {
 
   // วันหยุดบริษัท (มีผลทุกคน)
   @Roles('admin', 'closer')
+  @Get('company-holidays')
+  listCompanyHolidays(@Query('year') y?: string, @Query('month') m?: string) {
+    return this.service.listCompanyHolidays(toInt(y), toInt(m));
+  }
+
+  @Roles('admin', 'closer')
   @Post('company-holidays/toggle')
   toggleCompanyHoliday(@Body() body: { date: string; note?: string }) {
     return this.service.toggleCompanyHoliday(body.date, body.note);
+  }
+
+  // Monthly Targets
+  @Roles('admin', 'closer')
+  @Get('targets')
+  getTargets(@Query('year') y?: string, @Query('month') m?: string) {
+    return this.service.getTargets(toInt(y), toInt(m));
+  }
+
+  @Roles('admin', 'closer')
+  @Put('targets')
+  upsertTarget(
+    @Body() body: { employeeId: string; year: number; month: number; visitTarget: number; newAgencyTarget: number },
+  ) {
+    return this.service.upsertTarget(body.employeeId, body.year, body.month, body.visitTarget, body.newAgencyTarget);
   }
 
   // ----- พนักงานดูงานตัวเอง -----

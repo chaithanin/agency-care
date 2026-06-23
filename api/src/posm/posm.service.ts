@@ -65,7 +65,11 @@ export class PosmService {
   }
 
   // ── Distribution Log — รายการแจกสื่อทั้งหมด ──────────────────────────────
-  async distributionLog(params: { from?: string; to?: string; agencyId?: string; itemId?: string }) {
+  async distributionLog(params: { from?: string; to?: string; agencyId?: string; itemId?: string; page?: number; limit?: number }) {
+    const page = params.page ?? 1;
+    const limit = params.limit ?? 50;
+    const skip = (page - 1) * limit;
+
     const where: any = {};
     if (params.from || params.to) {
       where.createdAt = {};
@@ -78,22 +82,28 @@ export class PosmService {
     if (params.itemId) where.posmItemId = params.itemId;
     if (params.agencyId) where.visitPlan = { agencyId: params.agencyId };
 
-    const txns = await this.prisma.posmTransaction.findMany({
-      where,
-      include: {
-        posmItem: { select: { code: true, name: true, unit: true, category: true } },
-        visitPlan: {
-          include: {
-            agency: { select: { id: true, code: true, name: true } },
-            employee: { select: { name: true, code: true } },
-          },
+    const include = {
+      posmItem: { select: { code: true, name: true, unit: true, category: true } },
+      visitPlan: {
+        include: {
+          agency: { select: { id: true, code: true, name: true } },
+          employee: { select: { name: true, code: true } },
         },
       },
-      orderBy: { createdAt: 'desc' },
-      take: 500,
-    });
+    };
 
-    return txns.map((t) => ({
+    const [total, txns] = await Promise.all([
+      this.prisma.posmTransaction.count({ where }),
+      this.prisma.posmTransaction.findMany({
+        where,
+        include,
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit,
+      }),
+    ]);
+
+    const data = txns.map((t) => ({
       id: t.id,
       date: t.createdAt,
       quantity: t.quantity,
@@ -102,6 +112,8 @@ export class PosmService {
       employee: t.visitPlan.employee,
       visitPlanId: t.visitPlanId,
     }));
+
+    return { data, total, page, limit };
   }
 
   // ── Agency Distribution Summary — สรุปต่อ Agency ──────────────────────────

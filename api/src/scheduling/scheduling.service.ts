@@ -481,6 +481,57 @@ export class SchedulingService {
     return rows.map((r) => r.date.toISOString().slice(0, 10));
   }
 
+  // ===== วันหยุดบริษัท — list รายเดือน =====
+  async listCompanyHolidays(year?: number, month?: number) {
+    const { y, m, gte, lt } = this.ym(year, month);
+    const rows = await this.prisma.workCalendar.findMany({
+      where: { date: { gte, lt }, isHoliday: true },
+      orderBy: { date: 'asc' },
+      select: { date: true, note: true },
+    });
+    return {
+      year: y,
+      month: m,
+      holidays: rows.map((r) => ({ date: r.date.toISOString().slice(0, 10), note: r.note })),
+    };
+  }
+
+  // ===== Monthly Targets — list all employees for a month =====
+  async getTargets(year?: number, month?: number) {
+    const { y, m } = this.ym(year, month);
+    const employees = await this.prisma.employee.findMany({
+      where: { isActive: true, position: { in: ['sales', 'closer'] } },
+      select: { id: true, name: true, code: true, position: true },
+      orderBy: [{ position: 'asc' }, { code: 'asc' }],
+    });
+    const plans = await this.prisma.monthlyPlan.findMany({
+      where: { year: y, month: m },
+    });
+    const planMap = new Map(plans.map((p) => [p.employeeId, p]));
+    const rows = employees.map((e) => {
+      const plan = planMap.get(e.id);
+      return {
+        employeeId: e.id,
+        name: e.name,
+        code: e.code,
+        position: e.position,
+        visitTarget: plan?.visitTarget ?? 0,
+        newAgencyTarget: plan?.newAgencyTarget ?? RULES.NEW_AGENCY_TARGET,
+      };
+    });
+    return { year: y, month: m, rows };
+  }
+
+  // ===== Monthly Targets — upsert one employee =====
+  async upsertTarget(employeeId: string, year: number, month: number, visitTarget: number, newAgencyTarget: number) {
+    const plan = await this.prisma.monthlyPlan.upsert({
+      where: { employeeId_year_month: { employeeId, year, month } },
+      update: { visitTarget, newAgencyTarget },
+      create: { employeeId, year, month, visitTarget, newAgencyTarget },
+    });
+    return plan;
+  }
+
   // ความถี่เยี่ยม/เดือน ตาม tier ของ agency
   private tierFreq(tier: string, month: number): number {
     switch (tier) {

@@ -4,6 +4,7 @@ import {
   CreateModelDto,
   MoveModelDto,
   UpdateModelStatusDto,
+  UpdateModelDto,
 } from './model.service';
 import { Roles } from '../auth/guards';
 import { CurrentUser, RequestUser } from '../common/current-user.decorator';
@@ -32,6 +33,12 @@ export class ModelController {
   @Post('return')
   returnToStock(@CurrentUser() user: RequestUser, @Body() dto: MoveModelDto) {
     return this.service.returnToStock(user, dto);
+  }
+
+  @Roles('admin', 'closer')
+  @Patch(':id')
+  update(@Param('id') id: string, @Body() dto: UpdateModelDto) {
+    return this.service.update(id, dto);
   }
 
   @Roles('admin', 'closer')

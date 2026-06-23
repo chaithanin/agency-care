@@ -18,7 +18,9 @@ import {
   Chip,
   MenuItem,
   Alert,
+  IconButton,
 } from '@mui/material';
+import EditIcon from '@mui/icons-material/Edit';
 import { api, errMsg } from '../api/client';
 import { useT } from '../i18n';
 
@@ -52,6 +54,11 @@ export default function ModelsPage() {
   const [form, setForm] = useState({ ...empty });
   const [error, setError] = useState('');
 
+  // edit dialog
+  const [editFor, setEditFor] = useState<Model | null>(null);
+  const [editForm, setEditForm] = useState({ name: '', category: '' });
+  const [editError, setEditError] = useState('');
+
   // deploy dialog
   const [deployFor, setDeployFor] = useState<Model | null>(null);
   const [deployAgency, setDeployAgency] = useState('');
@@ -75,6 +82,27 @@ export default function ModelsPage() {
       load();
     } catch (e) {
       setError(errMsg(e));
+    }
+  };
+
+  const openEdit = (m: Model) => {
+    setEditFor(m);
+    setEditForm({ name: m.name, category: m.category || '' });
+    setEditError('');
+  };
+
+  const saveEdit = async () => {
+    if (!editFor) return;
+    setEditError('');
+    try {
+      await api.patch('/models/' + editFor.id, {
+        name: editForm.name || undefined,
+        category: editForm.category || undefined,
+      });
+      setEditFor(null);
+      load();
+    } catch (e) {
+      setEditError(errMsg(e));
     }
   };
 
@@ -125,6 +153,9 @@ export default function ModelsPage() {
                 </TableCell>
                 <TableCell>{m.currentAgency ? m.currentAgency.name : '-'}</TableCell>
                 <TableCell align="right">
+                  <IconButton size="small" onClick={() => openEdit(m)} sx={{ mr: 1 }}>
+                    <EditIcon fontSize="small" />
+                  </IconButton>
                   {m.status === 'deployed' ? (
                     <Button size="small" onClick={() => doReturn(m)}>
                       {t('m.return')}
@@ -175,6 +206,33 @@ export default function ModelsPage() {
         <DialogActions>
           <Button onClick={() => setOpen(false)}>{t('common.cancel')}</Button>
           <Button variant="contained" onClick={save}>
+            {t('common.save')}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={!!editFor} onClose={() => setEditFor(null)} fullWidth maxWidth="xs">
+        <DialogTitle>{t('m.editTitle')} — {editFor?.code}</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} mt={1}>
+            {editError && <Alert severity="error">{editError}</Alert>}
+            <TextField
+              label={t('m.itemName')}
+              value={editForm.name}
+              onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+              required
+            />
+            <TextField
+              label={t('m.type')}
+              placeholder={t('m.typePh')}
+              value={editForm.category}
+              onChange={(e) => setEditForm({ ...editForm, category: e.target.value })}
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setEditFor(null)}>{t('common.cancel')}</Button>
+          <Button variant="contained" onClick={saveEdit}>
             {t('common.save')}
           </Button>
         </DialogActions>
