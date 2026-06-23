@@ -26,18 +26,46 @@ import {
 import {
   Assessment,
   BarChart,
+  BusinessCenter,
   CalendarMonth,
   CheckCircle,
   Download,
   EmojiEvents,
   Groups,
   Refresh,
+  TableChart,
   TrendingUp,
 } from '@mui/icons-material';
 import { api, errMsg } from '../api/client';
 import { useAuth } from '../auth/AuthContext';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
+interface AgActivityRow {
+  id: string; code: string; name: string;
+  zone?: string | null; grade?: string | null; assignedTo?: string;
+  phone?: string | null; contactPerson?: string | null;
+  staffCount?: number | null;
+  totalVisits: number; completedVisits: number;
+  lastVisitDate?: string | null; lastVisitBy?: string | null; leads: number;
+  bringCustomers: string; lastSaleDate: string; hadOrientation: string;
+  hasOrganicSocial: string; hasPaidSocial: string;
+  websiteUrl: string;
+  materials: { name: string; qty: number; unit: string }[];
+  totalMaterials: number;
+}
+interface AgActivityData { rows: AgActivityRow[] }
+
+interface DailyRow {
+  id: string; name: string; code: string; team: string | null;
+  daily: Record<string, number>; total: number; target: number;
+}
+interface DailyTrackerData {
+  year: number; month: number; half: number;
+  dates: string[]; workingDays: number; dailyTarget: number; periodTarget: number;
+  rows: DailyRow[];
+  grand: { daily: Record<string, number>; total: number; target: number };
+}
+
 interface WeeklyRow {
   id: string; code: string; name: string;
   visit_agency: number; agency_brings_client: number;
@@ -507,6 +535,369 @@ function AgencyPerfTab() {
   );
 }
 
+// ─── Tab 4: Agency Activity Report ───────────────────────────────────────────
+function AgencyActivityTab() {
+  const now = new Date();
+  const [from, setFrom] = useState(`${now.getFullYear()}-01-01`);
+  const [to, setTo] = useState(todayStr());
+  const [data, setData] = useState<AgActivityData | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [search, setSearch] = useState('');
+
+  const load = useCallback(() => {
+    setLoading(true); setError('');
+    api.get('/reports/agency-activity', { params: { from, to } })
+      .then((r) => setData({ rows: r.data }))
+      .catch((e) => setError(errMsg(e)))
+      .finally(() => setLoading(false));
+  }, [from, to]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const rows = (data?.rows ?? []).filter((r) =>
+    !search || r.name.toLowerCase().includes(search.toLowerCase()) || r.code.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const yesNo = (v: string) => {
+    if (v === 'yes') return <Chip size="small" label="Yes" color="success" variant="outlined" />;
+    if (v === 'no') return <Chip size="small" label="No" color="default" variant="outlined" />;
+    return <Typography variant="caption" color="text.disabled">-</Typography>;
+  };
+
+  const gradeColor = (g?: string | null) => {
+    if (g === 'A') return 'success';
+    if (g === 'B') return 'primary';
+    if (g === 'C') return 'warning';
+    if (g === 'D') return 'error';
+    return 'default';
+  };
+
+  return (
+    <Box>
+      <Paper sx={{ p: 2, mb: 3, borderRadius: 3 }}>
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems="center" flexWrap="wrap">
+          <TextField size="small" type="date" label="จาก" value={from}
+            onChange={(e) => setFrom(e.target.value)} InputLabelProps={{ shrink: true }} />
+          <TextField size="small" type="date" label="ถึง" value={to}
+            onChange={(e) => setTo(e.target.value)} InputLabelProps={{ shrink: true }} />
+          <Button variant="contained" onClick={load} startIcon={<Refresh />}>โหลด</Button>
+          <TextField size="small" placeholder="ค้นหา Agency..." value={search}
+            onChange={(e) => setSearch(e.target.value)} sx={{ minWidth: 200 }} />
+          {data && <Typography variant="caption" color="text.secondary">{rows.length} agencies</Typography>}
+        </Stack>
+      </Paper>
+
+      {loading && <LinearProgress sx={{ mb: 2 }} />}
+      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+
+      {data && rows.length > 0 && (
+        <Paper sx={{ borderRadius: 3 }}>
+          <Stack direction="row" justifyContent="space-between" alignItems="center"
+            sx={{ p: 2, borderBottom: '1px solid', borderColor: 'divider' }}>
+            <Typography fontWeight={700}>Agency Activity Report</Typography>
+            <Typography variant="caption" color="text.secondary">
+              {fmtDate(from)} — {fmtDate(to)}
+            </Typography>
+          </Stack>
+          <Box sx={{ overflowX: 'auto' }}>
+            <Table size="small" sx={{ minWidth: 1200 }}>
+              <TableHead>
+                <TableRow sx={{ '& th': { fontWeight: 700, fontSize: 11, whiteSpace: 'nowrap', bgcolor: 'grey.50' } }}>
+                  <TableCell>#</TableCell>
+                  <TableCell>Agency</TableCell>
+                  <TableCell>Grade</TableCell>
+                  <TableCell>โซน</TableCell>
+                  <TableCell>ผู้ดูแล</TableCell>
+                  <TableCell>ผู้ติดต่อ</TableCell>
+                  <TableCell align="center">Visit (Done)</TableCell>
+                  <TableCell align="center">Last Visit</TableCell>
+                  <TableCell align="center">Lead</TableCell>
+                  <TableCell align="center">AG Bring Customer</TableCell>
+                  <TableCell align="center">Orientation</TableCell>
+                  <TableCell align="center">Last Sale</TableCell>
+                  <TableCell align="center">Social Media</TableCell>
+                  <TableCell align="center">Paid Ads</TableCell>
+                  <TableCell align="center">Materials Given</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {rows.map((r, i) => (
+                  <TableRow key={r.id} hover>
+                    <TableCell><Typography variant="caption" color="text.disabled">{i + 1}</Typography></TableCell>
+                    <TableCell sx={{ minWidth: 160 }}>
+                      <Typography variant="body2" fontWeight={700} noWrap sx={{ maxWidth: 160 }}>{r.name}</Typography>
+                      <Typography variant="caption" color="text.secondary">{r.code}</Typography>
+                    </TableCell>
+                    <TableCell>
+                      {r.grade
+                        ? <Chip size="small" label={r.grade} color={gradeColor(r.grade) as 'success' | 'primary' | 'warning' | 'error' | 'default'} />
+                        : <Typography variant="caption" color="text.disabled">-</Typography>}
+                    </TableCell>
+                    <TableCell><Typography variant="caption">{r.zone ?? '-'}</Typography></TableCell>
+                    <TableCell sx={{ minWidth: 100 }}>
+                      <Typography variant="caption" noWrap>{r.assignedTo || '-'}</Typography>
+                    </TableCell>
+                    <TableCell sx={{ minWidth: 100 }}>
+                      <Typography variant="caption">{r.contactPerson ?? '-'}</Typography>
+                      {r.phone && <Typography variant="caption" color="text.disabled" display="block">{r.phone}</Typography>}
+                    </TableCell>
+                    <TableCell align="center">
+                      <Typography variant="body2" fontWeight={700}>{r.completedVisits}</Typography>
+                      {r.totalVisits !== r.completedVisits && (
+                        <Typography variant="caption" color="text.disabled">/{r.totalVisits}</Typography>
+                      )}
+                    </TableCell>
+                    <TableCell align="center">
+                      <Typography variant="caption">{fmtDate(r.lastVisitDate)}</Typography>
+                      {r.lastVisitBy && <Typography variant="caption" color="text.secondary" display="block" noWrap>{r.lastVisitBy}</Typography>}
+                    </TableCell>
+                    <TableCell align="center">
+                      {r.leads > 0 ? <Chip size="small" label={r.leads} color="success" /> : <Typography variant="caption" color="text.disabled">-</Typography>}
+                    </TableCell>
+                    <TableCell align="center">{yesNo(r.bringCustomers)}</TableCell>
+                    <TableCell align="center">{yesNo(r.hadOrientation)}</TableCell>
+                    <TableCell align="center">
+                      <Typography variant="caption">{r.lastSaleDate ? fmtDate(r.lastSaleDate) : '-'}</Typography>
+                    </TableCell>
+                    <TableCell align="center">{yesNo(r.hasOrganicSocial)}</TableCell>
+                    <TableCell align="center">{yesNo(r.hasPaidSocial)}</TableCell>
+                    <TableCell align="center">
+                      {r.totalMaterials > 0
+                        ? <Tooltip title={r.materials.map((m) => `${m.name}: ${m.qty} ${m.unit}`).join(', ')}>
+                            <Chip size="small" label={`${r.totalMaterials} ชิ้น`} color="info" variant="outlined" />
+                          </Tooltip>
+                        : <Typography variant="caption" color="text.disabled">-</Typography>}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </Box>
+        </Paper>
+      )}
+      {data && rows.length === 0 && !loading && (
+        <Paper sx={{ p: 4, textAlign: 'center', borderRadius: 3 }}>
+          <Typography color="text.secondary">ไม่พบข้อมูล Agency</Typography>
+        </Paper>
+      )}
+    </Box>
+  );
+}
+
+// ─── Tab 5: Daily Visit Tracker ───────────────────────────────────────────────
+function DailyTrackerTab() {
+  const now = new Date();
+  const [year, setYear] = useState(now.getFullYear());
+  const [month, setMonth] = useState(now.getMonth() + 1);
+  const [half, setHalf] = useState<1 | 2>(now.getDate() <= 15 ? 1 : 2);
+  const [data, setData] = useState<DailyTrackerData | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const load = useCallback(() => {
+    setLoading(true); setError('');
+    api.get('/reports/daily-tracker', { params: { year, month, half } })
+      .then((r) => setData(r.data))
+      .catch((e) => setError(errMsg(e)))
+      .finally(() => setLoading(false));
+  }, [year, month, half]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const YEARS = Array.from({ length: 4 }, (_, i) => now.getFullYear() - i);
+  const MONTHS = Array.from({ length: 12 }, (_, i) => ({
+    val: i + 1, label: new Date(2000, i, 1).toLocaleString('th-TH', { month: 'short' }),
+  }));
+
+  const achColor = (total: number, target: number) => {
+    if (target === 0) return 'default';
+    const pct = total / target;
+    if (pct >= 1) return 'success';
+    if (pct >= 0.5) return 'warning';
+    return 'error';
+  };
+
+  const cellBg = (cnt: number) => {
+    if (cnt === 0) return undefined;
+    if (cnt >= 3) return 'success.light';
+    if (cnt >= 1) return 'warning.light';
+    return undefined;
+  };
+
+  const dayLabel = (ds: string) => {
+    const d = new Date(ds + 'T00:00:00');
+    return `${d.getDate()}`;
+  };
+
+  return (
+    <Box>
+      <Paper sx={{ p: 2, mb: 3, borderRadius: 3 }}>
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems="center" flexWrap="wrap">
+          <FormControl size="small" sx={{ minWidth: 90 }}>
+            <InputLabel>ปี</InputLabel>
+            <Select value={year} label="ปี" onChange={(e) => setYear(Number(e.target.value))}>
+              {YEARS.map((y) => <MenuItem key={y} value={y}>{y + 543}</MenuItem>)}
+            </Select>
+          </FormControl>
+          <FormControl size="small" sx={{ minWidth: 110 }}>
+            <InputLabel>เดือน</InputLabel>
+            <Select value={month} label="เดือน" onChange={(e) => setMonth(Number(e.target.value))}>
+              {MONTHS.map((m) => <MenuItem key={m.val} value={m.val}>{m.label}</MenuItem>)}
+            </Select>
+          </FormControl>
+          <FormControl size="small" sx={{ minWidth: 130 }}>
+            <InputLabel>ช่วง</InputLabel>
+            <Select value={half} label="ช่วง" onChange={(e) => setHalf(Number(e.target.value) as 1 | 2)}>
+              <MenuItem value={1}>1–15 (ครึ่งแรก)</MenuItem>
+              <MenuItem value={2}>16–สิ้นเดือน (ครึ่งหลัง)</MenuItem>
+            </Select>
+          </FormControl>
+          <Button variant="contained" onClick={load} startIcon={<Refresh />}>โหลด</Button>
+
+          {data && (
+            <Stack direction="row" spacing={1} alignItems="center">
+              <Chip size="small" label={`${data.workingDays} วันทำงาน`} variant="outlined" />
+              <Chip size="small" label={`Target ${data.periodTarget} visits`} color="primary" variant="outlined" />
+            </Stack>
+          )}
+        </Stack>
+      </Paper>
+
+      {loading && <LinearProgress sx={{ mb: 2 }} />}
+      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+
+      {/* Legend */}
+      <Stack direction="row" spacing={2} mb={2} alignItems="center">
+        <Typography variant="caption" color="text.secondary">ตัวกำกับสี:</Typography>
+        <Box sx={{ px: 1.5, py: 0.3, bgcolor: 'success.light', borderRadius: 1 }}>
+          <Typography variant="caption">≥3 visit</Typography>
+        </Box>
+        <Box sx={{ px: 1.5, py: 0.3, bgcolor: 'warning.light', borderRadius: 1 }}>
+          <Typography variant="caption">1–2 visit</Typography>
+        </Box>
+        <Box sx={{ px: 1.5, py: 0.3, bgcolor: 'grey.200', borderRadius: 1 }}>
+          <Typography variant="caption">0 (วันทำงาน)</Typography>
+        </Box>
+      </Stack>
+
+      {data && data.rows.length > 0 && (
+        <Paper sx={{ borderRadius: 3 }}>
+          <Stack direction="row" justifyContent="space-between" alignItems="center"
+            sx={{ p: 2, borderBottom: '1px solid', borderColor: 'divider' }}>
+            <Typography fontWeight={700}>
+              Daily Visit Tracker — {MONTHS.find(m => m.val === data.month)?.label} {data.year + 543}
+              {' '}(ครึ่ง{data.half === 1 ? 'แรก' : 'หลัง'})
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              Target {data.dailyTarget} visits/day
+            </Typography>
+          </Stack>
+          <Box sx={{ overflowX: 'auto' }}>
+            <Table size="small" sx={{ minWidth: 900 }}>
+              <TableHead>
+                <TableRow sx={{ '& th': { fontWeight: 700, fontSize: 11, textAlign: 'center', bgcolor: 'grey.50', py: 0.5 } }}>
+                  <TableCell sx={{ textAlign: 'left !important', minWidth: 130 }}>Sales</TableCell>
+                  <TableCell sx={{ minWidth: 70 }}>ทีม</TableCell>
+                  {data.dates.map((ds) => (
+                    <TableCell key={ds} sx={{ minWidth: 34, px: 0.5 }}>
+                      <Box>
+                        <Typography variant="caption" fontWeight={700}>{dayLabel(ds)}</Typography>
+                        <Typography variant="caption" color="text.disabled" display="block" fontSize={9}>
+                          {new Date(ds + 'T00:00:00').toLocaleString('th-TH', { weekday: 'short' })}
+                        </Typography>
+                      </Box>
+                    </TableCell>
+                  ))}
+                  <TableCell sx={{ minWidth: 50 }}>รวม</TableCell>
+                  <TableCell sx={{ minWidth: 60 }}>Target</TableCell>
+                  <TableCell sx={{ minWidth: 60 }}>Ach%</TableCell>
+                  <TableCell sx={{ minWidth: 60 }}>เฉลี่ย/วัน</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {data.rows.map((r) => {
+                  const ach = r.target > 0 ? Math.round((r.total / r.target) * 100) : 0;
+                  const avg = data.workingDays > 0 ? (r.total / data.workingDays).toFixed(1) : '0';
+                  return (
+                    <TableRow key={r.id} hover>
+                      <TableCell>
+                        <Typography variant="body2" fontWeight={600} noWrap>{r.name}</Typography>
+                        <Typography variant="caption" color="text.disabled">{r.code}</Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="caption" noWrap>{r.team ?? '-'}</Typography>
+                      </TableCell>
+                      {data.dates.map((ds) => {
+                        const cnt = r.daily[ds] ?? 0;
+                        return (
+                          <TableCell key={ds} align="center" sx={{ px: 0.5, bgcolor: cellBg(cnt) }}>
+                            {cnt > 0
+                              ? <Typography variant="caption" fontWeight={700}>{cnt}</Typography>
+                              : <Typography variant="caption" color="text.disabled" sx={{ fontSize: 10 }}>-</Typography>}
+                          </TableCell>
+                        );
+                      })}
+                      <TableCell align="center">
+                        <Typography fontWeight={800} color="primary.main">{r.total}</Typography>
+                      </TableCell>
+                      <TableCell align="center">
+                        <Typography variant="caption" color="text.secondary">{r.target}</Typography>
+                      </TableCell>
+                      <TableCell align="center">
+                        <Chip size="small" label={`${ach}%`} color={achColor(r.total, r.target) as 'success' | 'warning' | 'error' | 'default'} />
+                      </TableCell>
+                      <TableCell align="center">
+                        <Typography variant="caption">{avg}</Typography>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+                {/* Grand Total */}
+                <TableRow sx={{ bgcolor: 'action.hover', '& td': { fontWeight: 800 } }}>
+                  <TableCell colSpan={2}>
+                    <Typography fontWeight={800} variant="body2">Grand Total</Typography>
+                  </TableCell>
+                  {data.dates.map((ds) => {
+                    const cnt = data.grand.daily[ds] ?? 0;
+                    return (
+                      <TableCell key={ds} align="center" sx={{ px: 0.5 }}>
+                        {cnt > 0 ? <Typography variant="caption" fontWeight={800}>{cnt}</Typography>
+                          : <Typography variant="caption" color="text.disabled">-</Typography>}
+                      </TableCell>
+                    );
+                  })}
+                  <TableCell align="center">{data.grand.total}</TableCell>
+                  <TableCell align="center">
+                    <Typography variant="caption" color="text.secondary">{data.grand.target}</Typography>
+                  </TableCell>
+                  <TableCell align="center">
+                    <Chip size="small"
+                      label={`${data.grand.target > 0 ? Math.round((data.grand.total / data.grand.target) * 100) : 0}%`}
+                      color={achColor(data.grand.total, data.grand.target) as 'success' | 'warning' | 'error' | 'default'} />
+                  </TableCell>
+                  <TableCell align="center">
+                    <Typography variant="caption">
+                      {data.workingDays > 0 && data.rows.length > 0
+                        ? (data.grand.total / (data.workingDays * data.rows.length)).toFixed(1)
+                        : '-'}
+                    </Typography>
+                  </TableCell>
+                </TableRow>
+              </TableBody>
+            </Table>
+          </Box>
+        </Paper>
+      )}
+      {data && data.rows.length === 0 && !loading && (
+        <Paper sx={{ p: 4, textAlign: 'center', borderRadius: 3 }}>
+          <Typography color="text.secondary">ไม่พบข้อมูล Visit ในช่วงนี้</Typography>
+        </Paper>
+      )}
+    </Box>
+  );
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function ReportsPage() {
   const [tab, setTab] = useState(0);
@@ -517,15 +908,19 @@ export default function ReportsPage() {
 
       <Paper sx={{ borderRadius: 3, mb: 3 }}>
         <Tabs value={tab} onChange={(_, v) => setTab(v)} variant="scrollable" scrollButtons="auto">
-          <Tab icon={<BarChart fontSize="small" />} iconPosition="start" label="Weekly Activity Summary" />
-          <Tab icon={<CalendarMonth fontSize="small" />} iconPosition="start" label="Monthly Report Log" />
+          <Tab icon={<BarChart fontSize="small" />} iconPosition="start" label="Weekly Activity" />
+          <Tab icon={<CalendarMonth fontSize="small" />} iconPosition="start" label="Monthly Log" />
           <Tab icon={<EmojiEvents fontSize="small" />} iconPosition="start" label="Agency Performance" />
+          <Tab icon={<BusinessCenter fontSize="small" />} iconPosition="start" label="Agency Activity Report" />
+          <Tab icon={<TableChart fontSize="small" />} iconPosition="start" label="Daily Visit Tracker" />
         </Tabs>
       </Paper>
 
       <Box hidden={tab !== 0}><WeeklyTab /></Box>
       <Box hidden={tab !== 1}><MonthlyTab /></Box>
       <Box hidden={tab !== 2}><AgencyPerfTab /></Box>
+      <Box hidden={tab !== 3}><AgencyActivityTab /></Box>
+      <Box hidden={tab !== 4}><DailyTrackerTab /></Box>
     </Box>
   );
 }

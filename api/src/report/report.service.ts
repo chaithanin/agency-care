@@ -152,6 +152,169 @@ export class ReportService {
     return { year, month, rows };
   }
 
+  // ── Report 4: Agency Activity Report (per-agency comprehensive summary) ───
+  async agencyActivity(from: string, to: string, employeeId?: string) {
+    const agencies = await this.prisma.agency.findMany({
+      where: employeeId ? { assignments: { some: { employeeId } } } : {},
+      include: {
+        assignments: {
+          include: { employee: { select: { name: true, code: true } } },
+          orderBy: { assignedAt: 'asc' },
+          take: 5,
+        },
+        visitPlans: {
+          where: { planDate: { gte: new Date(from), lte: new Date(to) } },
+          include: {
+            employee: { select: { name: true } },
+            report: { select: { visitType: true, newLeads: true, interestLevel: true } },
+          },
+          orderBy: { planDate: 'desc' },
+        },
+      },
+      orderBy: { name: 'asc' },
+    });
+
+    // POSM totals per agency
+    const posmRows = await this.prisma.posmTransaction.findMany({
+      where: { createdAt: { gte: new Date(from), lte: new Date(to) } },
+      include: {
+        posmItem: { select: { name: true, unit: true } },
+        visitPlan: { select: { agencyId: true } },
+      },
+    });
+    const posmByAgency = new Map<string, { name: string; qty: number; unit: string }[]>();
+    for (const t of posmRows) {
+      const aid = t.visitPlan.agencyId;
+      if (!posmByAgency.has(aid)) posmByAgency.set(aid, []);
+      const list = posmByAgency.get(aid)!;
+      const existing = list.find((x) => x.name === t.posmItem.name);
+      if (existing) existing.qty += t.quantity;
+      else list.push({ name: t.posmItem.name, qty: t.quantity, unit: t.posmItem.unit });
+    }
+
+    return agencies.map((a) => {
+      const profile = (a.profileData ?? {}) as Record<string, unknown>;
+      const completed = a.visitPlans.filter((p) => p.status === 'done');
+      const lastPlan = a.visitPlans[0];
+      const leads = completed.reduce((s, p) => s + (p.report?.newLeads ?? 0), 0);
+      const materials = posmByAgency.get(a.id) ?? [];
+
+      return {
+        id: a.id, code: a.code, name: a.name, zone: a.zone, province: a.province,
+        grade: a.gradeRelationship,
+        assignedTo: a.assignments.map((as) => as.employee.name).join(', '),
+        // Contact
+        phone: a.phone, email: a.email,
+        contactPerson: a.ownerName ?? a.managerName,
+        staffCount: profile.staffCount ?? null,
+        // Visit stats
+        totalVisits: a.visitPlans.length,
+        completedVisits: completed.length,
+        lastVisitDate: lastPlan?.planDate?.toISOString().slice(0, 10) ?? null,
+        lastVisitBy: lastPlan?.employee?.name ?? null,
+        leads,
+        // From profileData (Agency Info Form)
+        bringCustomers: (profile.bringCustomers as string) ?? '',
+        lastSaleDate: (profile.lastSaleDate as string) ?? '',
+        hadOrientation: (profile.hadOrientation as string) ?? '',
+        hasOrganicSocial: (profile.hasOrganicSocial as string) ?? '',
+        hasPaidSocial: (profile.hasPaidSocial as string) ?? '',
+        organicPlatforms: profile.organicPlatforms ?? null,
+        paidPlatforms: profile.paidPlatforms ?? null,
+        websiteUrl: a.website ?? '',
+        socialProjects: (profile.socialProjects as string[]) ?? [],
+        // Materials
+        materials,
+        totalMaterials: materials.reduce((s, m) => s + m.qty, 0),
+        // Remarks
+        remark: a.remark ?? '',
+      };
+    });
+  }
+
+  // ── Report 5: Daily Visit Tracker (Employee × Day matrix) ─────────────────
+  async dailyTracker(year: number, month: number, half: 1 | 2) {
+    const DAILY_TARGET = 3;
+    const startDay = half === 1 ? 1 : 16;
+    const endDayNum = half === 1 ? 15 : new Date(year, month, 0).getDate();
+    const start = new Date(year, month - 1, startDay);
+    const end = new Date(year, month - 1, endDayNum, 23, 59, 59);
+
+    // Holidays in period
+    const holidays = await this.prisma.workCalendar.findMany({
+      where: { date: { gte: start, lte: end }, isHoliday: true },
+      select: { date: true },
+    });
+    const holidaySet = new Set(holidays.map((h) => h.date.toISOString().slice(0, 10)));
+
+    // Build date list (Mon-Sat, exclude holidays)
+    const dates: string[] = [];
+    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+      const dow = d.getDay(); // 0=Sun
+      const ds = d.toISOString().slice(0, 10);
+      if (dow !== 0 && !holidaySet.has(ds)) dates.push(ds);
+    }
+    const workingDays = dates.length;
+    const periodTarget = workingDays * DAILY_TARGET;
+
+    // Completed visits in period
+    const plans = await this.prisma.visitPlan.findMany({
+      where: { planDate: { gte: start, lte: end }, status: 'done' },
+      include: {
+        employee: {
+          select: { id: true, name: true, code: true, position: true, team: { select: { name: true } } },
+        },
+      },
+    });
+
+    type EmpRow = {
+      id: string; name: string; code: string; team: string | null;
+      daily: Record<string, number>; total: number; target: number;
+    };
+    const empMap = new Map<string, EmpRow>();
+
+    for (const p of plans) {
+      const e = p.employee;
+      if (!empMap.has(e.id)) {
+        empMap.set(e.id, { id: e.id, name: e.name, code: e.code, team: (e as any).team?.name ?? null, daily: {}, total: 0, target: periodTarget });
+      }
+      const row = empMap.get(e.id)!;
+      const ds = p.planDate.toISOString().slice(0, 10);
+      row.daily[ds] = (row.daily[ds] ?? 0) + 1;
+      row.total++;
+    }
+
+    // Include all active sales employees (even zero visits)
+    const allSales = await this.prisma.employee.findMany({
+      where: { isActive: true, position: { in: ['sales', 'closer'] } },
+      include: { team: { select: { name: true } } },
+      orderBy: { name: 'asc' },
+    });
+    for (const e of allSales) {
+      if (!empMap.has(e.id)) {
+        empMap.set(e.id, { id: e.id, name: e.name, code: e.code, team: e.team?.name ?? null, daily: {}, total: 0, target: periodTarget });
+      }
+    }
+
+    const rows = [...empMap.values()].sort((a, b) => b.total - a.total);
+
+    // Grand totals
+    const grandDaily: Record<string, number> = {};
+    let grandTotal = 0;
+    for (const r of rows) {
+      for (const [date, cnt] of Object.entries(r.daily)) {
+        grandDaily[date] = (grandDaily[date] ?? 0) + cnt;
+        grandTotal += cnt;
+      }
+    }
+
+    return {
+      year, month, half, dates, workingDays, dailyTarget: DAILY_TARGET,
+      periodTarget, rows,
+      grand: { daily: grandDaily, total: grandTotal, target: periodTarget * rows.length },
+    };
+  }
+
   // ── Report 3: Agency Performance ───────────────────────────────────────────
   async agencyPerformance(user: RequestUser, from: string, to: string) {
     const plans = await this.prisma.visitPlan.findMany({

@@ -33,6 +33,32 @@ export class ReportController {
     );
   }
 
+  @Roles('admin', 'closer', 'sales')
+  @Get('agency-activity')
+  agencyActivity(
+    @Query('from') from: string,
+    @Query('to') to: string,
+    @Query('employeeId') employeeId?: string,
+  ) {
+    const today = new Date().toISOString().slice(0, 10);
+    const firstOfYear = today.slice(0, 4) + '-01-01';
+    return this.service.agencyActivity(from ?? firstOfYear, to ?? today, employeeId);
+  }
+
+  @Roles('admin', 'closer', 'sales')
+  @Get('daily-tracker')
+  dailyTracker(
+    @Query('year') year: string,
+    @Query('month') month: string,
+    @Query('half') half: string,
+  ) {
+    const now = new Date();
+    const y = year ? Number(year) : now.getFullYear();
+    const m = month ? Number(month) : now.getMonth() + 1;
+    const h = (half === '2' ? 2 : 1) as 1 | 2;
+    return this.service.dailyTracker(y, m, h);
+  }
+
   @Roles('admin', 'closer')
   @Get('agency-performance')
   agencyPerformance(
