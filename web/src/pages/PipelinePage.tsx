@@ -43,7 +43,7 @@ export default function PipelinePage() {
         {t('page.pipeline')}
       </Typography>
       <Typography variant="caption" color="text.secondary">
-        ภาพรวมความสัมพันธ์ Agency ทั้งหมด {data.total.toLocaleString()} ราย — ปรับ stage/tier ได้ที่หน้า Agency
+        {t('pip.totalPrefix')} {data.total.toLocaleString()} {t('pip.totalUnit')} {t('pip.totalSuffix')}
       </Typography>
 
       <Grid container spacing={2} mt={0.5}>

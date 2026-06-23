@@ -148,7 +148,7 @@ export default function SchedulingPage() {
       const r = await api.post('/scheduling/generate-month', { year, month: m });
       setToast(
         r.data.error ??
-          `สร้างแผนเดือนแล้ว: ${r.data.scheduledVisits} เยี่ยม · ครอบคลุม ${r.data.agenciesScheduled}/${r.data.agenciesAssigned} ร้าน`,
+          `${t('sch.genMonthDone')}: ${r.data.scheduledVisits} ${t('sp.visits')} · ${t('sch.covered')} ${r.data.agenciesScheduled}/${r.data.agenciesAssigned} ${t('sch.shops')}`,
       );
       await load();
     } catch (e) {
@@ -169,7 +169,7 @@ export default function SchedulingPage() {
           <Button className="no-pdf" variant="contained" onClick={generate} disabled={generating}>
             {generating ? t('sch.generating') : t('sch.genMonth')}
           </Button>
-          <PdfExportButton targetRef={pdfRef} filename={`ตารางงาน-${month}.pdf`} />
+          <PdfExportButton targetRef={pdfRef} filename={`${t('sch.pdfFilename')}-${month}.pdf`} />
         </Stack>
       </Stack>
 
@@ -198,12 +198,12 @@ export default function SchedulingPage() {
           {/* office status */}
           {office && (
             <Alert severity={office.ok ? 'success' : 'warning'}>
-              <b>คนประจำออฟฟิศวันนี้ ({office.date}):</b> Sales {office.inOffice.sales.length}/{office.need.sales} ·
+              <b>{t('sch.officeToday')} ({office.date}):</b> Sales {office.inOffice.sales.length}/{office.need.sales} ·
               Closer {office.inOffice.closer.length}/{office.need.closer}
-              {office.warning ? ` — ${office.warning}` : ' — ครบตามกฎ ✓'}
+              {office.warning ? ` — ${office.warning}` : ` — ${t('sch.allRulesOk')}`}
               {office.inOffice.sales.length + office.inOffice.closer.length > 0 && (
                 <Typography variant="caption" display="block">
-                  อยู่ออฟฟิศ: {[...office.inOffice.sales, ...office.inOffice.closer].join(', ') || '-'}
+                  {t('sch.inOffice')}: {[...office.inOffice.sales, ...office.inOffice.closer].join(', ') || '-'}
                 </Typography>
               )}
             </Alert>
@@ -255,7 +255,7 @@ export default function SchedulingPage() {
                 ))}
                 {monthly.length === 0 && (
                   <TableRow><TableCell colSpan={6} align="center" sx={{ color: 'text.secondary' }}>
-                    ยังไม่มีแผน — กด "สร้างแผนเดือน (AI)"
+                    {t('sch.noPlan')}
                   </TableCell></TableRow>
                 )}
               </TableBody>
@@ -310,7 +310,7 @@ export default function SchedulingPage() {
                 {teams.length === 0 && (
                   <TableRow>
                     <TableCell colSpan={8} align="center" sx={{ color: 'text.secondary' }}>
-                      ยังไม่มีทีม
+                      {t('sch.noTeam')}
                     </TableCell>
                   </TableRow>
                 )}

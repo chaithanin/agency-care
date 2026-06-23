@@ -76,7 +76,7 @@ export default function UsersPage() {
     setError('');
     try {
       await api.post(`/users/${pwFor.id}/reset-password`, { password: pw });
-      setMsg(`รีเซ็ตรหัสผ่าน ${pwFor.email} แล้ว`); setPwFor(null); setPw('');
+      setMsg(`${t('usr.resetTitle')} ${pwFor.email} ${t('usr.done')}`); setPwFor(null); setPw('');
     } catch (e) { setError(errMsg(e)); }
   };
 
@@ -84,7 +84,7 @@ export default function UsersPage() {
     setError('');
     try {
       const { targetName } = await startImpersonation(u.id);
-      setMsg(`กำลังดูระบบในฐานะ "${targetName}"`);
+      setMsg(`${t('usr.viewingAs')} "${targetName}"`);
     } catch (e) { setError(errMsg(e)); }
   };
 
@@ -112,7 +112,7 @@ export default function UsersPage() {
               <TableCell>{t('usr.email')}</TableCell>
               <TableCell>{t('c.name')}</TableCell>
               <TableCell>{t('usr.role')}</TableCell>
-              <TableCell>Roles เพิ่มเติม</TableCell>
+              <TableCell>{t('usr.additionalRoles')}</TableCell>
               <TableCell>{t('usr.staff')}</TableCell>
               <TableCell align="center">{t('c.status')}</TableCell>
               <TableCell align="center">{t('c.manage')}</TableCell>
@@ -148,7 +148,7 @@ export default function UsersPage() {
                     <KeyIcon fontSize="small" />
                   </IconButton>
                   {canImpersonate && u.id !== me?.id && (
-                    <Tooltip title="ดูในฐานะผู้ใช้นี้">
+                    <Tooltip title={t('usr.viewAsUser')}>
                       <IconButton size="small" color="warning" onClick={() => handleImpersonate(u)}>
                         <VisibilityRoundedIcon fontSize="small" />
                       </IconButton>
@@ -194,7 +194,7 @@ export default function UsersPage() {
               </TextField>
               <Box>
                 <Typography variant="caption" color="text.secondary" gutterBottom display="block">
-                  Roles เพิ่มเติม (สลับได้ใน session)
+                  {t('usr.additionalRoles')} ({t('usr.switchInSession')})
                 </Typography>
                 <FormGroup row>
                   {ROLES.filter((r) => r !== edit.role).map((r) => (

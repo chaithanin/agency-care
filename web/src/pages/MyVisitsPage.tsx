@@ -53,7 +53,7 @@ export default function MyVisitsPage() {
       {plans === null && <LinearProgress />}
       {plans?.length === 0 && (
         <Typography color="text.secondary" textAlign="center" mt={4}>
-          ไม่มีงานในวันนี้ 🎉
+          {t('mv.noJobs')}
         </Typography>
       )}
 

@@ -45,7 +45,7 @@ function pctChip(value: number, target: number) {
 }
 
 export default function KpiPage() {
-  const { t, lang } = useT();
+  const { t } = useT();
   const [data, setData] = useState<Kpi | null>(null);
   const [month, setMonth] = useState(thisMonth());
   const pdfRef = useRef<HTMLDivElement>(null);
@@ -116,7 +116,7 @@ export default function KpiPage() {
       )}
       {data && (
         <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
-          {lang === 'th' ? 'เป้าหมาย' : 'Target'}: Completion {data.targets.completionPct}% · {t('kpi.report')} {data.targets.reportPct}% · {t('kpi.gps')} {data.targets.accuracyPct}%
+          {t('kpi.targetLabel')}: Completion {data.targets.completionPct}% · {t('kpi.report')} {data.targets.reportPct}% · {t('kpi.gps')} {data.targets.accuracyPct}%
         </Typography>
       )}
     </Box>

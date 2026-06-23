@@ -62,13 +62,14 @@ function StockBar({ qty, reorder }: { qty: number; reorder: number }) {
 
 // ─── Tab 1: Stock Overview ────────────────────────────────────────────────────
 function StockTab() {
+  const { t } = useT();
   const [data, setData] = useState<{ lowStockCount: number; urgentCount: number; items: InvItem[] } | null>(null);
   const [loading, setLoading] = useState(true);
   const [catFilter, setCatFilter] = useState('all');
 
   // Add item dialog
   const [addOpen, setAddOpen] = useState(false);
-  const [form, setForm] = useState({ code: '', name: '', category: 'general', description: '', unit: 'ชิ้น', stockQty: '', reorderPoint: '' });
+  const [form, setForm] = useState({ code: '', name: '', category: 'general', description: '', unit: '', stockQty: '', reorderPoint: '' });
   const [addErr, setAddErr] = useState('');
 
   // Manage dialog (refill + reorder point)
@@ -96,7 +97,7 @@ function StockTab() {
         reorderPoint: form.reorderPoint ? Number(form.reorderPoint) : undefined,
       });
       setAddOpen(false);
-      setForm({ code: '', name: '', category: 'general', description: '', unit: 'ชิ้น', stockQty: '', reorderPoint: '' });
+      setForm({ code: '', name: '', category: 'general', description: '', unit: '', stockQty: '', reorderPoint: '' });
       load();
     } catch (e) { setAddErr(errMsg(e)); }
   };
@@ -127,28 +128,28 @@ function StockTab() {
       {/* Alerts */}
       {(data?.urgentCount ?? 0) > 0 && (
         <Alert severity="error" icon={<ErrorOutline />} sx={{ mb: 1.5 }}>
-          🚨 <strong>{data!.urgentCount} รายการ</strong> สต็อกวิกฤต — ต้องสั่งซื้อด่วน!
+          🚨 <strong>{data!.urgentCount} {t('posm.items')}</strong> {t('posm.urgentAlert')}
         </Alert>
       )}
       {(data?.lowStockCount ?? 0) > 0 && (data?.urgentCount ?? 0) === 0 && (
         <Alert severity="warning" icon={<WarningAmber />} sx={{ mb: 1.5 }}>
-          ⚠️ <strong>{data!.lowStockCount} รายการ</strong> สต็อกใกล้หมด — ควรสั่งซื้อเพิ่ม
+          ⚠️ <strong>{data!.lowStockCount} {t('posm.items')}</strong> {t('posm.lowAlert2')}
         </Alert>
       )}
 
       {/* Controls */}
       <Stack direction="row" spacing={1} alignItems="center" mb={2} flexWrap="wrap" useFlexGap>
         <FormControl size="small" sx={{ minWidth: 130 }}>
-          <InputLabel>หมวดหมู่</InputLabel>
-          <Select value={catFilter} label="หมวดหมู่" onChange={(e) => setCatFilter(e.target.value)}>
-            <MenuItem value="all">ทั้งหมด</MenuItem>
+          <InputLabel>{t('posm.category')}</InputLabel>
+          <Select value={catFilter} label={t('posm.category')} onChange={(e) => setCatFilter(e.target.value)}>
+            <MenuItem value="all">{t('posm.all')}</MenuItem>
             {CATEGORIES.map((c) => <MenuItem key={c} value={c}>{CATEGORY_LABEL[c]}</MenuItem>)}
           </Select>
         </FormControl>
-        <Button startIcon={<Refresh />} onClick={load} disabled={loading}>รีเฟรช</Button>
+        <Button startIcon={<Refresh />} onClick={load} disabled={loading}>{t('posm.refresh')}</Button>
         <Box flex={1} />
         <Button variant="contained" startIcon={<Add />} onClick={() => { setAddErr(''); setAddOpen(true); }}>
-          เพิ่มสื่อ
+          {t('posm.addItem')}
         </Button>
       </Stack>
 
@@ -159,17 +160,17 @@ function StockTab() {
         <Paper key={cat} sx={{ mb: 3, borderRadius: 3 }}>
           <Stack direction="row" alignItems="center" spacing={1} sx={{ p: 1.5, borderBottom: '1px solid', borderColor: 'divider' }}>
             <Chip size="small" color={CATEGORY_COLOR[cat]} label={CATEGORY_LABEL[cat]} />
-            <Typography variant="caption" color="text.secondary">{rows.length} รายการ</Typography>
+            <Typography variant="caption" color="text.secondary">{rows.length} {t('posm.items')}</Typography>
           </Stack>
           <Table size="small">
             <TableHead>
               <TableRow sx={{ '& th': { fontWeight: 700, fontSize: 12 } }}>
-                <TableCell>รหัส / ชื่อ</TableCell>
-                <TableCell>คงเหลือ</TableCell>
+                <TableCell>{t('posm.codeAndName')}</TableCell>
+                <TableCell>{t('posm.stock')}</TableCell>
                 <TableCell>Min Stock</TableCell>
-                <TableCell>สถานะ</TableCell>
-                <TableCell align="right">ใช้ 30 วัน</TableCell>
-                <TableCell align="right">จัดการ</TableCell>
+                <TableCell>{t('c.status')}</TableCell>
+                <TableCell align="right">{t('posm.used30')}</TableCell>
+                <TableCell align="right">{t('c.manage')}</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -192,16 +193,16 @@ function StockTab() {
                   </TableCell>
                   <TableCell>
                     {p.urgent
-                      ? <Chip size="small" color="error" label="🚨 วิกฤต" />
+                      ? <Chip size="small" color="error" label={`🚨 ${t('posm.statusCritical')}`} />
                       : p.low
-                        ? <Chip size="small" color="warning" label="⚠️ ใกล้หมด" />
-                        : <Chip size="small" color="success" label="✓ ปกติ" />}
+                        ? <Chip size="small" color="warning" label={`⚠️ ${t('posm.statusLow')}`} />
+                        : <Chip size="small" color="success" label={`✓ ${t('posm.statusOk')}`} />}
                   </TableCell>
                   <TableCell align="right">
                     <Typography variant="body2">{p.used30}</Typography>
                   </TableCell>
                   <TableCell align="right">
-                    <Button size="small" onClick={() => openManage(p)}>เติม / ตั้งค่า</Button>
+                    <Button size="small" onClick={() => openManage(p)}>{t('posm.refill')}</Button>
                   </TableCell>
                 </TableRow>
               ))}
@@ -212,40 +213,40 @@ function StockTab() {
 
       {/* Add Item Dialog */}
       <Dialog open={addOpen} onClose={() => setAddOpen(false)} fullWidth maxWidth="sm">
-        <DialogTitle>เพิ่มสื่อ Marketing</DialogTitle>
+        <DialogTitle>{t('posm.addDialogTitle')}</DialogTitle>
         <DialogContent>
           <Stack spacing={2} mt={1}>
             {addErr && <Alert severity="error">{addErr}</Alert>}
             <Stack direction="row" spacing={2}>
-              <TextField label="รหัส" value={form.code} required sx={{ flex: 1 }}
+              <TextField label={t('c.code')} value={form.code} required sx={{ flex: 1 }}
                 onChange={(e) => setForm({ ...form, code: e.target.value })} />
               <FormControl sx={{ flex: 1 }}>
-                <InputLabel>หมวดหมู่</InputLabel>
-                <Select value={form.category} label="หมวดหมู่"
+                <InputLabel>{t('posm.category')}</InputLabel>
+                <Select value={form.category} label={t('posm.category')}
                   onChange={(e) => setForm({ ...form, category: e.target.value })}>
                   {CATEGORIES.map((c) => <MenuItem key={c} value={c}>{CATEGORY_LABEL[c]}</MenuItem>)}
                 </Select>
               </FormControl>
             </Stack>
-            <TextField label="ชื่อสื่อ" value={form.name} required
+            <TextField label={t('posm.itemName')} value={form.name} required
               onChange={(e) => setForm({ ...form, name: e.target.value })}
-              placeholder="เช่น X-Stand, Brochure EN, Gift Box" />
-            <TextField label="คำอธิบาย (optional)" value={form.description}
+              placeholder="X-Stand, Brochure EN, Gift Box" />
+            <TextField label={t('posm.descriptionOpt')} value={form.description}
               onChange={(e) => setForm({ ...form, description: e.target.value })}
-              placeholder="รายละเอียดเพิ่มเติม..." />
+              placeholder={t('posm.descriptionPh')} />
             <Stack direction="row" spacing={2}>
-              <TextField label="หน่วย" value={form.unit} sx={{ flex: 1 }}
+              <TextField label={t('posm.unit')} value={form.unit} sx={{ flex: 1 }}
                 onChange={(e) => setForm({ ...form, unit: e.target.value })} />
-              <TextField label="สต็อกเริ่มต้น" type="number" value={form.stockQty} sx={{ flex: 1 }}
+              <TextField label={t('posm.initialStock')} type="number" value={form.stockQty} sx={{ flex: 1 }}
                 onChange={(e) => setForm({ ...form, stockQty: e.target.value })} />
-              <TextField label="Min Stock (จุดสั่งซื้อ)" type="number" value={form.reorderPoint} sx={{ flex: 1 }}
+              <TextField label={t('posm.minStockLabel')} type="number" value={form.reorderPoint} sx={{ flex: 1 }}
                 onChange={(e) => setForm({ ...form, reorderPoint: e.target.value })} />
             </Stack>
           </Stack>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setAddOpen(false)}>ยกเลิก</Button>
-          <Button variant="contained" onClick={save} disabled={!form.code || !form.name}>บันทึก</Button>
+          <Button onClick={() => setAddOpen(false)}>{t('common.cancel')}</Button>
+          <Button variant="contained" onClick={save} disabled={!form.code || !form.name}>{t('common.save')}</Button>
         </DialogActions>
       </Dialog>
 
@@ -255,7 +256,7 @@ function StockTab() {
           <Stack direction="row" justifyContent="space-between" alignItems="center">
             <span>{manageFor?.name}</span>
             <Chip size="small" color={manageFor?.urgent ? 'error' : manageFor?.low ? 'warning' : 'success'}
-              label={`คงเหลือ ${manageFor?.stockQty} ${manageFor?.unit}`} />
+              label={`${t('posm.stock')} ${manageFor?.stockQty} ${manageFor?.unit}`} />
           </Stack>
         </DialogTitle>
         <DialogContent>
@@ -263,31 +264,31 @@ function StockTab() {
             {manErr && <Alert severity="error">{manErr}</Alert>}
             {manageFor?.low && (
               <Alert severity={manageFor.urgent ? 'error' : 'warning'}>
-                {manageFor.urgent ? '🚨 สต็อกวิกฤต — ควรสั่งซื้อทันที' : '⚠️ สต็อกใกล้หมด — ควรสั่งซื้อเพิ่ม'}
+                {manageFor.urgent ? `🚨 ${t('posm.alertCritical')}` : `⚠️ ${t('posm.alertLow')}`}
               </Alert>
             )}
             <TextField
-              label="รับของเข้าคลัง (+จำนวน) หรือ ปรับลด (-จำนวน)"
+              label={t('posm.adjustLabel')}
               type="number"
               value={delta}
               onChange={(e) => setDelta(e.target.value)}
-              placeholder="เช่น 100 หรือ -5"
+              placeholder={t('posm.adjustPh')}
               helperText={delta && Number(delta) !== 0
-                ? `สต็อกใหม่จะเป็น: ${(manageFor?.stockQty ?? 0) + Number(delta)} ${manageFor?.unit}`
-                : 'ใส่จำนวนที่รับเข้า หรือปล่อยว่างถ้าไม่ต้องการเปลี่ยน'}
+                ? `${t('posm.newStockWillBe')}: ${(manageFor?.stockQty ?? 0) + Number(delta)} ${manageFor?.unit}`
+                : t('posm.adjustHint')}
             />
             <TextField
-              label="Min Stock Level (จุดแจ้งเตือนสั่งซื้อ)"
+              label={t('posm.minStockLevel')}
               type="number"
               value={rp}
               onChange={(e) => setRp(e.target.value)}
-              helperText="เมื่อสต็อกต่ำกว่าค่านี้ ระบบจะแจ้งเตือน Marketing Manager"
+              helperText={t('posm.minStockHint')}
             />
           </Stack>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setManageFor(null)}>ยกเลิก</Button>
-          <Button variant="contained" onClick={saveManage}>บันทึก</Button>
+          <Button onClick={() => setManageFor(null)}>{t('common.cancel')}</Button>
+          <Button variant="contained" onClick={saveManage}>{t('common.save')}</Button>
         </DialogActions>
       </Dialog>
     </Box>
@@ -296,6 +297,7 @@ function StockTab() {
 
 // ─── Tab 2: Agency Distribution Summary ──────────────────────────────────────
 function AgencyTab() {
+  const { t } = useT();
   const [from, setFrom] = useState(monthAgoStr());
   const [to, setTo] = useState(todayStr());
   const [rows, setRows] = useState<AgRow[]>([]);
@@ -324,12 +326,12 @@ function AgencyTab() {
       {/* Controls */}
       <Paper sx={{ p: 2, mb: 3, borderRadius: 3 }}>
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems="center" flexWrap="wrap">
-          <TextField size="small" type="date" label="จาก" value={from}
+          <TextField size="small" type="date" label={t('posm.from')} value={from}
             onChange={(e) => setFrom(e.target.value)} InputLabelProps={{ shrink: true }} />
-          <TextField size="small" type="date" label="ถึง" value={to}
+          <TextField size="small" type="date" label={t('posm.to')} value={to}
             onChange={(e) => setTo(e.target.value)} InputLabelProps={{ shrink: true }} />
-          <Button variant="contained" onClick={load} startIcon={<Refresh />}>ดูข้อมูล</Button>
-          <TextField size="small" placeholder="ค้นหา Agency..." value={search}
+          <Button variant="contained" onClick={load} startIcon={<Refresh />}>{t('posm.viewData')}</Button>
+          <TextField size="small" placeholder={t('posm.searchAgency')} value={search}
             onChange={(e) => setSearch(e.target.value)} sx={{ minWidth: 200 }} />
         </Stack>
       </Paper>
@@ -338,17 +340,17 @@ function AgencyTab() {
       <Stack direction="row" gap={2} mb={3} flexWrap="wrap">
         <Paper sx={{ p: 2, flex: 1, minWidth: 160, borderRadius: 3, textAlign: 'center' }}>
           <Typography variant="h5" fontWeight={800}>{totalAgencies}</Typography>
-          <Typography variant="caption" color="text.secondary">Agencies ที่ได้รับสื่อ</Typography>
+          <Typography variant="caption" color="text.secondary">{t('posm.agenciesReceived')}</Typography>
         </Paper>
         <Paper sx={{ p: 2, flex: 1, minWidth: 160, borderRadius: 3, textAlign: 'center' }}>
           <Typography variant="h5" fontWeight={800}>{totalItems}</Typography>
-          <Typography variant="caption" color="text.secondary">สื่อที่แจกทั้งหมด</Typography>
+          <Typography variant="caption" color="text.secondary">{t('posm.totalDistributed')}</Typography>
         </Paper>
         <Paper sx={{ p: 2, flex: 1, minWidth: 160, borderRadius: 3, textAlign: 'center' }}>
           <Typography variant="h5" fontWeight={800}>
             {totalAgencies > 0 ? (totalItems / totalAgencies).toFixed(1) : 0}
           </Typography>
-          <Typography variant="caption" color="text.secondary">เฉลี่ยต่อ Agency</Typography>
+          <Typography variant="caption" color="text.secondary">{t('posm.avgPerAgency')}</Typography>
         </Paper>
       </Stack>
 
@@ -362,10 +364,10 @@ function AgencyTab() {
               <TableRow sx={{ '& th': { fontWeight: 700, fontSize: 12 } }}>
                 <TableCell>#</TableCell>
                 <TableCell>Agency</TableCell>
-                <TableCell>โซน</TableCell>
-                <TableCell align="center">รวมสื่อ</TableCell>
-                <TableCell align="center">ล่าสุด</TableCell>
-                <TableCell align="right">รายละเอียด</TableCell>
+                <TableCell>{t('c.zone')}</TableCell>
+                <TableCell align="center">{t('posm.totalMedia')}</TableCell>
+                <TableCell align="center">{t('posm.lastDate')}</TableCell>
+                <TableCell align="right">{t('posm.detail')}</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -386,7 +388,7 @@ function AgencyTab() {
                       <Typography variant="caption">{r.lastGiven ? fmtDate(r.lastGiven) : '—'}</Typography>
                     </TableCell>
                     <TableCell align="right">
-                      <Button size="small">{expandedId === r.id ? 'ซ่อน ▲' : 'ดู ▼'}</Button>
+                      <Button size="small">{expandedId === r.id ? `${t('posm.hide')} ▲` : `${t('posm.view')} ▼`}</Button>
                     </TableCell>
                   </TableRow>
                   {expandedId === r.id && (
@@ -413,7 +415,7 @@ function AgencyTab() {
       )}
       {!loading && filtered.length === 0 && (
         <Paper sx={{ p: 4, textAlign: 'center', borderRadius: 3 }}>
-          <Typography color="text.secondary">ยังไม่มีการแจกสื่อในช่วงนี้</Typography>
+          <Typography color="text.secondary">{t('posm.noDistrib')}</Typography>
         </Paper>
       )}
     </Box>
@@ -422,6 +424,7 @@ function AgencyTab() {
 
 // ─── Tab 3: Distribution Log ──────────────────────────────────────────────────
 function LogTab() {
+  const { t } = useT();
   const [from, setFrom] = useState(monthAgoStr());
   const [to, setTo] = useState(todayStr());
   const [rows, setRows] = useState<DistLog[]>([]);
@@ -448,22 +451,22 @@ function LogTab() {
       {/* Controls */}
       <Paper sx={{ p: 2, mb: 3, borderRadius: 3 }}>
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems="center" flexWrap="wrap">
-          <TextField size="small" type="date" label="จาก" value={from}
+          <TextField size="small" type="date" label={t('posm.from')} value={from}
             onChange={(e) => setFrom(e.target.value)} InputLabelProps={{ shrink: true }} />
-          <TextField size="small" type="date" label="ถึง" value={to}
+          <TextField size="small" type="date" label={t('posm.to')} value={to}
             onChange={(e) => setTo(e.target.value)} InputLabelProps={{ shrink: true }} />
           <FormControl size="small" sx={{ minWidth: 180 }}>
-            <InputLabel>กรองสื่อ</InputLabel>
-            <Select value={itemFilter} label="กรองสื่อ"
+            <InputLabel>{t('posm.filterMedia')}</InputLabel>
+            <Select value={itemFilter} label={t('posm.filterMedia')}
               onChange={(e) => setItemFilter(e.target.value)}>
-              <MenuItem value="">ทั้งหมด</MenuItem>
+              <MenuItem value="">{t('posm.all')}</MenuItem>
               {items.map((it) => <MenuItem key={it.id} value={it.id}>{it.name}</MenuItem>)}
             </Select>
           </FormControl>
-          <Button variant="contained" onClick={load} startIcon={<Refresh />}>ดูข้อมูล</Button>
+          <Button variant="contained" onClick={load} startIcon={<Refresh />}>{t('posm.viewData')}</Button>
           {rows.length > 0 && (
             <Typography variant="caption" color="text.secondary">
-              {rows.length} รายการ · รวม {total} ชิ้น
+              {rows.length} {t('posm.items')} · {t('posm.total')} {total} {t('posm.pieces')}
             </Typography>
           )}
         </Stack>
@@ -477,12 +480,12 @@ function LogTab() {
             <Table size="small">
               <TableHead>
                 <TableRow sx={{ '& th': { fontWeight: 700, fontSize: 12 } }}>
-                  <TableCell>วันที่</TableCell>
+                  <TableCell>{t('pl2.date')}</TableCell>
                   <TableCell>Agency</TableCell>
-                  <TableCell>สื่อ</TableCell>
-                  <TableCell>หมวด</TableCell>
-                  <TableCell align="center">จำนวน</TableCell>
-                  <TableCell>เซลส์</TableCell>
+                  <TableCell>{t('posm.media')}</TableCell>
+                  <TableCell>{t('posm.category')}</TableCell>
+                  <TableCell align="center">{t('va.qty')}</TableCell>
+                  <TableCell>{t('c.seller')}</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -517,7 +520,7 @@ function LogTab() {
       )}
       {!loading && rows.length === 0 && (
         <Paper sx={{ p: 4, textAlign: 'center', borderRadius: 3 }}>
-          <Typography color="text.secondary">ยังไม่มีการแจกสื่อในช่วงนี้</Typography>
+          <Typography color="text.secondary">{t('posm.noDistrib')}</Typography>
         </Paper>
       )}
     </Box>

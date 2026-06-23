@@ -116,11 +116,9 @@ export default function Layout({ children }: { children: ReactNode }) {
       const d = r.data;
       if (d?.error) return;
       const n = d.visits?.length ?? 0;
-      const office = d.inOffice ? (lang === 'th' ? ' (วันนี้เวรออฟฟิศ)' : ' (office duty)') : '';
+      const office = d.inOffice ? t('lay.officeDutyParens') : '';
       setLoginMsg(
-        lang === 'th'
-          ? `สวัสดี ${user.name} — วันนี้มี ${n} นัดเยี่ยม${office}`
-          : `Hi ${user.name} — ${n} visits today${office}`,
+        `${t('lay.loginHello')} ${user.name} — ${n} ${t('lay.loginApptPost')}${office}`,
       );
     }).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -168,9 +166,7 @@ export default function Layout({ children }: { children: ReactNode }) {
 
   const hour = new Date().getHours();
   const greet =
-    lang === 'th'
-      ? hour < 12 ? 'สวัสดีตอนเช้า' : hour < 17 ? 'สวัสดีตอนบ่าย' : 'สวัสดีตอนเย็น'
-      : hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+    hour < 12 ? t('lay.goodMorning') : hour < 17 ? t('lay.goodAfternoon') : t('lay.goodEvening');
   const dateStr = new Date().toLocaleDateString(lang === 'th' ? 'th-TH' : 'en-US', {
     weekday: 'long', day: 'numeric', month: 'long',
   });
@@ -265,14 +261,12 @@ export default function Layout({ children }: { children: ReactNode }) {
           <Stack direction="row" alignItems="center" spacing={1}>
             <VisibilityRoundedIcon fontSize="small" />
             <Typography variant="body2" fontWeight={600}>
-              {lang === 'th'
-                ? `คุณกำลังดูระบบในฐานะ "${user.name}" (${roleLabel[user.activeRole]})`
-                : `Viewing as "${user.name}" (${roleLabel[user.activeRole]})`}
+              {`${t('lay.viewingAsBanner')} "${user.name}" (${roleLabel[user.activeRole]})`}
             </Typography>
             {user.impersonatorName && (
               <Chip
                 size="small"
-                label={lang === 'th' ? `โดย ${user.impersonatorName}` : `by ${user.impersonatorName}`}
+                label={`${t('lay.byUser')} ${user.impersonatorName}`}
                 sx={{ bgcolor: 'rgba(0,0,0,0.12)' }}
               />
             )}
@@ -283,7 +277,7 @@ export default function Layout({ children }: { children: ReactNode }) {
             onClick={stopImpersonation}
             sx={{ color: 'inherit', borderColor: 'rgba(0,0,0,0.3)', fontWeight: 700 }}
           >
-            {lang === 'th' ? 'ออกจากโหมดนี้' : 'Exit View'}
+            {t('lay.exitView')}
           </Button>
         </Box>
       )}
@@ -354,7 +348,7 @@ export default function Layout({ children }: { children: ReactNode }) {
               {/* Switch Role dropdown */}
               {canSwitchRole && (
                 <>
-                  <Tooltip title={lang === 'th' ? 'สลับ Role' : 'Switch Role'}>
+                  <Tooltip title={t('lay.switchRole')}>
                     <Button
                       size="small"
                       startIcon={<SwapHorizRoundedIcon />}
@@ -393,7 +387,7 @@ export default function Layout({ children }: { children: ReactNode }) {
                 </>
               )}
 
-              <Tooltip title={lang === 'th' ? 'English' : 'ภาษาไทย'}>
+              <Tooltip title={t('lay.switchLang')}>
                 <IconButton
                   onClick={() => setLang(lang === 'th' ? 'en' : 'th')}
                   sx={{

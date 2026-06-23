@@ -25,10 +25,9 @@ const sevColor: Record<string, 'error' | 'warning' | 'info'> = {
   medium: 'warning',
   low: 'info',
 };
-const sevLabel: Record<string, string> = { high: 'สูง', medium: 'กลาง', low: 'ต่ำ' };
-
 export default function AnalyticsPage() {
   const { t } = useT();
+  const sevLabel: Record<string, string> = { high: t('an.sevHigh'), medium: t('an.sevMed'), low: t('an.sevLow') };
   const [insights, setInsights] = useState<Insight[] | null>(null);
   const [generatedAt, setGeneratedAt] = useState('');
   const [loading, setLoading] = useState(false);
@@ -77,7 +76,7 @@ export default function AnalyticsPage() {
 
       {generatedAt && (
         <Typography variant="caption" color="text.secondary">
-          วิเคราะห์เมื่อ {new Date(generatedAt).toLocaleString('th-TH')}
+          {t('an.analyzedAt')} {new Date(generatedAt).toLocaleString()}
         </Typography>
       )}
 

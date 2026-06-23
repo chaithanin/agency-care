@@ -152,7 +152,7 @@ export default function TasksPage() {
                   </Tooltip>
                 )}
                 {(tk.type === 'manual' || isAdmin || isCloser) && (
-                  <Tooltip title="ลบ">
+                  <Tooltip title={t('tk.delete')}>
                     <IconButton size="small" color="error" onClick={() => remove(tk.id)}><DeleteOutlineIcon fontSize="small" /></IconButton>
                   </Tooltip>
                 )}

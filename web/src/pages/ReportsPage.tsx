@@ -38,6 +38,7 @@ import {
 } from '@mui/icons-material';
 import { api, errMsg } from '../api/client';
 import { useAuth } from '../auth/AuthContext';
+import { useT } from '../i18n';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 interface AgActivityRow {
@@ -117,6 +118,7 @@ function SummaryCard({ icon, label, value, sub }: { icon: React.ReactNode; label
 
 // ─── Tab 1: Weekly Activity Summary ──────────────────────────────────────────
 function WeeklyTab() {
+  const { t } = useT();
   const [from, setFrom] = useState(weekAgoStr());
   const [to, setTo] = useState(todayStr());
   const [data, setData] = useState<WeeklyData | null>(null);
@@ -148,11 +150,11 @@ function WeeklyTab() {
       {/* Controls */}
       <Paper sx={{ p: 2, mb: 3, borderRadius: 3 }}>
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems="center">
-          <TextField size="small" type="date" label="จาก" value={from}
+          <TextField size="small" type="date" label={t('rpt.from')} value={from}
             onChange={(e) => setFrom(e.target.value)} InputLabelProps={{ shrink: true }} />
-          <TextField size="small" type="date" label="ถึง" value={to}
+          <TextField size="small" type="date" label={t('rpt.to')} value={to}
             onChange={(e) => setTo(e.target.value)} InputLabelProps={{ shrink: true }} />
-          <Button variant="contained" onClick={load} startIcon={<Refresh />}>ดูรายงาน</Button>
+          <Button variant="contained" onClick={load} startIcon={<Refresh />}>{t('rpt.viewReport')}</Button>
           <Typography variant="caption" color="text.secondary">
             {from && to ? `${fmtDate(from)} — ${fmtDate(to)}` : ''}
           </Typography>
@@ -165,11 +167,11 @@ function WeeklyTab() {
       {/* Summary KPIs */}
       {grand && (
         <Stack direction="row" flexWrap="wrap" gap={2} mb={3}>
-          <SummaryCard icon={<Assessment />} label="กิจกรรมทั้งหมด" value={grand.total} />
-          <SummaryCard icon={<CheckCircle />} label="เสร็จแล้ว" value={grand.completed} sub={`${grand.total > 0 ? Math.round((grand.completed / grand.total) * 100) : 0}%`} />
-          <SummaryCard icon={<BarChart />} label="ส่งรายงาน" value={grand.withReport} sub={`${grand.completed > 0 ? Math.round((grand.withReport / grand.completed) * 100) : 0}%`} />
-          <SummaryCard icon={<TrendingUp />} label="Lead ใหม่" value={totalLeads} />
-          <SummaryCard icon={<Groups />} label="เซลส์ที่มีกิจกรรม" value={data?.rows.length ?? 0} />
+          <SummaryCard icon={<Assessment />} label={t('rpt.totalActivities')} value={grand.total} />
+          <SummaryCard icon={<CheckCircle />} label={t('rpt.completed')} value={grand.completed} sub={`${grand.total > 0 ? Math.round((grand.completed / grand.total) * 100) : 0}%`} />
+          <SummaryCard icon={<BarChart />} label={t('rpt.submitted')} value={grand.withReport} sub={`${grand.completed > 0 ? Math.round((grand.withReport / grand.completed) * 100) : 0}%`} />
+          <SummaryCard icon={<TrendingUp />} label={t('rpt.newLead')} value={totalLeads} />
+          <SummaryCard icon={<Groups />} label={t('rpt.activeSellers')} value={data?.rows.length ?? 0} />
         </Stack>
       )}
 
@@ -178,7 +180,7 @@ function WeeklyTab() {
         <Paper sx={{ borderRadius: 3 }}>
           <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ p: 2, borderBottom: '1px solid', borderColor: 'divider' }}>
             <Typography fontWeight={700}>Weekly Sale Activity Summary</Typography>
-            <Tooltip title="Export (ต้องการ backend เพิ่มเติม)">
+            <Tooltip title={t('rpt.exportTooltip')}>
               <span><Button size="small" startIcon={<Download />} disabled>Export Excel</Button></span>
             </Tooltip>
           </Stack>
@@ -192,9 +194,9 @@ function WeeklyTab() {
                       {c.label}
                     </TableCell>
                   ))}
-                  <TableCell align="center">รวม</TableCell>
-                  <TableCell align="center">เสร็จ</TableCell>
-                  <TableCell align="center">รายงาน</TableCell>
+                  <TableCell align="center">{t('rpt.total')}</TableCell>
+                  <TableCell align="center">{t('rpt.done')}</TableCell>
+                  <TableCell align="center">{t('pl2.report')}</TableCell>
                   <TableCell align="center">Lead</TableCell>
                 </TableRow>
               </TableHead>
@@ -247,7 +249,7 @@ function WeeklyTab() {
       )}
       {data && data.rows.length === 0 && !loading && (
         <Paper sx={{ p: 4, textAlign: 'center', borderRadius: 3 }}>
-          <Typography color="text.secondary">ไม่พบข้อมูลในช่วงวันที่นี้</Typography>
+          <Typography color="text.secondary">{t('rpt.noDataPeriod')}</Typography>
         </Paper>
       )}
     </Box>
@@ -256,6 +258,7 @@ function WeeklyTab() {
 
 // ─── Tab 2: Monthly Submission Log ───────────────────────────────────────────
 function MonthlyTab() {
+  const { t } = useT();
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
@@ -289,18 +292,18 @@ function MonthlyTab() {
       <Paper sx={{ p: 2, mb: 3, borderRadius: 3 }}>
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems="center">
           <FormControl size="small" sx={{ minWidth: 100 }}>
-            <InputLabel>ปี</InputLabel>
-            <Select value={year} label="ปี" onChange={(e) => setYear(Number(e.target.value))}>
+            <InputLabel>{t('rpt.year')}</InputLabel>
+            <Select value={year} label={t('rpt.year')} onChange={(e) => setYear(Number(e.target.value))}>
               {YEARS.map((y) => <MenuItem key={y} value={y}>{y + 543}</MenuItem>)}
             </Select>
           </FormControl>
           <FormControl size="small" sx={{ minWidth: 140 }}>
-            <InputLabel>เดือน</InputLabel>
-            <Select value={month} label="เดือน" onChange={(e) => setMonth(Number(e.target.value))}>
+            <InputLabel>{t('rpt.month')}</InputLabel>
+            <Select value={month} label={t('rpt.month')} onChange={(e) => setMonth(Number(e.target.value))}>
               {MONTHS.map((m) => <MenuItem key={m.val} value={m.val}>{m.label}</MenuItem>)}
             </Select>
           </FormControl>
-          <Button variant="contained" onClick={load} startIcon={<Refresh />}>ดูรายงาน</Button>
+          <Button variant="contained" onClick={load} startIcon={<Refresh />}>{t('rpt.viewReport')}</Button>
           {data && <Typography variant="caption" color="text.secondary">{monthName(year, month)}</Typography>}
         </Stack>
       </Paper>
@@ -311,10 +314,10 @@ function MonthlyTab() {
       {/* Summary KPIs */}
       {data && (
         <Stack direction="row" flexWrap="wrap" gap={2} mb={3}>
-          <SummaryCard icon={<CalendarMonth />} label="แผนทั้งหมด" value={totalPlanned} />
-          <SummaryCard icon={<CheckCircle />} label="เสร็จแล้ว" value={totalCompleted} sub={`${totalPlanned > 0 ? Math.round((totalCompleted / totalPlanned) * 100) : 0}% completion`} />
-          <SummaryCard icon={<Assessment />} label="อัตราส่งรายงาน" value={`${avgRate}%`} />
-          <SummaryCard icon={<TrendingUp />} label="Lead รวม" value={totalLeads} />
+          <SummaryCard icon={<CalendarMonth />} label={t('rpt.totalPlanned')} value={totalPlanned} />
+          <SummaryCard icon={<CheckCircle />} label={t('rpt.completed')} value={totalCompleted} sub={`${totalPlanned > 0 ? Math.round((totalCompleted / totalPlanned) * 100) : 0}% completion`} />
+          <SummaryCard icon={<Assessment />} label={t('rpt.submitRate')} value={`${avgRate}%`} />
+          <SummaryCard icon={<TrendingUp />} label={t('rpt.totalLeads')} value={totalLeads} />
         </Stack>
       )}
 
@@ -323,7 +326,7 @@ function MonthlyTab() {
         <Paper sx={{ borderRadius: 3 }}>
           <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ p: 2, borderBottom: '1px solid', borderColor: 'divider' }}>
             <Typography fontWeight={700}>Monthly Report Submission Log — {monthName(year, month)}</Typography>
-            <Tooltip title="Export (ต้องการ backend เพิ่มเติม)">
+            <Tooltip title={t('rpt.exportTooltip')}>
               <span><Button size="small" startIcon={<Download />} disabled>Export Excel</Button></span>
             </Tooltip>
           </Stack>
@@ -332,12 +335,12 @@ function MonthlyTab() {
               <TableHead>
                 <TableRow sx={{ '& th': { fontWeight: 700 } }}>
                   <TableCell>Employee</TableCell>
-                  <TableCell align="center">แผนทั้งหมด</TableCell>
-                  <TableCell align="center">เสร็จแล้ว</TableCell>
+                  <TableCell align="center">{t('rpt.totalPlanned')}</TableCell>
+                  <TableCell align="center">{t('rpt.completed')}</TableCell>
                   <TableCell align="center">% Completion</TableCell>
-                  <TableCell align="center">ส่งรายงาน</TableCell>
-                  <TableCell align="center">% ส่งรายงาน</TableCell>
-                  <TableCell align="center">Lead ใหม่</TableCell>
+                  <TableCell align="center">{t('rpt.submitted')}</TableCell>
+                  <TableCell align="center">{t('rpt.pctSubmit')}</TableCell>
+                  <TableCell align="center">{t('rpt.newLead')}</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -361,7 +364,7 @@ function MonthlyTab() {
                 ))}
                 {/* Grand row */}
                 <TableRow sx={{ bgcolor: 'action.hover', '& td': { fontWeight: 800 } }}>
-                  <TableCell>รวม / เฉลี่ย</TableCell>
+                  <TableCell>{t('rpt.totalAvg')}</TableCell>
                   <TableCell align="center">{totalPlanned}</TableCell>
                   <TableCell align="center">{totalCompleted}</TableCell>
                   <TableCell align="center">
@@ -378,7 +381,7 @@ function MonthlyTab() {
       )}
       {data && data.rows.length === 0 && !loading && (
         <Paper sx={{ p: 4, textAlign: 'center', borderRadius: 3 }}>
-          <Typography color="text.secondary">ไม่พบข้อมูลในเดือนนี้</Typography>
+          <Typography color="text.secondary">{t('rpt.noDataMonth')}</Typography>
         </Paper>
       )}
     </Box>
@@ -387,6 +390,7 @@ function MonthlyTab() {
 
 // ─── Tab 3: Agency Performance ────────────────────────────────────────────────
 function AgencyPerfTab() {
+  const { t } = useT();
   const { user } = useAuth();
   const isAdmin = ['super_admin', 'admin', 'closer'].includes(user?.activeRole ?? '');
   const [from, setFrom] = useState(firstOfMonth());
@@ -406,22 +410,22 @@ function AgencyPerfTab() {
   useEffect(() => { if (isAdmin) load(); }, [load, isAdmin]);
 
   if (!isAdmin) return (
-    <Alert severity="info">รายงานนี้สำหรับ Admin และ Closer เท่านั้น</Alert>
+    <Alert severity="info">{t('rpt.adminOnly')}</Alert>
   );
 
   const top3 = data?.rows.slice(0, 3) ?? [];
-  const INTEREST_LABEL: Record<string, string> = { '3': 'สูง', '2': 'กลาง', '1': 'ต่ำ', '0': '-' };
+  const INTEREST_LABEL: Record<string, string> = { '3': t('rpt.interestHigh'), '2': t('rpt.interestMid'), '1': t('rpt.interestLow'), '0': '-' };
 
   return (
     <Box>
       {/* Controls */}
       <Paper sx={{ p: 2, mb: 3, borderRadius: 3 }}>
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems="center">
-          <TextField size="small" type="date" label="จาก" value={from}
+          <TextField size="small" type="date" label={t('rpt.from')} value={from}
             onChange={(e) => setFrom(e.target.value)} InputLabelProps={{ shrink: true }} />
-          <TextField size="small" type="date" label="ถึง" value={to}
+          <TextField size="small" type="date" label={t('rpt.to')} value={to}
             onChange={(e) => setTo(e.target.value)} InputLabelProps={{ shrink: true }} />
-          <Button variant="contained" onClick={load} startIcon={<Refresh />}>ดูรายงาน</Button>
+          <Button variant="contained" onClick={load} startIcon={<Refresh />}>{t('rpt.viewReport')}</Button>
         </Stack>
       </Paper>
 
@@ -458,10 +462,10 @@ function AgencyPerfTab() {
       {data && data.rows.length > 0 && (
         <Paper sx={{ borderRadius: 3 }}>
           <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ p: 2, borderBottom: '1px solid', borderColor: 'divider' }}>
-            <Typography fontWeight={700}>Agency Performance — {fmtDate(data.from)} ถึง {fmtDate(data.to)}</Typography>
+            <Typography fontWeight={700}>Agency Performance — {fmtDate(data.from)} {t('rpt.toDate')} {fmtDate(data.to)}</Typography>
             <Stack direction="row" spacing={1} alignItems="center">
               <Typography variant="caption" color="text.secondary">{data.rows.length} agencies</Typography>
-              <Tooltip title="Export (ต้องการ backend เพิ่มเติม)">
+              <Tooltip title={t('rpt.exportTooltip')}>
                 <span><Button size="small" startIcon={<Download />} disabled>Export Excel</Button></span>
               </Tooltip>
             </Stack>
@@ -472,14 +476,14 @@ function AgencyPerfTab() {
                 <TableRow sx={{ '& th': { fontWeight: 700, fontSize: 12 } }}>
                   <TableCell>#</TableCell>
                   <TableCell>Agency</TableCell>
-                  <TableCell>โซน</TableCell>
+                  <TableCell>{t('c.zone')}</TableCell>
                   <TableCell>Level</TableCell>
                   <TableCell align="center">Visit</TableCell>
-                  <TableCell align="center">เสร็จ</TableCell>
-                  <TableCell align="center">% เสร็จ</TableCell>
+                  <TableCell align="center">{t('rpt.done')}</TableCell>
+                  <TableCell align="center">{t('rpt.pctDone')}</TableCell>
                   <TableCell align="center">Lead</TableCell>
-                  <TableCell align="center">ความสนใจ</TableCell>
-                  <TableCell align="center">ครั้งล่าสุด</TableCell>
+                  <TableCell align="center">{t('rpt.interest')}</TableCell>
+                  <TableCell align="center">{t('rpt.lastVisit')}</TableCell>
                   <TableCell align="center">Score</TableCell>
                 </TableRow>
               </TableHead>
@@ -528,7 +532,7 @@ function AgencyPerfTab() {
       )}
       {data && data.rows.length === 0 && !loading && (
         <Paper sx={{ p: 4, textAlign: 'center', borderRadius: 3 }}>
-          <Typography color="text.secondary">ไม่พบข้อมูล Agency ในช่วงนี้</Typography>
+          <Typography color="text.secondary">{t('rpt.noDataAgency')}</Typography>
         </Paper>
       )}
     </Box>
@@ -537,6 +541,7 @@ function AgencyPerfTab() {
 
 // ─── Tab 4: Agency Activity Report ───────────────────────────────────────────
 function AgencyActivityTab() {
+  const { t } = useT();
   const now = new Date();
   const [from, setFrom] = useState(`${now.getFullYear()}-01-01`);
   const [to, setTo] = useState(todayStr());
@@ -577,12 +582,12 @@ function AgencyActivityTab() {
     <Box>
       <Paper sx={{ p: 2, mb: 3, borderRadius: 3 }}>
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems="center" flexWrap="wrap">
-          <TextField size="small" type="date" label="จาก" value={from}
+          <TextField size="small" type="date" label={t('rpt.from')} value={from}
             onChange={(e) => setFrom(e.target.value)} InputLabelProps={{ shrink: true }} />
-          <TextField size="small" type="date" label="ถึง" value={to}
+          <TextField size="small" type="date" label={t('rpt.to')} value={to}
             onChange={(e) => setTo(e.target.value)} InputLabelProps={{ shrink: true }} />
-          <Button variant="contained" onClick={load} startIcon={<Refresh />}>โหลด</Button>
-          <TextField size="small" placeholder="ค้นหา Agency..." value={search}
+          <Button variant="contained" onClick={load} startIcon={<Refresh />}>{t('rpt.load')}</Button>
+          <TextField size="small" placeholder={t('rpt.searchAgency')} value={search}
             onChange={(e) => setSearch(e.target.value)} sx={{ minWidth: 200 }} />
           {data && <Typography variant="caption" color="text.secondary">{rows.length} agencies</Typography>}
         </Stack>
@@ -607,9 +612,9 @@ function AgencyActivityTab() {
                   <TableCell>#</TableCell>
                   <TableCell>Agency</TableCell>
                   <TableCell>Grade</TableCell>
-                  <TableCell>โซน</TableCell>
-                  <TableCell>ผู้ดูแล</TableCell>
-                  <TableCell>ผู้ติดต่อ</TableCell>
+                  <TableCell>{t('c.zone')}</TableCell>
+                  <TableCell>{t('rpt.responsible')}</TableCell>
+                  <TableCell>{t('rpt.contactPerson')}</TableCell>
                   <TableCell align="center">Visit (Done)</TableCell>
                   <TableCell align="center">Last Visit</TableCell>
                   <TableCell align="center">Lead</TableCell>
@@ -665,7 +670,7 @@ function AgencyActivityTab() {
                     <TableCell align="center">
                       {r.totalMaterials > 0
                         ? <Tooltip title={r.materials.map((m) => `${m.name}: ${m.qty} ${m.unit}`).join(', ')}>
-                            <Chip size="small" label={`${r.totalMaterials} ชิ้น`} color="info" variant="outlined" />
+                            <Chip size="small" label={`${r.totalMaterials} ${t('rpt.pieces')}`} color="info" variant="outlined" />
                           </Tooltip>
                         : <Typography variant="caption" color="text.disabled">-</Typography>}
                     </TableCell>
@@ -678,7 +683,7 @@ function AgencyActivityTab() {
       )}
       {data && rows.length === 0 && !loading && (
         <Paper sx={{ p: 4, textAlign: 'center', borderRadius: 3 }}>
-          <Typography color="text.secondary">ไม่พบข้อมูล Agency</Typography>
+          <Typography color="text.secondary">{t('rpt.noDataAgencyShort')}</Typography>
         </Paper>
       )}
     </Box>
@@ -687,6 +692,7 @@ function AgencyActivityTab() {
 
 // ─── Tab 5: Daily Visit Tracker ───────────────────────────────────────────────
 function DailyTrackerTab() {
+  const { t } = useT();
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
@@ -735,29 +741,29 @@ function DailyTrackerTab() {
       <Paper sx={{ p: 2, mb: 3, borderRadius: 3 }}>
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems="center" flexWrap="wrap">
           <FormControl size="small" sx={{ minWidth: 90 }}>
-            <InputLabel>ปี</InputLabel>
-            <Select value={year} label="ปี" onChange={(e) => setYear(Number(e.target.value))}>
+            <InputLabel>{t('rpt.year')}</InputLabel>
+            <Select value={year} label={t('rpt.year')} onChange={(e) => setYear(Number(e.target.value))}>
               {YEARS.map((y) => <MenuItem key={y} value={y}>{y + 543}</MenuItem>)}
             </Select>
           </FormControl>
           <FormControl size="small" sx={{ minWidth: 110 }}>
-            <InputLabel>เดือน</InputLabel>
-            <Select value={month} label="เดือน" onChange={(e) => setMonth(Number(e.target.value))}>
+            <InputLabel>{t('rpt.month')}</InputLabel>
+            <Select value={month} label={t('rpt.month')} onChange={(e) => setMonth(Number(e.target.value))}>
               {MONTHS.map((m) => <MenuItem key={m.val} value={m.val}>{m.label}</MenuItem>)}
             </Select>
           </FormControl>
           <FormControl size="small" sx={{ minWidth: 130 }}>
-            <InputLabel>ช่วง</InputLabel>
-            <Select value={half} label="ช่วง" onChange={(e) => setHalf(Number(e.target.value) as 1 | 2)}>
-              <MenuItem value={1}>1–15 (ครึ่งแรก)</MenuItem>
-              <MenuItem value={2}>16–สิ้นเดือน (ครึ่งหลัง)</MenuItem>
+            <InputLabel>{t('rpt.period')}</InputLabel>
+            <Select value={half} label={t('rpt.period')} onChange={(e) => setHalf(Number(e.target.value) as 1 | 2)}>
+              <MenuItem value={1}>{t('rpt.firstHalf')}</MenuItem>
+              <MenuItem value={2}>{t('rpt.secondHalf')}</MenuItem>
             </Select>
           </FormControl>
-          <Button variant="contained" onClick={load} startIcon={<Refresh />}>โหลด</Button>
+          <Button variant="contained" onClick={load} startIcon={<Refresh />}>{t('rpt.load')}</Button>
 
           {data && (
             <Stack direction="row" spacing={1} alignItems="center">
-              <Chip size="small" label={`${data.workingDays} วันทำงาน`} variant="outlined" />
+              <Chip size="small" label={`${data.workingDays} ${t('rpt.workingDays')}`} variant="outlined" />
               <Chip size="small" label={`Target ${data.periodTarget} visits`} color="primary" variant="outlined" />
             </Stack>
           )}
@@ -769,7 +775,7 @@ function DailyTrackerTab() {
 
       {/* Legend */}
       <Stack direction="row" spacing={2} mb={2} alignItems="center">
-        <Typography variant="caption" color="text.secondary">ตัวกำกับสี:</Typography>
+        <Typography variant="caption" color="text.secondary">{t('rpt.colorLegend')}</Typography>
         <Box sx={{ px: 1.5, py: 0.3, bgcolor: 'success.light', borderRadius: 1 }}>
           <Typography variant="caption">≥3 visit</Typography>
         </Box>
@@ -777,7 +783,7 @@ function DailyTrackerTab() {
           <Typography variant="caption">1–2 visit</Typography>
         </Box>
         <Box sx={{ px: 1.5, py: 0.3, bgcolor: 'grey.200', borderRadius: 1 }}>
-          <Typography variant="caption">0 (วันทำงาน)</Typography>
+          <Typography variant="caption">{t('rpt.zeroWorkday')}</Typography>
         </Box>
       </Stack>
 
@@ -787,7 +793,7 @@ function DailyTrackerTab() {
             sx={{ p: 2, borderBottom: '1px solid', borderColor: 'divider' }}>
             <Typography fontWeight={700}>
               Daily Visit Tracker — {MONTHS.find(m => m.val === data.month)?.label} {data.year + 543}
-              {' '}(ครึ่ง{data.half === 1 ? 'แรก' : 'หลัง'})
+              {' '}({data.half === 1 ? t('rpt.halfFirst') : t('rpt.halfSecond')})
             </Typography>
             <Typography variant="caption" color="text.secondary">
               Target {data.dailyTarget} visits/day
@@ -798,7 +804,7 @@ function DailyTrackerTab() {
               <TableHead>
                 <TableRow sx={{ '& th': { fontWeight: 700, fontSize: 11, textAlign: 'center', bgcolor: 'grey.50', py: 0.5 } }}>
                   <TableCell sx={{ textAlign: 'left !important', minWidth: 130 }}>Sales</TableCell>
-                  <TableCell sx={{ minWidth: 70 }}>ทีม</TableCell>
+                  <TableCell sx={{ minWidth: 70 }}>{t('c.team')}</TableCell>
                   {data.dates.map((ds) => (
                     <TableCell key={ds} sx={{ minWidth: 34, px: 0.5 }}>
                       <Box>
@@ -809,10 +815,10 @@ function DailyTrackerTab() {
                       </Box>
                     </TableCell>
                   ))}
-                  <TableCell sx={{ minWidth: 50 }}>รวม</TableCell>
+                  <TableCell sx={{ minWidth: 50 }}>{t('rpt.total')}</TableCell>
                   <TableCell sx={{ minWidth: 60 }}>Target</TableCell>
                   <TableCell sx={{ minWidth: 60 }}>Ach%</TableCell>
-                  <TableCell sx={{ minWidth: 60 }}>เฉลี่ย/วัน</TableCell>
+                  <TableCell sx={{ minWidth: 60 }}>{t('rpt.avgPerDay')}</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -891,7 +897,7 @@ function DailyTrackerTab() {
       )}
       {data && data.rows.length === 0 && !loading && (
         <Paper sx={{ p: 4, textAlign: 'center', borderRadius: 3 }}>
-          <Typography color="text.secondary">ไม่พบข้อมูล Visit ในช่วงนี้</Typography>
+          <Typography color="text.secondary">{t('rpt.noDataVisit')}</Typography>
         </Paper>
       )}
     </Box>

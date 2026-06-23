@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Box,
   Button,
@@ -21,8 +21,13 @@ import {
   FormControlLabel,
   Checkbox,
   IconButton,
+  Tooltip,
+  LinearProgress,
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
+import EventBusyIcon from '@mui/icons-material/EventBusy';
+import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
+import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import { api, errMsg } from '../api/client';
 import { useT } from '../i18n';
 
@@ -44,9 +49,13 @@ interface Employee {
 interface Team { id: string; name: string }
 
 const emptyCreate = { code: '', name: '', phone: '', zone: '', lineUserId: '', email: '', password: '' };
+const thisYM = () => new Date().toISOString().slice(0, 7);
+
+const DOW_TH = ['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส'];
+const DOW_EN = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
 
 export default function EmployeesPage() {
-  const { t } = useT();
+  const { t, lang } = useT();
   const [rows, setRows] = useState<Employee[]>([]);
   const [teams, setTeams] = useState<Team[]>([]);
   const [createOpen, setCreateOpen] = useState(false);
@@ -56,6 +65,61 @@ export default function EmployeesPage() {
   const [error, setError] = useState('');
   const [notifyMsg, setNotifyMsg] = useState('');
   const [notifying, setNotifying] = useState(false);
+
+  // ── Leave management ──────────────────────────────────────────────────────
+  const [leaveEmp, setLeaveEmp] = useState<Employee | null>(null);
+  const [leaveMonth, setLeaveMonth] = useState(thisYM());
+  const [leaveDates, setLeaveDates] = useState<Set<string>>(new Set());
+  const [leaveLoading, setLeaveLoading] = useState(false);
+
+  const loadLeaves = useCallback(async (emp: Employee, ym: string) => {
+    const [y, m] = ym.split('-').map(Number);
+    setLeaveLoading(true);
+    try {
+      const r = await api.get('/scheduling/holidays', { params: { employeeId: emp.id, year: y, month: m } });
+      setLeaveDates(new Set(r.data as string[]));
+    } finally { setLeaveLoading(false); }
+  }, []);
+
+  useEffect(() => {
+    if (leaveEmp) loadLeaves(leaveEmp, leaveMonth);
+  }, [leaveEmp, leaveMonth, loadLeaves]);
+
+  const toggleLeave = async (ds: string) => {
+    if (!leaveEmp) return;
+    await api.post('/scheduling/holidays/toggle', { employeeId: leaveEmp.id, date: ds });
+    loadLeaves(leaveEmp, leaveMonth);
+  };
+
+  const openLeave = (emp: Employee) => {
+    setLeaveMonth(thisYM());
+    setLeaveEmp(emp);
+  };
+
+  // build calendar cells for the leave dialog
+  const leaveCells = useMemo(() => {
+    const [y, m] = leaveMonth.split('-').map(Number);
+    const dim = new Date(y, m, 0).getDate();
+    const lead = new Date(Date.UTC(y, m - 1, 1)).getUTCDay();
+    const cells: (string | null)[] = Array(lead).fill(null);
+    for (let d = 1; d <= dim; d++) {
+      cells.push(`${leaveMonth}-${String(d).padStart(2, '0')}`);
+    }
+    while (cells.length % 7 !== 0) cells.push(null);
+    return cells;
+  }, [leaveMonth]);
+
+  const prevMonth = () => {
+    const [y, m] = leaveMonth.split('-').map(Number);
+    const d = new Date(y, m - 2, 1);
+    setLeaveMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+  };
+  const nextMonth = () => {
+    const [y, m] = leaveMonth.split('-').map(Number);
+    const d = new Date(y, m, 1);
+    setLeaveMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+  };
+  // ──────────────────────────────────────────────────────────────────────────
 
   const load = () => api.get('/employees').then((r) => setRows(r.data));
   useEffect(() => {
@@ -69,7 +133,7 @@ export default function EmployeesPage() {
     try {
       const { data } = await api.post('/notifications/run', {});
       const sent = data.results.filter((r: { sent: boolean }) => r.sent).length;
-      setNotifyMsg(`ส่งแจ้งเตือนสำเร็จ ${sent}/${data.totalEmployees} คน (งานค้าง ณ ${data.date})`);
+      setNotifyMsg(`${t('emp.notifyOk')} ${sent}/${data.totalEmployees} ${t('emp.notifyPeopleSuffix')} ${data.date})`);
     } catch (e) {
       setNotifyMsg(errMsg(e));
     } finally {
@@ -119,6 +183,8 @@ export default function EmployeesPage() {
     }
   };
 
+  const DOW = lang === 'en' ? DOW_EN : DOW_TH;
+
   return (
     <Box>
       <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2}>
@@ -148,6 +214,7 @@ export default function EmployeesPage() {
               <TableCell>{t('c.zone')}</TableCell>
               <TableCell>{t('emp.loginAcct')}</TableCell>
               <TableCell align="right">Agency</TableCell>
+              <TableCell align="center">{t('emp.dayOff')}</TableCell>
               <TableCell align="center">{t('common.edit')}</TableCell>
             </TableRow>
           </TableHead>
@@ -166,6 +233,13 @@ export default function EmployeesPage() {
                 </TableCell>
                 <TableCell align="right">{e._count.assignments}</TableCell>
                 <TableCell align="center">
+                  <Tooltip title={t('emp.manageLeave')}>
+                    <IconButton size="small" color="error" onClick={() => openLeave(e)}>
+                      <EventBusyIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                </TableCell>
+                <TableCell align="center">
                   <IconButton size="small" onClick={() => { setError(''); setEditEmail(e.user?.email ?? ''); setEdit({ ...e }); }}><EditIcon fontSize="small" /></IconButton>
                 </TableCell>
               </TableRow>
@@ -173,6 +247,62 @@ export default function EmployeesPage() {
           </TableBody>
         </Table>
       </Paper>
+
+      {/* ---- วันหยุดพนักงาน ---- */}
+      <Dialog open={!!leaveEmp} onClose={() => setLeaveEmp(null)} fullWidth maxWidth="sm">
+        <DialogTitle>
+          {t('emp.manageLeave')} — {leaveEmp?.name}
+        </DialogTitle>
+        <DialogContent>
+          {leaveLoading && <LinearProgress sx={{ mb: 1 }} />}
+          <Stack direction="row" alignItems="center" justifyContent="center" spacing={1} mb={1.5}>
+            <IconButton size="small" onClick={prevMonth}><ChevronLeftIcon /></IconButton>
+            <Typography fontWeight={600}>{leaveMonth}</Typography>
+            <IconButton size="small" onClick={nextMonth}><ChevronRightIcon /></IconButton>
+          </Stack>
+
+          {/* Day headers */}
+          <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 0.5, mb: 0.5 }}>
+            {DOW.map((d) => (
+              <Typography key={d} variant="caption" fontWeight={700} textAlign="center" color="text.secondary">{d}</Typography>
+            ))}
+          </Box>
+
+          {/* Calendar cells */}
+          <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 0.5 }}>
+            {leaveCells.map((ds, i) => ds ? (
+              <Box
+                key={ds}
+                onClick={() => toggleLeave(ds)}
+                sx={{
+                  height: 44, display: 'flex', flexDirection: 'column',
+                  alignItems: 'center', justifyContent: 'center', borderRadius: 1,
+                  border: 1, borderColor: leaveDates.has(ds) ? 'error.main' : 'divider',
+                  bgcolor: leaveDates.has(ds) ? 'error.50' : 'background.paper',
+                  cursor: 'pointer',
+                  '&:hover': { bgcolor: leaveDates.has(ds) ? 'error.100' : 'action.hover' },
+                }}
+              >
+                <Typography variant="body2" fontWeight={leaveDates.has(ds) ? 700 : 400}>
+                  {Number(ds.slice(8))}
+                </Typography>
+                {leaveDates.has(ds) && (
+                  <Typography variant="caption" sx={{ fontSize: 9, color: 'error.main', lineHeight: 1 }}>
+                    {t('cal.holiday')}
+                  </Typography>
+                )}
+              </Box>
+            ) : <Box key={i} />)}
+          </Box>
+
+          <Typography variant="caption" color="text.secondary" sx={{ mt: 1.5, display: 'block' }}>
+            {t('emp.leaveHint')}
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setLeaveEmp(null)}>{t('common.close')}</Button>
+        </DialogActions>
+      </Dialog>
 
       {/* ---- เพิ่มพนักงาน ---- */}
       <Dialog open={createOpen} onClose={() => setCreateOpen(false)} fullWidth maxWidth="sm">

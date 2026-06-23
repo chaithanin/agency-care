@@ -68,19 +68,19 @@ interface Plan {
 interface FollowUp { id: string; title: string; detail?: string; dueDate?: string; status: string }
 
 const PURPOSES = [
-  { key: 'visit', label: 'เยี่ยมความสัมพันธ์' },
-  { key: 'new_project', label: 'แนะนำโครงการใหม่' },
-  { key: 'give_material', label: 'แจกสื่อการตลาด' },
-  { key: 'training', label: 'ฝึกอบรม' },
-  { key: 'install_posm', label: 'ติดตั้งสื่อ' },
-  { key: 'follow_sales', label: 'ติดตามยอดขาย' },
-  { key: 'solve_problem', label: 'แก้ไขปัญหา' },
+  { key: 'visit', i18nKey: 'vd.purposeVisit' },
+  { key: 'new_project', i18nKey: 'vd.purposeNewProject' },
+  { key: 'give_material', i18nKey: 'vd.purposeGiveMaterial' },
+  { key: 'training', i18nKey: 'vd.purposeTraining' },
+  { key: 'install_posm', i18nKey: 'vd.purposeInstallPosm' },
+  { key: 'follow_sales', i18nKey: 'vd.purposeFollowSales' },
+  { key: 'solve_problem', i18nKey: 'vd.purposeSolveProblem' },
 ];
 const PHOTO_CATS = [
-  { key: 'office', label: 'หน้าออฟฟิศ' },
-  { key: 'activity', label: 'กิจกรรม' },
-  { key: 'material', label: 'สื่อที่ติดตั้ง' },
-  { key: 'selfie', label: 'Selfie คู่ผู้ดูแล' },
+  { key: 'office', i18nKey: 'vd.catOffice' },
+  { key: 'activity', i18nKey: 'vd.catActivity' },
+  { key: 'material', i18nKey: 'vd.catMaterial' },
+  { key: 'selfie', i18nKey: 'vd.catSelfie' },
 ] as const;
 
 // ใส่ลายน้ำ (วันเวลา/พิกัด/เซลส์/agency) ลงรูปก่อนอัปโหลด
@@ -105,12 +105,10 @@ async function watermark(file: File, lines: string[]): Promise<Blob> {
   return new Promise((res) => canvas.toBlob((b) => res(b ?? file), 'image/jpeg', 0.85));
 }
 
-const gpsChip = (s: string) =>
-  s === 'in_area'
-    ? { color: 'success' as const, label: '🟢 อยู่ในพื้นที่' }
-    : s === 'near'
-      ? { color: 'warning' as const, label: '🟡 ใกล้เคียง' }
-      : { color: 'error' as const, label: '🔴 นอกพื้นที่' };
+const gpsChipColor = (s: string) =>
+  s === 'in_area' ? ('success' as const) : s === 'near' ? ('warning' as const) : ('error' as const);
+const gpsChipI18nKey = (s: string) =>
+  s === 'in_area' ? 'vd.gpsInArea' : s === 'near' ? 'vd.gpsNear' : 'vd.gpsOut';
 
 export default function VisitDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -135,7 +133,7 @@ export default function VisitDetailPage() {
 
   const checkin = () => {
     setError('');
-    if (!navigator.geolocation) return setError('อุปกรณ์ไม่รองรับ GPS');
+    if (!navigator.geolocation) return setError(t('vd.noGpsDevice'));
     setBusy(true);
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
@@ -153,7 +151,7 @@ export default function VisitDetailPage() {
         }
       },
       (err) => {
-        setError(`อ่านตำแหน่งไม่สำเร็จ: ${err.message}`);
+        setError(`${t('vd.gpsReadFail')}: ${err.message}`);
         setBusy(false);
       },
       { enableHighAccuracy: true, timeout: 15000 },
@@ -325,7 +323,7 @@ function CheckedInSection({
       const stamp = [
         `${now}`,
         loc ? `GPS: ${loc.latitude.toFixed(5)}, ${loc.longitude.toFixed(5)}` : 'GPS: -',
-        `เซลส์: ${salesName}`,
+        `${t('c.seller')}: ${salesName}`,
         `Agency: ${agencyName}`,
       ];
       const blob = await watermark(file, stamp);
@@ -367,17 +365,16 @@ function CheckedInSection({
   const toggleTask = async (tid: string) => { await api.patch(`/visits/followups/${tid}/toggle`); await loadTasks(); };
   const togglePurpose = (k: string) => setPurposes((p) => (p.includes(k) ? p.filter((x) => x !== k) : [...p, k]));
 
-  const g = gpsChip(checkin.gpsStatus);
   const dur = checkin.durationMinutes;
 
   return (
     <Box>
       <Alert severity={checkin.gpsStatus === 'in_area' ? 'success' : 'warning'} sx={{ mb: 2 }}>
         <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
-          <Chip size="small" color={g.color} label={g.label} />
-          <span>ห่าง {checkin.distanceMeters} ม. · เข้า {new Date(checkin.checkinAt).toLocaleTimeString('th-TH')}</span>
-          {checkin.checkOutAt && <span>· ออก {new Date(checkin.checkOutAt).toLocaleTimeString('th-TH')}</span>}
-          {dur != null && <Chip size="small" label={`รวม ${Math.floor(dur / 60)} ชม. ${dur % 60} นาที`} />}
+          <Chip size="small" color={gpsChipColor(checkin.gpsStatus)} label={t(gpsChipI18nKey(checkin.gpsStatus))} />
+          <span>{t('vd.distanceAway')} {checkin.distanceMeters} {t('vd.meters')} · {t('vd.checkinTime')} {new Date(checkin.checkinAt).toLocaleTimeString('th-TH')}</span>
+          {checkin.checkOutAt && <span>· {t('vd.checkoutTime')} {new Date(checkin.checkOutAt).toLocaleTimeString('th-TH')}</span>}
+          {dur != null && <Chip size="small" label={`${t('vd.totalDur')} ${Math.floor(dur / 60)} ${t('vd.hours')} ${dur % 60} ${t('vd.minutes')}`} />}
           {checkin.isMockGps && <Chip size="small" color="error" label="⚠️ Fake GPS" />}
         </Stack>
       </Alert>
@@ -409,7 +406,7 @@ function CheckedInSection({
           <Stack direction="row" spacing={1} mb={2} flexWrap="wrap" useFlexGap>
             {PHOTO_CATS.map((c) => (
               <Button key={c.key} variant="outlined" size="small" startIcon={<PhotoCameraIcon />}
-                onClick={() => pickPhoto(c.key)} disabled={uploading}>{c.label}</Button>
+                onClick={() => pickPhoto(c.key)} disabled={uploading}>{t(c.i18nKey)}</Button>
             ))}
             {uploading && <CircularProgress size={24} />}
             <input ref={fileRef} type="file" accept="image/*" capture="environment" hidden onChange={onFile} />
@@ -442,7 +439,7 @@ function CheckedInSection({
           {PURPOSES.map((p) => (
             <FormControlLabel key={p.key}
               control={<Checkbox checked={purposes.includes(p.key)} onChange={() => togglePurpose(p.key)} disabled={!isSales} />}
-              label={p.label} />
+              label={t(p.i18nKey)} />
           ))}
         </FormGroup>
         <Divider sx={{ my: 2 }} />
@@ -468,16 +465,16 @@ function CheckedInSection({
           <Typography variant="body2" color="text.secondary">{t('vd.noFollow')}</Typography>
         ) : (
           <List dense>
-            {tasks.map((t) => (
-              <ListItem key={t.id} divider
+            {tasks.map((task) => (
+              <ListItem key={task.id} divider
                 secondaryAction={
-                  <IconButton edge="end" onClick={() => toggleTask(t.id)} title="สลับสถานะ">
-                    <Checkbox checked={t.status === 'done'} />
+                  <IconButton edge="end" onClick={() => toggleTask(task.id)} title={t('vd.toggleStatus')}>
+                    <Checkbox checked={task.status === 'done'} />
                   </IconButton>
                 }>
                 <ListItemText
-                  primary={<span style={{ textDecoration: t.status === 'done' ? 'line-through' : 'none' }}>{t.title}</span>}
-                  secondary={t.dueDate ? `ครบกำหนด ${new Date(t.dueDate).toLocaleDateString('th-TH')}` : undefined}
+                  primary={<span style={{ textDecoration: task.status === 'done' ? 'line-through' : 'none' }}>{task.title}</span>}
+                  secondary={task.dueDate ? `${t('vd.dueDate')} ${new Date(task.dueDate).toLocaleDateString('th-TH')}` : undefined}
                 />
               </ListItem>
             ))}

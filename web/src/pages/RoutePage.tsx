@@ -34,7 +34,7 @@ interface RoutePlan {
 const todayStr = () => new Date().toISOString().slice(0, 10);
 
 export default function RoutePage() {
-  const { t, lang } = useT();
+  const { t } = useT();
   const [date, setDate] = useState(todayStr());
   const [data, setData] = useState<RoutePlan | null>(null);
   const [loading, setLoading] = useState(false);
@@ -66,9 +66,7 @@ export default function RoutePage() {
         <Paper sx={{ p: 2 }}>
           <Stack direction="row" justifyContent="space-between" alignItems="center" mb={1} flexWrap="wrap" useFlexGap>
             <Typography variant="body1">
-              {lang === 'th'
-                ? `${data.stops.length} จุด · ระยะทางรวม ~${data.totalDistanceKm} กม.`
-                : `${data.stops.length} stops · total ~${data.totalDistanceKm} km`}
+              {`${data.stops.length} ${t('rt.stopsUnit')} · ${t('rt.totalDistLabel')} ~${data.totalDistanceKm} ${t('rt.kmUnit')}`}
             </Typography>
             {data.mapsUrl && (
               <Button
@@ -85,9 +83,7 @@ export default function RoutePage() {
 
           {data.skippedNoGps > 0 && (
             <Alert severity="warning" sx={{ mb: 2 }}>
-              {lang === 'th'
-                ? `ข้าม ${data.skippedNoGps} ร้านที่ยังไม่มีพิกัด GPS (เติมพิกัดในหน้า Agency ก่อน)`
-                : `Skipped ${data.skippedNoGps} agencies without GPS (set coordinates first)`}
+              {`${t('rt.skippedPrefix')} ${data.skippedNoGps} ${t('rt.skippedSuffix')}`}
             </Alert>
           )}
 

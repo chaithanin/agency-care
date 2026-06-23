@@ -254,7 +254,7 @@ export default function VisitActivities({
               ))}
               <TableRow>
                 <TableCell colSpan={3} align="right" sx={{ fontWeight: 700 }}>
-                  รวม
+                  {t('va.total')}
                 </TableCell>
                 <TableCell align="right" sx={{ fontWeight: 700 }}>
                   {totalSales.toLocaleString()}

@@ -1,6 +1,7 @@
 import { useState, type RefObject } from 'react';
 import { Button, CircularProgress } from '@mui/material';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
+import { useT } from '../i18n';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
@@ -39,6 +40,7 @@ export function PdfExportButton({
   filename: string;
   label?: string;
 }) {
+  const { t } = useT();
   const [busy, setBusy] = useState(false);
   const run = async () => {
     if (!targetRef.current) return;
@@ -47,7 +49,7 @@ export function PdfExportButton({
       await exportElementToPdf(targetRef.current, filename);
     } catch (e) {
       // eslint-disable-next-line no-alert
-      alert('สร้าง PDF ไม่สำเร็จ: ' + (e as Error).message);
+      alert(t('pdf.exportError') + (e as Error).message);
     } finally {
       setBusy(false);
     }
@@ -61,7 +63,7 @@ export function PdfExportButton({
       onClick={run}
       disabled={busy}
     >
-      {busy ? 'กำลังสร้าง…' : label}
+      {busy ? t('pdf.generating') : label}
     </Button>
   );
 }

@@ -59,15 +59,14 @@ const statusColor: Record<string, 'default' | 'success' | 'warning' | 'error' | 
   cancelled: 'error',
 };
 
-const CALL_RESULTS = [
-  { value: 'confirmed', label: 'ยืนยันนัด ✓' },
-  { value: 'rescheduled', label: 'ขอเลื่อน' },
-  { value: 'no_answer', label: 'โทรไม่ติด' },
-  { value: 'cancelled', label: 'ยกเลิก' },
-];
-
 export default function PlansPage() {
   const { t } = useT();
+  const CALL_RESULTS = [
+    { value: 'confirmed', label: t('pl2.callConfirmed') },
+    { value: 'rescheduled', label: t('pl2.callRescheduled') },
+    { value: 'no_answer', label: t('pl2.callNoAnswer') },
+    { value: 'cancelled', label: t('pl2.callCancelled') },
+  ];
   const [agencies, setAgencies] = useState<Opt[]>([]);
   const [employees, setEmployees] = useState<Opt[]>([]);
   const [plans, setPlans] = useState<Plan[]>([]);
@@ -101,7 +100,7 @@ export default function PlansPage() {
 
   const create = async () => {
     setError('');
-    if (!form.agencyId || !form.employeeId) { setError('เลือก Agency และเซลส์'); return; }
+    if (!form.agencyId || !form.employeeId) { setError(t('pl2.selectAgencyAndSeller')); return; }
     try {
       await api.post('/visits/plans', {
         agencyId: form.agencyId, employeeId: form.employeeId,
@@ -155,7 +154,7 @@ export default function PlansPage() {
         agencyId,
         employeeId: suggestFor.employee ? employees.find((e) => e.name === suggestFor.employee.name)?.id ?? '' : '',
         planDate: suggestPlanDate,
-        note: `แทน ${suggestFor.agency.code} ที่เลื่อนนัด`,
+        note: `${t('pl2.replaceNotePrefix')} ${suggestFor.agency.code} ${t('pl2.replaceNoteSuffix')}`,
       });
       setSuggestFor(null);
       loadPlans(date);
@@ -206,7 +205,7 @@ export default function PlansPage() {
             {plans.length === 0 && (
               <TableRow>
                 <TableCell colSpan={7} align="center" sx={{ color: 'text.secondary' }}>
-                  ยังไม่มีแผนในวันนี้
+                  {t('pl2.noPlanToday')}
                 </TableCell>
               </TableRow>
             )}
@@ -233,27 +232,27 @@ export default function PlansPage() {
                   )}
                 </TableCell>
                 <TableCell>
-                  {p.checkin ? `${p.checkin.distanceMeters} ม.` : '-'}
+                  {p.checkin ? `${p.checkin.distanceMeters} ${t('pl2.meterUnit')}` : '-'}
                 </TableCell>
                 <TableCell>{p.report ? '✓' : '-'}</TableCell>
                 <TableCell align="right">
                   <Stack direction="row" spacing={0.5} justifyContent="flex-end">
                     {/* ปุ่ม Call Confirm */}
                     {!['done', 'cancelled'].includes(p.status) && (
-                      <Tooltip title="บันทึกผลโทรยืนยัน">
+                      <Tooltip title={t('pl2.callTooltip')}>
                         <Button size="small" variant="outlined" startIcon={<Phone fontSize="small" />}
                           onClick={() => openCall(p)} sx={{ minWidth: 0, px: 1 }}>
-                          โทร
+                          {t('pl2.callBtn')}
                         </Button>
                       </Tooltip>
                     )}
                     {/* ปุ่ม Smart Replacement — แสดงเมื่อ rescheduled */}
                     {p.status === 'rescheduled' && (
-                      <Tooltip title="หาร้านทดแทนใกล้เคียง">
+                      <Tooltip title={t('pl2.replaceTooltip')}>
                         <Button size="small" color="warning" variant="outlined"
                           startIcon={<SwapHoriz fontSize="small" />}
                           onClick={() => openSuggestions(p)} sx={{ minWidth: 0, px: 1 }}>
-                          ทดแทน
+                          {t('pl2.replaceBtn')}
                         </Button>
                       </Tooltip>
                     )}
@@ -269,32 +268,32 @@ export default function PlansPage() {
       <Dialog open={!!callFor} onClose={() => setCallFor(null)} maxWidth="xs" fullWidth>
         <DialogTitle>
           <Phone sx={{ mr: 1, verticalAlign: 'middle' }} fontSize="small" />
-          โทรยืนยันนัด — {callFor?.agency.name}
+          {t('pl2.callDialogTitle')} — {callFor?.agency.name}
         </DialogTitle>
         <DialogContent>
           <Stack spacing={2} mt={1}>
             {callErr && <Alert severity="error">{callErr}</Alert>}
-            <TextField select label="ผลการโทร" value={callResult}
+            <TextField select label={t('pl2.callResultLabel')} value={callResult}
               onChange={(e) => setCallResult(e.target.value)} fullWidth>
               {CALL_RESULTS.map((r) => (
                 <MenuItem key={r.value} value={r.value}>{r.label}</MenuItem>
               ))}
             </TextField>
             {callResult === 'rescheduled' && (
-              <TextField type="date" label="วันใหม่ที่นัด"
+              <TextField type="date" label={t('pl2.newDateLabel')}
                 value={rescheduleTo} onChange={(e) => setRescheduleTo(e.target.value)}
                 InputLabelProps={{ shrink: true }} fullWidth />
             )}
-            <TextField label="หมายเหตุ" value={callNote}
+            <TextField label={t('pl2.noteLabel')} value={callNote}
               onChange={(e) => setCallNote(e.target.value)} multiline minRows={2} fullWidth
-              placeholder="บันทึกเพิ่มเติม..." />
+              placeholder={t('pl2.notePlaceholder')} />
           </Stack>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setCallFor(null)}>ยกเลิก</Button>
+          <Button onClick={() => setCallFor(null)}>{t('common.cancel')}</Button>
           <Button variant="contained" onClick={submitCall} disabled={callLoading}
             startIcon={callLoading ? <CircularProgress size={16} /> : null}>
-            บันทึก
+            {t('common.save')}
           </Button>
         </DialogActions>
       </Dialog>
@@ -303,15 +302,15 @@ export default function PlansPage() {
       <Dialog open={!!suggestFor} onClose={() => setSuggestFor(null)} maxWidth="sm" fullWidth>
         <DialogTitle>
           <SwapHoriz sx={{ mr: 1, verticalAlign: 'middle' }} fontSize="small" />
-          ร้านทดแทน — {suggestFor?.agency.name}
+          {t('pl2.replaceDialogTitle')} — {suggestFor?.agency.name}
         </DialogTitle>
         <DialogContent dividers>
           <Typography variant="body2" color="text.secondary" mb={1}>
-            ร้านที่ {suggestFor?.employee.name} ดูแล และยังไม่มีแผนวันที่ {suggestPlanDate || suggestFor?.planDate.slice(0, 10)}
+            {t('pl2.replaceDialogDesc1')} {suggestFor?.employee.name} {t('pl2.replaceDialogDesc2')} {suggestPlanDate || suggestFor?.planDate.slice(0, 10)}
           </Typography>
           {suggestLoading && <LinearProgress />}
           {!suggestLoading && suggestions.length === 0 && (
-            <Typography color="text.secondary" align="center" py={2}>ไม่พบร้านที่ว่าง</Typography>
+            <Typography color="text.secondary" align="center" py={2}>{t('pl2.noReplacement')}</Typography>
           )}
           {suggestions.map((s) => (
             <Paper key={s.id} variant="outlined" sx={{ p: 1.5, mb: 1 }}>
@@ -325,7 +324,7 @@ export default function PlansPage() {
                       <Typography variant="caption" color="text.secondary">
                         {s.distanceMeters >= 1000
                           ? `${(s.distanceMeters / 1000).toFixed(1)} km`
-                          : `${s.distanceMeters} ม.`}
+                          : `${s.distanceMeters} ${t('pl2.meterUnit')}`}
                       </Typography>
                     )}
                     {s.phone && (
@@ -337,14 +336,14 @@ export default function PlansPage() {
                   onClick={() => applyReplacement(s.id)}
                   disabled={applyingId === s.id}
                   startIcon={applyingId === s.id ? <CircularProgress size={14} /> : null}>
-                  เลือก
+                  {t('pl2.selectBtn')}
                 </Button>
               </Stack>
             </Paper>
           ))}
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setSuggestFor(null)}>ปิด</Button>
+          <Button onClick={() => setSuggestFor(null)}>{t('pl2.closeBtn')}</Button>
         </DialogActions>
       </Dialog>
     </Box>

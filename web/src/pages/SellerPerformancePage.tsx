@@ -82,7 +82,7 @@ export default function SellerPerformancePage() {
   }, [load, selId]);
 
   if (!data) return <LinearProgress />;
-  if (!data.selected) return <Typography>ยังไม่มีพนักงาน</Typography>;
+  if (!data.selected) return <Typography>{t('sp.noSeller')}</Typography>;
 
   const { kpis, pipeline } = data;
   const pp = pipeline.total || 1;
@@ -157,7 +157,7 @@ export default function SellerPerformancePage() {
                     <Typography variant="caption" fontWeight={700}>{d.label}</Typography>
                     <Typography variant="caption" color="text.secondary">{d.date}</Typography>
                   </Stack>
-                  {d.inOffice && <Chip size="small" label="ออฟฟิศ" sx={{ mb: 0.5, height: 18, fontSize: 10 }} color="info" />}
+                  {d.inOffice && <Chip size="small" label={t('sp.officeDay')} sx={{ mb: 0.5, height: 18, fontSize: 10 }} color="info" />}
                   {d.items.length === 0 && !d.inOffice && (
                     <Typography variant="caption" color="text.disabled">—</Typography>
                   )}
@@ -229,7 +229,7 @@ export default function SellerPerformancePage() {
                 <TableCell>
                   <Stack direction="row" alignItems="center" spacing={1}>
                     <Avatar sx={{ width: 24, height: 24, fontSize: 11 }}>{initials(r.name)}</Avatar>
-                    <span>{r.name}{r.me ? ' (คุณ)' : ''}</span>
+                    <span>{r.name}{r.me ? ` (${t('sp.you')})` : ''}</span>
                   </Stack>
                 </TableCell>
                 <TableCell align="right" sx={{ fontWeight: 700 }}>{r.visitsDone}</TableCell>

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useT } from '../i18n';
 import {
   Alert,
   Box,
@@ -84,27 +85,27 @@ const STATUS_COLOR: Record<string, 'default' | 'success' | 'warning' | 'error' |
   rescheduled: 'default', on_route: 'primary', done: 'success',
   postponed: 'default', cancelled: 'error',
 };
-const STATUS_LABEL: Record<string, string> = {
-  pending: 'รอดำเนินการ', waiting_confirmation: 'รอยืนยัน', confirmed: 'ยืนยันแล้ว',
-  rescheduled: 'เลื่อนนัด', on_route: 'กำลังเดินทาง', done: 'สำเร็จ',
-  postponed: 'เลื่อนไม่มีกำหนด', cancelled: 'ยกเลิก',
+const STATUS_LABEL_KEY: Record<string, string> = {
+  pending: 'svr.statusPending', waiting_confirmation: 'svr.statusWaitingConfirm', confirmed: 'svr.statusConfirmed',
+  rescheduled: 'svr.statusRescheduled', on_route: 'svr.statusOnRoute', done: 'svr.statusDone',
+  postponed: 'svr.statusPostponed', cancelled: 'svr.statusCancelled',
 };
-const INTEREST_LABEL: Record<string, string> = { high: 'สูง', medium: 'ปานกลาง', low: 'ต่ำ' };
+const INTEREST_LABEL_KEY: Record<string, string> = { high: 'svr.interestHigh', medium: 'svr.interestMedium', low: 'svr.interestLow' };
 const INTEREST_COLOR: Record<string, 'success' | 'warning' | 'error'> = {
   high: 'success', medium: 'warning', low: 'error',
 };
-const PURPOSES = [
-  { value: 'introduce_project', label: 'แนะนำโครงการ' },
-  { value: 'update_promotion', label: 'อัปเดตโปรโมชั่น' },
-  { value: 'distribute_material', label: 'แจกสื่อการขาย' },
-  { value: 'follow_sales', label: 'ติดตามยอดขาย' },
-  { value: 'build_relationship', label: 'สร้างความสัมพันธ์' },
-  { value: 'training', label: 'Training' },
-];
-const VISIT_TYPES = [
-  { value: 'visit_agency', label: 'ไปเยี่ยม Agency' },
-  { value: 'agency_brings_client', label: 'Agency พา Client มา' },
-];
+const PURPOSE_KEYS: Record<string, string> = {
+  introduce_project: 'svr.purposeIntroProject',
+  update_promotion: 'svr.purposeUpdatePromo',
+  distribute_material: 'svr.purposeDistMaterial',
+  follow_sales: 'svr.purposeFollowSales',
+  build_relationship: 'svr.purposeBuildRel',
+  training: 'svr.purposeTraining',
+};
+const VISIT_TYPE_KEYS: Record<string, string> = {
+  visit_agency: 'svr.visitTypeVisitAgency',
+  agency_brings_client: 'svr.visitTypeAgencyBringsClient',
+};
 
 const todayStr = () => new Date().toISOString().slice(0, 10);
 const fmtDate = (d?: string) => d ? new Date(d).toLocaleDateString('th-TH', { day: '2-digit', month: '2-digit', year: '2-digit' }) : '-';
@@ -127,6 +128,7 @@ function KpiCard({ icon, label, value, color }: { icon: React.ReactNode; label: 
 
 // ─── Detail Drawer ────────────────────────────────────────────────────────────
 function VisitDetailDialog({ row, onClose }: { row: ReportRow | null; onClose: () => void }) {
+  const { t } = useT();
   const [insight, setInsight] = useState<AiInsight | null>(null);
   const [insightLoading, setInsightLoading] = useState(false);
 
@@ -152,7 +154,7 @@ function VisitDetailDialog({ row, onClose }: { row: ReportRow | null; onClose: (
         <Box>
           <Typography fontWeight={800}>{row.agency.code} — {row.agency.name}</Typography>
           <Typography variant="caption" color="text.secondary">
-            {fmtDate(row.planDate)} · {row.employee.name} · <Chip size="small" label={STATUS_LABEL[row.status] ?? row.status} color={STATUS_COLOR[row.status] ?? 'default'} />
+            {fmtDate(row.planDate)} · {row.employee.name} · <Chip size="small" label={t(STATUS_LABEL_KEY[row.status] ?? row.status)} color={STATUS_COLOR[row.status] ?? 'default'} />
           </Typography>
         </Box>
         <IconButton onClick={onClose}><Close /></IconButton>
@@ -161,17 +163,17 @@ function VisitDetailDialog({ row, onClose }: { row: ReportRow | null; onClose: (
         <Stack spacing={3}>
 
           {/* ── Check-in Data ── */}
-          <Section title="ข้อมูลการ Check-in">
+          <Section title={t('svr.checkinData')}>
             {row.checkin ? (
               <Grid container spacing={2}>
-                <InfoItem label="เวลามาถึง" value={fmtTime(row.checkin.checkinAt)} />
-                <InfoItem label="เวลาออก" value={fmtTime(row.checkin.checkOutAt)} />
-                <InfoItem label="ระยะเวลา" value={row.checkin.durationMinutes ? `${row.checkin.durationMinutes} นาที` : '-'} />
-                <InfoItem label="ระยะห่าง" value={`${row.checkin.distanceMeters} ม.`} />
+                <InfoItem label={t('svr.arrivalTime')} value={fmtTime(row.checkin.checkinAt)} />
+                <InfoItem label={t('svr.departTime')} value={fmtTime(row.checkin.checkOutAt)} />
+                <InfoItem label={t('svr.duration')} value={row.checkin.durationMinutes ? `${row.checkin.durationMinutes} ${t('svr.minuteUnit')}` : '-'} />
+                <InfoItem label={t('svr.distance')} value={`${row.checkin.distanceMeters} ${t('svr.meterUnit')}`} />
                 <InfoItem label="GPS" value={`${row.checkin.latitude.toFixed(5)}, ${row.checkin.longitude.toFixed(5)}`} />
-                <InfoItem label="ผู้ติดต่อ" value={row.checkin.contactName ?? '-'} />
-                <InfoItem label="ตำแหน่ง" value={row.checkin.contactPosition ?? '-'} />
-                <InfoItem label="เบอร์ผู้ติดต่อ" value={row.checkin.contactPhone ?? '-'} />
+                <InfoItem label={t('svr.contact')} value={row.checkin.contactName ?? '-'} />
+                <InfoItem label={t('c.position')} value={row.checkin.contactPosition ?? '-'} />
+                <InfoItem label={t('svr.contactPhone')} value={row.checkin.contactPhone ?? '-'} />
                 <Grid item xs={12}>
                   <Button
                     size="small" variant="outlined" startIcon={<Place />}
@@ -184,13 +186,13 @@ function VisitDetailDialog({ row, onClose }: { row: ReportRow | null; onClose: (
                 </Grid>
               </Grid>
             ) : (
-              <Typography color="text.secondary" variant="body2">ยังไม่ได้ check-in</Typography>
+              <Typography color="text.secondary" variant="body2">{t('svr.notCheckedIn')}</Typography>
             )}
           </Section>
 
           {/* ── Photos ── */}
           {allPhotos.length > 0 && (
-            <Section title={`รูปภาพ (${allPhotos.length} รูป)`}>
+            <Section title={`${t('svr.photos')} (${allPhotos.length} ${t('svr.photoUnit')})`}>
               <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
                 {allPhotos.map((p) => (
                   <Tooltip key={p.id} title={p.phase}>
@@ -210,41 +212,41 @@ function VisitDetailDialog({ row, onClose }: { row: ReportRow | null; onClose: (
           {/* ── Visit Report ── */}
           {row.report && (
             <>
-              <Section title="วัตถุประสงค์การเข้าเยี่ยม">
+              <Section title={t('svr.visitPurpose')}>
                 <Stack direction="row" flexWrap="wrap" gap={1}>
                   {(row.report.purposes ?? []).map((p) => (
-                    <Chip key={p} size="small" label={PURPOSES.find((x) => x.value === p)?.label ?? p} color="primary" variant="outlined" />
+                    <Chip key={p} size="small" label={t(PURPOSE_KEYS[p] ?? p)} color="primary" variant="outlined" />
                   ))}
                   {row.report.visitType && (
-                    <Chip size="small" label={VISIT_TYPES.find((x) => x.value === row.report!.visitType)?.label ?? row.report.visitType} color="secondary" variant="outlined" />
+                    <Chip size="small" label={t(VISIT_TYPE_KEYS[row.report!.visitType] ?? row.report!.visitType)} color="secondary" variant="outlined" />
                   )}
                   {(row.report.purposes ?? []).length === 0 && <Typography color="text.secondary" variant="body2">-</Typography>}
                 </Stack>
               </Section>
 
-              <Section title="ผลการเข้าเยี่ยม">
+              <Section title={t('svr.visitResult')}>
                 <Grid container spacing={2}>
-                  <InfoItem label="ความสนใจ"
+                  <InfoItem label={t('svr.interest')}
                     value={row.report.interestLevel
-                      ? <Chip size="small" label={INTEREST_LABEL[row.report.interestLevel]} color={INTEREST_COLOR[row.report.interestLevel]} />
+                      ? <Chip size="small" label={t(INTEREST_LABEL_KEY[row.report.interestLevel])} color={INTEREST_COLOR[row.report.interestLevel]} />
                       : '-'} />
-                  <InfoItem label="Lead ใหม่" value={row.report.newLeads != null ? `${row.report.newLeads} ราย` : '-'} />
-                  <InfoItem label="นัดครั้งถัดไป" value={fmtDate(row.report.nextVisitDate)} />
+                  <InfoItem label={t('svr.newLead')} value={row.report.newLeads != null ? `${row.report.newLeads} ${t('svr.personUnit')}` : '-'} />
+                  <InfoItem label={t('svr.nextAppt')} value={fmtDate(row.report.nextVisitDate)} />
                   {row.report.summary && (
                     <Grid item xs={12}>
-                      <Typography variant="caption" color="text.secondary">สรุปผล</Typography>
+                      <Typography variant="caption" color="text.secondary">{t('svr.summaryLabel')}</Typography>
                       <Typography variant="body2">{row.report.summary}</Typography>
                     </Grid>
                   )}
                   {row.report.problems && (
                     <Grid item xs={12}>
-                      <Typography variant="caption" color="text.secondary">ปัญหาที่พบ</Typography>
+                      <Typography variant="caption" color="text.secondary">{t('vd.problems')}</Typography>
                       <Typography variant="body2">{row.report.problems}</Typography>
                     </Grid>
                   )}
                   {row.report.actionPlan && (
                     <Grid item xs={12}>
-                      <Typography variant="caption" color="text.secondary">แผนถัดไป</Typography>
+                      <Typography variant="caption" color="text.secondary">{t('svr.actionPlan')}</Typography>
                       <Typography variant="body2">{row.report.actionPlan}</Typography>
                     </Grid>
                   )}
@@ -271,7 +273,7 @@ function VisitDetailDialog({ row, onClose }: { row: ReportRow | null; onClose: (
           {/* ── Visit Detail Link ── */}
           <Box>
             <Button component={Link} to={`/visits/${row.id}`} variant="outlined" startIcon={<OpenInNew />} size="small">
-              ดูรายละเอียดการเยี่ยมเต็ม
+              {t('svr.viewFullDetail')}
             </Button>
           </Box>
 
@@ -281,15 +283,15 @@ function VisitDetailDialog({ row, onClose }: { row: ReportRow | null; onClose: (
               <LinearProgress />
             ) : insight ? (
               <Grid container spacing={2}>
-                <InfoItem label="ไม่ได้เยี่ยมมา" value={insight.daysSinceLast === 999 ? 'ยังไม่เคยเยี่ยม' : `${insight.daysSinceLast} วัน`} />
-                <InfoItem label="เยี่ยมทั้งหมด" value={`${insight.totalVisits} ครั้ง`} />
-                <InfoItem label="3 เดือนล่าสุด" value={`${insight.recentVisits} ครั้ง`} />
-                <InfoItem label="Lead รวม" value={`${insight.totalLeads} ราย`} />
+                <InfoItem label={t('svr.daysSinceLast')} value={insight.daysSinceLast === 999 ? t('svr.neverVisited') : `${insight.daysSinceLast} ${t('svr.dayUnit')}`} />
+                <InfoItem label={t('svr.totalVisits')} value={`${insight.totalVisits} ${t('svr.timesUnit')}`} />
+                <InfoItem label={t('svr.last3Months')} value={`${insight.recentVisits} ${t('svr.timesUnit')}`} />
+                <InfoItem label={t('svr.totalLeads')} value={`${insight.totalLeads} ${t('svr.personUnit')}`} />
                 <Grid item xs={12}>
                   <Stack direction="row" alignItems="center" spacing={2}>
                     <Box sx={{ flex: 1 }}>
                       <Stack direction="row" justifyContent="space-between" mb={0.5}>
-                        <Typography variant="caption">คะแนนความสัมพันธ์</Typography>
+                        <Typography variant="caption">{t('svr.relationshipScore')}</Typography>
                         <Typography variant="caption" fontWeight={700}>{insight.relationshipScore}/100</Typography>
                       </Stack>
                       <LinearProgress
@@ -300,7 +302,7 @@ function VisitDetailDialog({ row, onClose }: { row: ReportRow | null; onClose: (
                     </Box>
                     <Chip
                       size="small"
-                      label={`ความเสี่ยง: ${insight.riskLevel === 'low' ? 'ต่ำ' : insight.riskLevel === 'medium' ? 'ปานกลาง' : 'สูง'}`}
+                      label={`${t('svr.risk')}: ${insight.riskLevel === 'low' ? t('svr.interestLow') : insight.riskLevel === 'medium' ? t('svr.interestMedium') : t('svr.interestHigh')}`}
                       color={insight.riskLevel === 'low' ? 'success' : insight.riskLevel === 'medium' ? 'warning' : 'error'}
                     />
                   </Stack>
@@ -308,14 +310,14 @@ function VisitDetailDialog({ row, onClose }: { row: ReportRow | null; onClose: (
                 {insight.daysSinceLast > 14 && (
                   <Grid item xs={12}>
                     <Alert severity={insight.riskLevel === 'high' ? 'error' : 'warning'} icon={<Warning />}>
-                      ควรเข้าเยี่ยมอีกภายใน {insight.suggestRevisitDays} วัน
-                      {insight.daysSinceLast !== 999 && ` (ไม่ได้เยี่ยมมา ${insight.daysSinceLast} วัน)`}
+                      {t('svr.shouldRevisitWithin')} {insight.suggestRevisitDays} {t('svr.dayUnit')}
+                      {insight.daysSinceLast !== 999 && ` (${t('svr.daysSinceLast')} ${insight.daysSinceLast} ${t('svr.dayUnit')})`}
                     </Alert>
                   </Grid>
                 )}
               </Grid>
             ) : (
-              <Typography variant="body2" color="text.secondary">ไม่สามารถโหลด insight ได้</Typography>
+              <Typography variant="body2" color="text.secondary">{t('svr.insightLoadFail')}</Typography>
             )}
           </Section>
         </Stack>
@@ -351,6 +353,7 @@ function InfoItem({ label, value }: { label: string; value: React.ReactNode }) {
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function SiteVisitReportPage() {
+  const { t } = useT();
   const { user } = useAuth();
   const isManager = user?.activeRole !== 'sales';
 
@@ -429,13 +432,13 @@ export default function SiteVisitReportPage() {
       <Stack direction="row" justifyContent="space-between" alignItems="center" mb={3}>
         <Typography variant="h5" fontWeight={800}>Site Visit Report</Typography>
         <Stack direction="row" spacing={1}>
-          <Tooltip title="รีเฟรช">
+          <Tooltip title={t('svr.refresh')}>
             <IconButton onClick={() => { loadDashboard(dashDate); loadReport(appliedFilters); }}>
               <Refresh />
             </IconButton>
           </Tooltip>
           <Button variant="outlined" startIcon={<FilterList />} onClick={() => setShowFilter((v) => !v)}>
-            ตัวกรอง
+            {t('svr.filter')}
           </Button>
         </Stack>
       </Stack>
@@ -443,7 +446,7 @@ export default function SiteVisitReportPage() {
       {/* ── Section 1: Dashboard Summary ── */}
       <Paper sx={{ p: 2.5, mb: 3, borderRadius: 3 }}>
         <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2}>
-          <Typography variant="subtitle1" fontWeight={700}>ภาพรวมวันที่</Typography>
+          <Typography variant="subtitle1" fontWeight={700}>{t('svr.dashboardDate')}</Typography>
           <TextField type="date" size="small" value={dashDate}
             onChange={(e) => setDashDate(e.target.value)}
             InputLabelProps={{ shrink: true }} sx={{ width: 160 }} />
@@ -462,15 +465,15 @@ export default function SiteVisitReportPage() {
       {/* ── Section 2: Filter Panel ── */}
       <Collapse in={showFilter}>
         <Paper sx={{ p: 2.5, mb: 3, borderRadius: 3 }}>
-          <Typography variant="subtitle2" fontWeight={700} mb={2}>ตัวกรองรายงาน</Typography>
+          <Typography variant="subtitle2" fontWeight={700} mb={2}>{t('svr.filterPanel')}</Typography>
           <Grid container spacing={2}>
             <Grid item xs={12} sm={6} md={3}>
-              <TextField fullWidth type="date" label="จาก" size="small" value={filters.from}
+              <TextField fullWidth type="date" label={t('svr.from')} size="small" value={filters.from}
                 onChange={(e) => setFilters((f) => ({ ...f, from: e.target.value }))}
                 InputLabelProps={{ shrink: true }} />
             </Grid>
             <Grid item xs={12} sm={6} md={3}>
-              <TextField fullWidth type="date" label="ถึง" size="small" value={filters.to}
+              <TextField fullWidth type="date" label={t('svr.to')} size="small" value={filters.to}
                 onChange={(e) => setFilters((f) => ({ ...f, to: e.target.value }))}
                 InputLabelProps={{ shrink: true }} />
             </Grid>
@@ -480,7 +483,7 @@ export default function SiteVisitReportPage() {
                   <InputLabel>Sale</InputLabel>
                   <Select value={filters.employeeId} label="Sale"
                     onChange={(e) => setFilters((f) => ({ ...f, employeeId: e.target.value }))}>
-                    <MenuItem value="">ทั้งหมด</MenuItem>
+                    <MenuItem value="">{t('svr.all')}</MenuItem>
                     {employees.map((e) => <MenuItem key={e.id} value={e.id}>{e.name} ({e.code})</MenuItem>)}
                   </Select>
                 </FormControl>
@@ -488,20 +491,20 @@ export default function SiteVisitReportPage() {
             )}
             <Grid item xs={12} sm={6} md={3}>
               <FormControl fullWidth size="small">
-                <InputLabel>สถานะ</InputLabel>
-                <Select value={filters.status} label="สถานะ"
+                <InputLabel>{t('c.status')}</InputLabel>
+                <Select value={filters.status} label={t('c.status')}
                   onChange={(e) => setFilters((f) => ({ ...f, status: e.target.value }))}>
-                  <MenuItem value="">ทั้งหมด</MenuItem>
-                  {Object.entries(STATUS_LABEL).map(([k, v]) => <MenuItem key={k} value={k}>{v}</MenuItem>)}
+                  <MenuItem value="">{t('svr.all')}</MenuItem>
+                  {Object.entries(STATUS_LABEL_KEY).map(([k, labelKey]) => <MenuItem key={k} value={k}>{t(labelKey)}</MenuItem>)}
                 </Select>
               </FormControl>
             </Grid>
             <Grid item xs={12} sm={6} md={3}>
               <FormControl fullWidth size="small">
-                <InputLabel>จังหวัด</InputLabel>
-                <Select value={filters.province} label="จังหวัด"
+                <InputLabel>{t('ag.province')}</InputLabel>
+                <Select value={filters.province} label={t('ag.province')}
                   onChange={(e) => setFilters((f) => ({ ...f, province: e.target.value }))}>
-                  <MenuItem value="">ทั้งหมด</MenuItem>
+                  <MenuItem value="">{t('svr.all')}</MenuItem>
                   {provinces.map((p) => <MenuItem key={p} value={p}>{p}</MenuItem>)}
                 </Select>
               </FormControl>
@@ -511,15 +514,15 @@ export default function SiteVisitReportPage() {
                 <InputLabel>Agency Level</InputLabel>
                 <Select value={filters.agencyLevel} label="Agency Level"
                   onChange={(e) => setFilters((f) => ({ ...f, agencyLevel: e.target.value }))}>
-                  <MenuItem value="">ทั้งหมด</MenuItem>
+                  <MenuItem value="">{t('svr.all')}</MenuItem>
                   {['A', 'B', 'C', 'D'].map((l) => <MenuItem key={l} value={l}>Level {l}</MenuItem>)}
                 </Select>
               </FormControl>
             </Grid>
           </Grid>
           <Stack direction="row" spacing={1} mt={2}>
-            <Button variant="contained" onClick={applyFilters}>ค้นหา</Button>
-            <Button variant="outlined" onClick={resetFilters}>รีเซ็ต</Button>
+            <Button variant="contained" onClick={applyFilters}>{t('svr.search')}</Button>
+            <Button variant="outlined" onClick={resetFilters}>{t('svr.reset')}</Button>
           </Stack>
         </Paper>
       </Collapse>
@@ -528,7 +531,7 @@ export default function SiteVisitReportPage() {
       <Paper sx={{ borderRadius: 3 }}>
         <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ p: 2, borderBottom: '1px solid', borderColor: 'divider' }}>
           <Typography variant="subtitle1" fontWeight={700}>
-            รายงานการเข้าเยี่ยม {rows.length > 0 && `(${rows.length} รายการ)`}
+            {t('svr.visitReport')} {rows.length > 0 && `(${rows.length} ${t('svr.itemUnit')})`}
           </Typography>
         </Stack>
         {loading && <LinearProgress />}
@@ -537,23 +540,23 @@ export default function SiteVisitReportPage() {
           <Table size="small">
             <TableHead>
               <TableRow>
-                <TableCell>วันที่</TableCell>
+                <TableCell>{t('pl2.date')}</TableCell>
                 <TableCell>Agency</TableCell>
                 <TableCell>Sale</TableCell>
-                <TableCell>สถานะ</TableCell>
-                <TableCell align="center">เวลา</TableCell>
-                <TableCell align="center">ระยะเวลา</TableCell>
+                <TableCell>{t('c.status')}</TableCell>
+                <TableCell align="center">{t('svr.time')}</TableCell>
+                <TableCell align="center">{t('svr.duration')}</TableCell>
                 <TableCell align="center">Check-in</TableCell>
-                <TableCell align="center">รูปภาพ</TableCell>
+                <TableCell align="center">{t('svr.photos')}</TableCell>
                 <TableCell align="center">Lead</TableCell>
-                <TableCell align="right">รายละเอียด</TableCell>
+                <TableCell align="right">{t('svr.detail')}</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {!loading && rows.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={10} align="center" sx={{ py: 4, color: 'text.secondary' }}>
-                    ไม่พบข้อมูล — ลองปรับตัวกรองแล้วกด "ค้นหา"
+                    {t('svr.noData')}
                   </TableCell>
                 </TableRow>
               )}
@@ -574,7 +577,7 @@ export default function SiteVisitReportPage() {
                       <Typography variant="body2">{r.employee.name}</Typography>
                     </TableCell>
                     <TableCell>
-                      <Chip size="small" label={STATUS_LABEL[r.status] ?? r.status} color={STATUS_COLOR[r.status] ?? 'default'} />
+                      <Chip size="small" label={t(STATUS_LABEL_KEY[r.status] ?? r.status)} color={STATUS_COLOR[r.status] ?? 'default'} />
                     </TableCell>
                     <TableCell align="center">
                       {r.checkin ? (
@@ -585,11 +588,11 @@ export default function SiteVisitReportPage() {
                       ) : '-'}
                     </TableCell>
                     <TableCell align="center">
-                      {r.checkin?.durationMinutes ? `${r.checkin.durationMinutes} นาที` : '-'}
+                      {r.checkin?.durationMinutes ? `${r.checkin.durationMinutes} ${t('svr.minuteUnit')}` : '-'}
                     </TableCell>
                     <TableCell align="center">
                       {r.checkin
-                        ? <Tooltip title={`${r.checkin.distanceMeters} ม.`}><CheckCircle color={r.checkin.withinRadius ? 'success' : 'error'} fontSize="small" /></Tooltip>
+                        ? <Tooltip title={`${r.checkin.distanceMeters} ${t('svr.meterUnit')}`}><CheckCircle color={r.checkin.withinRadius ? 'success' : 'error'} fontSize="small" /></Tooltip>
                         : <Typography variant="caption" color="text.disabled">-</Typography>}
                     </TableCell>
                     <TableCell align="center">
@@ -604,7 +607,7 @@ export default function SiteVisitReportPage() {
                     </TableCell>
                     <TableCell align="right">
                       <Button size="small" variant="outlined" onClick={() => setSelected(r)}>
-                        ดูรายละเอียด
+                        {t('svr.viewDetail')}
                       </Button>
                     </TableCell>
                   </TableRow>

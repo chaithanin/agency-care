@@ -100,6 +100,7 @@ function TimelineDotIcon({ icon }: { icon?: string }) {
 }
 
 function AgencyTimelineDialog({ agencyId, agencyName, onClose }: { agencyId: string; agencyName: string; onClose: () => void }) {
+  const { t } = useT();
   const [events, setEvents] = useState<TimelineEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState('');
@@ -117,13 +118,13 @@ function AgencyTimelineDialog({ agencyId, agencyName, onClose }: { agencyId: str
   return (
     <Dialog open onClose={onClose} fullWidth maxWidth="sm" scroll="paper">
       <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-        <HistoryIcon /> ประวัติ — {agencyName}
+        <HistoryIcon /> {t('ag.history')} — {agencyName}
       </DialogTitle>
       <DialogContent dividers>
         {loading && <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}><CircularProgress /></Box>}
         {err && <Alert severity="error">{err}</Alert>}
         {!loading && events.length === 0 && (
-          <Typography color="text.secondary" textAlign="center" py={4}>ยังไม่มีประวัติ</Typography>
+          <Typography color="text.secondary" textAlign="center" py={4}>{t('ag.noHistory')}</Typography>
         )}
         {events.map((ev, i) => (
           <Box key={i} sx={{ display: 'flex', gap: 2, mb: 2 }}>
@@ -143,19 +144,19 @@ function AgencyTimelineDialog({ agencyId, agencyName, onClose }: { agencyId: str
                 </Typography>
               </Stack>
               {ev.actor && (
-                <Typography variant="caption" color="text.secondary">โดย {ev.actor}</Typography>
+                <Typography variant="caption" color="text.secondary">{t('ag.by')} {ev.actor}</Typography>
               )}
               {ev.type === 'visit' && ev.metadata && (
                 <Stack direction="row" spacing={0.5} mt={0.5} flexWrap="wrap" useFlexGap>
                   {ev.metadata.interestLevel && (
                     <Chip size="small" color={INTEREST_COLOR[ev.metadata.interestLevel] ?? 'default'}
-                      label={`ความสนใจ: ${ev.metadata.interestLevel}`} />
+                      label={`${t('ag.interest')}: ${ev.metadata.interestLevel}`} />
                   )}
                   {(ev.metadata.newLeads ?? 0) > 0 && (
                     <Chip size="small" color="success" label={`Lead: ${ev.metadata.newLeads}`} />
                   )}
                   {ev.metadata.duration != null && (
-                    <Chip size="small" variant="outlined" label={`${ev.metadata.duration} นาที`} />
+                    <Chip size="small" variant="outlined" label={`${ev.metadata.duration} ${t('ag.minutes')}`} />
                   )}
                   {ev.metadata.summary && (
                     <Typography variant="caption" color="text.secondary" display="block" mt={0.5}>
@@ -166,7 +167,7 @@ function AgencyTimelineDialog({ agencyId, agencyName, onClose }: { agencyId: str
               )}
               {ev.type === 'updated' && ev.metadata?.changes && (
                 <Typography variant="caption" color="text.secondary">
-                  เปลี่ยน: {ev.metadata.changes.join(', ')}
+                  {t('ag.changed')}: {ev.metadata.changes.join(', ')}
                 </Typography>
               )}
               {i < events.length - 1 && <Divider sx={{ mt: 1.5 }} />}
@@ -175,7 +176,7 @@ function AgencyTimelineDialog({ agencyId, agencyName, onClose }: { agencyId: str
         ))}
       </DialogContent>
       <DialogActions>
-        <Button onClick={onClose}>ปิด</Button>
+        <Button onClick={onClose}>{t('common.close')}</Button>
       </DialogActions>
     </Dialog>
   );
@@ -206,10 +207,11 @@ interface EmpOpt { id: string; code: string; name: string; }
 
 // ── Duplicate warning ─────────────────────────────────────────────────────────
 function DuplicateWarning({ hits }: { hits: DupHit[] }) {
+  const { t } = useT();
   if (!hits.length) return null;
   return (
     <Alert severity="warning" icon={<WarningAmberIcon />}>
-      <Typography variant="body2" fontWeight={600}>พบรายการที่อาจซ้ำกัน ({hits.length} รายการ):</Typography>
+      <Typography variant="body2" fontWeight={600}>{t('ag.dupWarning')} ({hits.length} {t('ag.dupItems')}):</Typography>
       {hits.map((h) => (
         <Typography key={h.id} variant="caption" display="block">
           • {h.code} — {h.name} {h.phone ? `(${h.phone})` : ''} [{h.status}]
@@ -342,7 +344,7 @@ export default function AgenciesPage() {
     setGeocoding(true); setGeoResult('');
     try {
       const { data } = await api.post('/agencies/geocode', null, { params: { limit: 50 } });
-      setGeoResult(`เติมพิกัดสำเร็จ ${data.found}/${data.processed} · เหลือไม่มีพิกัด ${data.remaining} ร้าน`);
+      setGeoResult(`${t('ag.geocodeOk')} ${data.found}/${data.processed} · ${t('ag.geocodeRemaining')} ${data.remaining} ${t('ag.geocodeShops')}`);
       load();
     } catch (e) { setGeoResult(errMsg(e)); } finally { setGeocoding(false); }
   };
@@ -350,7 +352,7 @@ export default function AgenciesPage() {
   const saveGps = async () => {
     if (!gpsFor) return; setGpsErr('');
     const c = parseCoords(gpsText);
-    if (!c) { setGpsErr('อ่านพิกัดไม่ได้ — วาง "lat,lng" หรือลิงก์ Google Maps'); return; }
+    if (!c) { setGpsErr(t('ag.gpsParseErr')); return; }
     await api.patch(`/agencies/${gpsFor.id}`, { latitude: c.lat, longitude: c.lng });
     setGpsFor(null); setGpsText(''); load();
   };
@@ -481,11 +483,11 @@ export default function AgenciesPage() {
                   <Stack direction="row" spacing={0.5} justifyContent="flex-end">
                     <Button size="small" startIcon={<ArticleOutlinedIcon fontSize="small" />}
                       onClick={() => navigate(`/agencies/${a.id}/form`)}>
-                      ฟอร์ม
+                      {t('ag.formBtn')}
                     </Button>
                     <Button size="small" startIcon={<HistoryIcon fontSize="small" />}
                       onClick={() => setTimelineFor(a)}>
-                      ประวัติ
+                      {t('ag.history')}
                     </Button>
                     <Button size="small" onClick={() => { setAssignFor(a); setAssignEmp(''); }}>
                       {t('ag.addSeller')}
@@ -500,14 +502,14 @@ export default function AgenciesPage() {
 
       {/* ─── Enhanced Agency Form Dialog ──────────────────────────────────── */}
       <Dialog open={open} onClose={() => setOpen(false)} fullWidth maxWidth="md" scroll="paper">
-        <DialogTitle>{editFor ? `แก้ไข: ${editFor.name}` : t('ag.addTitle')}</DialogTitle>
+        <DialogTitle>{editFor ? `${t('common.edit')}: ${editFor.name}` : t('ag.addTitle')}</DialogTitle>
         <DialogContent dividers>
           <Stack spacing={1} mt={0.5}>
             {error && <Alert severity="error">{error}</Alert>}
             <DuplicateWarning hits={dupHits} />
 
             {/* ส่วนที่ 1: ข้อมูลพื้นฐาน */}
-            <Section title="1 · ข้อมูลพื้นฐาน">
+            <Section title={t('ag.sec1')}>
               <Stack direction="row" spacing={2}>
                 <TextField label={t('ag.codeLabel')} value={form.code}
                   onChange={(e) => setF('code', e.target.value)} required sx={{ flex: 1 }} size="small" />
@@ -516,7 +518,7 @@ export default function AgenciesPage() {
                   {['A', 'B', 'C', 'D'].map((l) => <MenuItem key={l} value={l}>{l}</MenuItem>)}
                 </TextField>
                 {editFor && (
-                  <TextField select label="สถานะ" value={form.status}
+                  <TextField select label={t('c.status')} value={form.status}
                     onChange={(e) => setF('status', e.target.value)} sx={{ width: 130 }} size="small">
                     <MenuItem value="active">Active</MenuItem>
                     <MenuItem value="inactive">Inactive</MenuItem>
@@ -525,9 +527,9 @@ export default function AgenciesPage() {
               </Stack>
               <TextField label={t('ag.nameLabel')} value={form.name}
                 onChange={(e) => setF('name', e.target.value)} required size="small" />
-              <TextField label="ประเภทร้าน" value={form.type}
+              <TextField label={t('ag.shopType')} value={form.type}
                 onChange={(e) => setF('type', e.target.value)} size="small"
-                placeholder="เช่น Freelance, Office, Retail" />
+                placeholder={t('ag.shopTypePh')} />
               <Stack direction="row" spacing={2}>
                 <TextField select label={t('ag.tierFreqLabel')} value={form.tier}
                   onChange={(e) => setF('tier', e.target.value)} sx={{ flex: 1 }} size="small">
@@ -541,8 +543,8 @@ export default function AgenciesPage() {
             </Section>
 
             {/* ส่วนที่ 2: ที่อยู่ */}
-            <Section title="2 · ที่อยู่และพื้นที่">
-              <TextField label="ที่อยู่ (เลขที่/ถนน/ซอย)" value={form.address}
+            <Section title={t('ag.sec2')}>
+              <TextField label={t('ag.address')} value={form.address}
                 onChange={(e) => setF('address', e.target.value)} multiline minRows={2} size="small" />
               <Stack direction="row" spacing={2}>
                 <TextField label={t('ag.province')} value={form.province}
@@ -553,11 +555,11 @@ export default function AgenciesPage() {
             </Section>
 
             {/* ส่วนที่ 3: ผู้ติดต่อ */}
-            <Section title="3 · ผู้ติดต่อ">
+            <Section title={t('ag.sec3')}>
               <Stack direction="row" spacing={2}>
-                <TextField label="เจ้าของ (Owner)" value={form.ownerName}
+                <TextField label={t('ag.owner')} value={form.ownerName}
                   onChange={(e) => setF('ownerName', e.target.value)} sx={{ flex: 1 }} size="small" />
-                <TextField label="ผู้จัดการ (Manager)" value={form.managerName}
+                <TextField label={t('ag.manager')} value={form.managerName}
                   onChange={(e) => setF('managerName', e.target.value)} sx={{ flex: 1 }} size="small" />
               </Stack>
               <Stack direction="row" spacing={2}>
@@ -576,7 +578,7 @@ export default function AgenciesPage() {
             </Section>
 
             {/* ส่วนที่ 4: ข้อมูลธุรกิจ */}
-            <Section title="4 · ข้อมูลธุรกิจ">
+            <Section title={t('ag.sec4')}>
               <Stack direction="row" spacing={2}>
                 <TextField label="Classification" value={form.classification}
                   onChange={(e) => setF('classification', e.target.value)} sx={{ flex: 1 }} size="small" />
@@ -596,7 +598,7 @@ export default function AgenciesPage() {
             </Section>
 
             {/* ส่วนที่ 5: พิกัด GPS */}
-            <Section title="5 · พิกัด GPS">
+            <Section title={t('ag.sec5')}>
               <Stack direction="row" spacing={2}>
                 <TextField label="Latitude" value={form.latitude}
                   onChange={(e) => setF('latitude', e.target.value)} placeholder="13.7563"
@@ -609,9 +611,9 @@ export default function AgenciesPage() {
             </Section>
 
             {/* ส่วนที่ 6: รูปภาพ — ยังใช้ GPS dialog เดิม (ดูด้านล่าง) */}
-            <Section title="6 · รูปภาพ">
+            <Section title={t('ag.sec6')}>
               <Typography variant="caption" color="text.secondary">
-                รูปหน้าร้าน/ป้าย/ภายใน — อัปโหลดจากหน้า Visit Detail (ตอน check-in)
+                {t('ag.photoHint')}
               </Typography>
               {editFor && (editFor as any).photoFront && (
                 <Box component="img" src={(editFor as any).photoFront} sx={{ maxHeight: 120, objectFit: 'contain', borderRadius: 1 }} />
@@ -619,10 +621,10 @@ export default function AgenciesPage() {
             </Section>
 
             {/* ส่วนที่ 7: หมายเหตุ */}
-            <Section title="7 · หมายเหตุ">
-              <TextField label="หมายเหตุ (ภายใน)" value={form.remark}
+            <Section title={t('ag.sec7')}>
+              <TextField label={t('ag.remarkLabel')} value={form.remark}
                 onChange={(e) => setF('remark', e.target.value)} multiline minRows={3} size="small"
-                placeholder="บันทึกข้อมูลเพิ่มเติม ประวัติ ข้อสังเกต..." />
+                placeholder={t('ag.remarkPh')} />
             </Section>
           </Stack>
         </DialogContent>

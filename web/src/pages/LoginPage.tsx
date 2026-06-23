@@ -38,7 +38,7 @@ export default function LoginPage() {
       <Paper sx={{ p: 4, width: '100%', maxWidth: 380 }} elevation={3}>
         <Box sx={{ textAlign: 'right', mb: 1 }}>
           <Button size="small" onClick={() => setLang(lang === 'th' ? 'en' : 'th')}>
-            {lang === 'th' ? 'EN' : 'ไทย'}
+            {t('login.langToggle')}
           </Button>
         </Box>
         <Typography variant="h5" fontWeight={700} textAlign="center" mb={1}>

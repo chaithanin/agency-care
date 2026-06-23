@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useT } from '../i18n';
 import {
   Alert,
   Box,
@@ -67,13 +68,13 @@ interface PlanDetail extends PlanSummary {
 }
 
 // ─── Status display helpers ────────────────────────────────────────────────────
-const STATUS_LABEL: Record<PlanStatus, string> = {
-  draft: 'Draft',
-  pending_approval: 'รอการอนุมัติ',
-  approved: 'อนุมัติแล้ว',
-  published: 'Published',
-  active: 'Active',
-  closed: 'ปิดแล้ว',
+const STATUS_KEY: Record<PlanStatus, string> = {
+  draft: 'aa.statusDraft',
+  pending_approval: 'aa.statusPendingApproval',
+  approved: 'aa.statusApproved',
+  published: 'aa.statusPublished',
+  active: 'aa.statusActive',
+  closed: 'aa.statusClosed',
 };
 const STATUS_COLOR: Record<PlanStatus, 'default' | 'warning' | 'info' | 'success' | 'primary' | 'error'> = {
   draft: 'default',
@@ -86,6 +87,7 @@ const STATUS_COLOR: Record<PlanStatus, 'default' | 'warning' | 'info' | 'success
 
 // ─── Generate Dialog ────────────────────────────────────────────────────────
 function GenerateDialog({ open, onClose, onDone }: { open: boolean; onClose: () => void; onDone: () => void }) {
+  const { t } = useT();
   const now = new Date();
   const defaultPeriod = `${now.getFullYear()}-${String(now.getMonth() + 2).padStart(2, '0')}`;
   const [period, setPeriod] = useState(defaultPeriod);
@@ -112,12 +114,12 @@ function GenerateDialog({ open, onClose, onDone }: { open: boolean; onClose: () 
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth>
-      <DialogTitle>สร้างแผน AI ใหม่</DialogTitle>
+      <DialogTitle>{t('aa.genDialogTitle')}</DialogTitle>
       <DialogContent>
         <Stack spacing={2} mt={1}>
           {err && <Alert severity="error">{err}</Alert>}
           <TextField
-            label="เดือน (YYYY-MM)"
+            label={t('aa.monthLabel')}
             value={period}
             onChange={(e) => setPeriod(e.target.value)}
             placeholder="2026-08"
@@ -125,7 +127,7 @@ function GenerateDialog({ open, onClose, onDone }: { open: boolean; onClose: () 
             fullWidth
           />
           <TextField
-            label="จำกัดร้าน/เซลส์ (max)"
+            label={t('aa.maxPerSalesLabel')}
             type="number"
             value={maxPerSales}
             onChange={(e) => setMaxPerSales(e.target.value)}
@@ -133,14 +135,14 @@ function GenerateDialog({ open, onClose, onDone }: { open: boolean; onClose: () 
             fullWidth
           />
           <Typography variant="caption" color="text.secondary">
-            AI จะสร้างแผนร่างอัตโนมัติ จัดสรรตาม Zone — คุณสามารถแก้ไขก่อนส่งอนุมัติ
+            {t('aa.genHint')}
           </Typography>
         </Stack>
       </DialogContent>
       <DialogActions>
-        <Button onClick={onClose} disabled={loading}>ยกเลิก</Button>
+        <Button onClick={onClose} disabled={loading}>{t('common.cancel')}</Button>
         <Button variant="contained" onClick={run} disabled={loading || !period} startIcon={loading ? <CircularProgress size={16} /> : <PlayArrow />}>
-          สร้างแผน
+          {t('aa.genBtn')}
         </Button>
       </DialogActions>
     </Dialog>
@@ -157,6 +159,7 @@ function PlanDetailPanel({
   isAdmin: boolean;
   onRefresh: () => void;
 }) {
+  const { t } = useT();
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState('');
   const [err, setErr] = useState('');
@@ -171,7 +174,7 @@ function PlanDetailPanel({
     setMsg('');
     try {
       await api[method](`/assignment-plans/${plan.id}/${path}`, body ?? {});
-      setMsg('สำเร็จ');
+      setMsg(t('aa.success'));
       onRefresh();
     } catch (e) {
       setErr(errMsg(e));
@@ -185,7 +188,7 @@ function PlanDetailPanel({
     setErr('');
     try {
       await api.post(`/assignment-plans/${plan.id}/rollback/${versionId}`);
-      setMsg('Rollback สำเร็จ');
+      setMsg(t('aa.rollbackSuccess'));
       onRefresh();
     } catch (e) {
       setErr(errMsg(e));
@@ -210,7 +213,7 @@ function PlanDetailPanel({
             onClick={() => act('patch', 'submit')}
             disabled={loading}
           >
-            ส่งอนุมัติ
+            {t('aa.submitBtn')}
           </Button>
         )}
         {plan.status === 'pending_approval' && isAdmin && (
@@ -221,7 +224,7 @@ function PlanDetailPanel({
             onClick={() => act('patch', 'approve')}
             disabled={loading}
           >
-            อนุมัติ
+            {t('aa.approveBtn')}
           </Button>
         )}
         {plan.status === 'approved' && isAdmin && (
@@ -232,14 +235,14 @@ function PlanDetailPanel({
             onClick={() => act('patch', 'publish')}
             disabled={loading}
           >
-            Publish (แจกงาน)
+            {t('aa.publishBtn')}
           </Button>
         )}
       </Stack>
 
       <Tabs value={activeTab} onChange={(_, v) => setActiveTab(v)} sx={{ mb: 1 }}>
-        <Tab label={`รายการ (${items.length})`} />
-        <Tab label={`ประวัติ Version (${plan.versions.length})`} icon={<History fontSize="small" />} iconPosition="end" />
+        <Tab label={`${t('aa.itemsTab')} (${items.length})`} />
+        <Tab label={`${t('aa.versionsTab')} (${plan.versions.length})`} icon={<History fontSize="small" />} iconPosition="end" />
       </Tabs>
 
       {activeTab === 0 && (
@@ -249,8 +252,8 @@ function PlanDetailPanel({
               <TableRow sx={{ bgcolor: 'action.hover' }}>
                 <TableCell>Agency</TableCell>
                 <TableCell>Zone</TableCell>
-                <TableCell>เซลส์</TableCell>
-                <TableCell>Zone เซลส์</TableCell>
+                <TableCell>{t('c.seller')}</TableCell>
+                <TableCell>{t('aa.sellerZone')}</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -277,7 +280,7 @@ function PlanDetailPanel({
               {items.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={4} align="center" sx={{ color: 'text.secondary', py: 4 }}>
-                    ยังไม่มีรายการ
+                    {t('aa.noItems')}
                   </TableCell>
                 </TableRow>
               )}
@@ -292,9 +295,9 @@ function PlanDetailPanel({
             <TableHead>
               <TableRow sx={{ bgcolor: 'action.hover' }}>
                 <TableCell>Version</TableCell>
-                <TableCell>หมายเหตุ</TableCell>
-                <TableCell>สร้างโดย</TableCell>
-                <TableCell>วันที่</TableCell>
+                <TableCell>{t('aa.note')}</TableCell>
+                <TableCell>{t('aa.createdBy')}</TableCell>
+                <TableCell>{t('pl2.date')}</TableCell>
                 <TableCell align="center">Rollback</TableCell>
               </TableRow>
             </TableHead>
@@ -304,7 +307,7 @@ function PlanDetailPanel({
                   <TableCell>
                     <Stack direction="row" spacing={1} alignItems="center">
                       <Typography variant="body2" fontWeight={600}>v{v.versionNo}</Typography>
-                      {v.isCurrent && <Chip size="small" label="ปัจจุบัน" color="primary" />}
+                      {v.isCurrent && <Chip size="small" label={t('aa.currentVersion')} color="primary" />}
                     </Stack>
                   </TableCell>
                   <TableCell>
@@ -320,7 +323,7 @@ function PlanDetailPanel({
                   </TableCell>
                   <TableCell align="center">
                     {!v.isCurrent && ['draft', 'pending_approval'].includes(plan.status) && (
-                      <Tooltip title={`Rollback มา v${v.versionNo}`}>
+                      <Tooltip title={`${t('aa.rollbackTo')} v${v.versionNo}`}>
                         <IconButton size="small" onClick={() => rollback(v.id)} disabled={loading}>
                           <Undo fontSize="small" />
                         </IconButton>
@@ -340,6 +343,7 @@ function PlanDetailPanel({
 // ─── Main Page ─────────────────────────────────────────────────────────────────
 export default function AssignmentPlannerPage() {
   const { user } = useAuth();
+  const { t } = useT();
   const isAdmin = ['super_admin', 'admin'].includes(user?.role ?? '');
 
   const [plans, setPlans] = useState<PlanSummary[]>([]);
@@ -394,7 +398,7 @@ export default function AssignmentPlannerPage() {
         <Box>
           <Typography variant="h5" fontWeight={700}>AI Assignment Planner</Typography>
           <Typography variant="body2" color="text.secondary">
-            วางแผนแจกงาน Agency ประจำเดือน — AI แนะนำ → ตรวจสอบ → อนุมัติ → แจกงาน
+            {t('aa.pageSubtitle')}
           </Typography>
         </Box>
         <Button
@@ -402,7 +406,7 @@ export default function AssignmentPlannerPage() {
           startIcon={<AddIcon />}
           onClick={() => setGenerateOpen(true)}
         >
-          สร้างแผนใหม่
+          {t('aa.createNewPlan')}
         </Button>
       </Stack>
 
@@ -413,12 +417,12 @@ export default function AssignmentPlannerPage() {
         {/* Plan list */}
         <Paper sx={{ width: { xs: '100%', md: 320 }, flexShrink: 0 }}>
           <Typography variant="subtitle2" sx={{ px: 2, pt: 2, pb: 1, fontWeight: 700 }}>
-            แผนทั้งหมด ({plans.length})
+            {t('aa.allPlans')} ({plans.length})
           </Typography>
           <Divider />
           {plans.length === 0 && !loading && (
             <Typography variant="body2" color="text.secondary" sx={{ p: 2 }}>
-              ยังไม่มีแผน — กด "สร้างแผนใหม่"
+              {t('aa.noPlan')}
             </Typography>
           )}
           {plans.map((p) => (
@@ -437,13 +441,13 @@ export default function AssignmentPlannerPage() {
             >
               <Stack direction="row" justifyContent="space-between" alignItems="center">
                 <Typography variant="body1" fontWeight={600}>{p.period}</Typography>
-                <Chip size="small" label={STATUS_LABEL[p.status]} color={STATUS_COLOR[p.status]} />
+                <Chip size="small" label={t(STATUS_KEY[p.status])} color={STATUS_COLOR[p.status]} />
               </Stack>
               <Typography variant="caption" color="text.secondary">
-                {p.totalAgencies} Agency · {p.totalSales} เซลส์ · v{p.versions.length}
+                {p.totalAgencies} Agency · {p.totalSales} {t('c.seller')} · v{p.versions.length}
               </Typography>
               <Typography variant="caption" display="block" color="text.secondary">
-                สร้างโดย {p.createdBy.name}
+                {t('aa.createdBy')} {p.createdBy.name}
               </Typography>
             </Box>
           ))}
@@ -454,7 +458,7 @@ export default function AssignmentPlannerPage() {
           {detailLoading && <LinearProgress />}
           {!selectedId && !detailLoading && (
             <Paper sx={{ p: 4, textAlign: 'center' }}>
-              <Typography color="text.secondary">เลือกแผนจากรายการทางซ้าย</Typography>
+              <Typography color="text.secondary">{t('aa.selectPlan')}</Typography>
             </Paper>
           )}
           {detail && !detailLoading && (
@@ -463,15 +467,15 @@ export default function AssignmentPlannerPage() {
                 <Box>
                   <Typography variant="h6" fontWeight={700}>{detail.period} — {detail.title}</Typography>
                   <Stack direction="row" spacing={1} mt={0.5}>
-                    <Chip size="small" label={STATUS_LABEL[detail.status]} color={STATUS_COLOR[detail.status]} />
+                    <Chip size="small" label={t(STATUS_KEY[detail.status])} color={STATUS_COLOR[detail.status]} />
                     <Chip size="small" label={`${detail.totalAgencies} Agency`} variant="outlined" />
-                    <Chip size="small" label={`${detail.totalSales} เซลส์`} variant="outlined" />
+                    <Chip size="small" label={`${detail.totalSales} ${t('c.seller')}`} variant="outlined" />
                     <Chip size="small" label={`v${detail.versions.length}`} variant="outlined" />
                   </Stack>
                 </Box>
                 {detail.approvedBy && (
                   <Typography variant="caption" color="text.secondary">
-                    อนุมัติโดย: {detail.approvedBy.name}
+                    {t('aa.approvedBy')}: {detail.approvedBy.name}
                   </Typography>
                 )}
               </Stack>

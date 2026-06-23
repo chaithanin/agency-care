@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useT } from '../i18n';
 import {
   Alert, Box, Button, Card, CardContent, Checkbox, Chip,
   CircularProgress, Divider, FormControlLabel, FormGroup,
@@ -127,6 +128,7 @@ function PlatformGroup({ label, value, onChange }: {
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function AgencyInfoFormPage() {
+  const { t } = useT();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const printRef = useRef<HTMLDivElement>(null);
@@ -190,15 +192,15 @@ export default function AgencyInfoFormPage() {
     <Box ref={printRef}>
       {/* Header — hidden on print */}
       <Stack direction="row" alignItems="center" spacing={2} mb={3} sx={{ '@media print': { display: 'none' } }}>
-        <Button startIcon={<ArrowBack />} onClick={() => navigate('/agencies')} size="small">กลับ</Button>
+        <Button startIcon={<ArrowBack />} onClick={() => navigate('/agencies')} size="small">{t('aif.back')}</Button>
         <Typography variant="h5" fontWeight={800} flex={1}>Agency Information Form</Typography>
-        <Button startIcon={<Print />} onClick={handlePrint} variant="outlined">พิมพ์</Button>
+        <Button startIcon={<Print />} onClick={handlePrint} variant="outlined">{t('aif.print')}</Button>
         <Button startIcon={<Save />} onClick={save} variant="contained" disabled={saving}>
-          {saving ? 'กำลังบันทึก…' : 'บันทึก'}
+          {saving ? t('aif.saving') : t('common.save')}
         </Button>
       </Stack>
 
-      {saved && <Alert severity="success" sx={{ mb: 2, '@media print': { display: 'none' } }}>บันทึกสำเร็จ</Alert>}
+      {saved && <Alert severity="success" sx={{ mb: 2, '@media print': { display: 'none' } }}>{t('aif.savedSuccess')}</Alert>}
       {err && <Alert severity="error" sx={{ mb: 2, '@media print': { display: 'none' } }}>{err}</Alert>}
 
       {/* Print header */}
@@ -239,7 +241,7 @@ export default function AgencyInfoFormPage() {
           <TextField fullWidth size="small" label="Location of the Agency"
             value={p.locationDetail}
             onChange={(e) => setP({ ...p, locationDetail: e.target.value })}
-            placeholder="เลขที่ / ถนน / ย่าน / จังหวัด" />
+            placeholder={t('aif.locationPlaceholder')} />
         </FieldRow>
 
         <Divider sx={{ my: 2 }} />
@@ -389,7 +391,7 @@ export default function AgencyInfoFormPage() {
               placeholder="email@agency.com" />
             <TextField size="small" fullWidth label="Contact Person Name"
               value={contactPerson} onChange={(e) => setContactPerson(e.target.value)}
-              placeholder="ชื่อผู้ติดต่อหลัก" />
+              placeholder={t('aif.contactPersonPlaceholder')} />
           </Stack>
         </FieldRow>
 
@@ -466,7 +468,7 @@ export default function AgencyInfoFormPage() {
       <Box sx={{ mt: 3, textAlign: 'center', '@media print': { display: 'none' } }}>
         <Button size="large" variant="contained" startIcon={<Save />}
           onClick={save} disabled={saving} sx={{ px: 6 }}>
-          {saving ? 'กำลังบันทึก…' : 'บันทึกข้อมูล'}
+          {saving ? t('aif.saving') : t('aif.saveData')}
         </Button>
       </Box>
 

@@ -32,18 +32,18 @@ function isToday(dateStr: string) {
   return d.getDate() === now.getDate() && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
 }
 
-function timeAgo(dateStr: string) {
+function timeAgo(dateStr: string, t: (key: string) => string, lang: string) {
   const d = new Date(dateStr);
   const now = new Date();
   const diff = Math.round((now.getTime() - d.getTime()) / 60000);
-  if (diff < 1)  return 'เมื่อกี้';
-  if (diff < 60) return `${diff} นาทีที่แล้ว`;
-  if (diff < 1440) return `${Math.round(diff / 60)} ชม.ที่แล้ว`;
-  return d.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' });
+  if (diff < 1)  return t('ntf.justNow');
+  if (diff < 60) return `${diff} ${t('ntf.minsAgo')}`;
+  if (diff < 1440) return `${Math.round(diff / 60)} ${t('ntf.hrsAgo')}`;
+  return d.toLocaleDateString(lang === 'en' ? 'en-GB' : 'th-TH', { day: 'numeric', month: 'short' });
 }
 
 export default function NotificationsPage() {
-  const { t } = useT();
+  const { t, lang } = useT();
   const navigate = useNavigate();
   const [items, setItems]   = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
@@ -124,7 +124,7 @@ export default function NotificationsPage() {
                         <Chip size="small" label={n.type.replace('_', ' ')} color={typeColor(n.type) as any} variant="outlined" />
                       </Stack>
                       <Typography variant="body2" color="text.secondary" noWrap>{n.body}</Typography>
-                      <Typography variant="caption" color="text.disabled">{timeAgo(n.createdAt)}</Typography>
+                      <Typography variant="caption" color="text.disabled">{timeAgo(n.createdAt, t, lang)}</Typography>
                     </Box>
                   </Stack>
                   {i < today.length - 1 && <Divider />}
@@ -156,7 +156,7 @@ export default function NotificationsPage() {
                         <Chip size="small" label={n.type.replace('_', ' ')} color={typeColor(n.type) as any} variant="outlined" />
                       </Stack>
                       <Typography variant="body2" color="text.secondary" noWrap>{n.body}</Typography>
-                      <Typography variant="caption" color="text.disabled">{timeAgo(n.createdAt)}</Typography>
+                      <Typography variant="caption" color="text.disabled">{timeAgo(n.createdAt, t, lang)}</Typography>
                     </Box>
                   </Stack>
                   {i < earlier.length - 1 && <Divider />}
