@@ -7,10 +7,12 @@ import {
   Box,
   Button,
   Chip,
+  CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
+  Divider,
   MenuItem,
   Paper,
   Stack,
@@ -24,6 +26,11 @@ import {
 } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
+import HistoryIcon from '@mui/icons-material/History';
+import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
+import EditNoteIcon from '@mui/icons-material/EditNote';
+import PersonAddIcon from '@mui/icons-material/PersonAdd';
+import DirectionsWalkIcon from '@mui/icons-material/DirectionsWalk';
 import { api, errMsg } from '../api/client';
 import { useT } from '../i18n';
 
@@ -64,6 +71,112 @@ interface DupHit {
   phone?: string;
   province?: string;
   status: string;
+}
+
+interface TimelineEvent {
+  type: string; date: string; actor?: string; icon?: string;
+  description: string;
+  metadata?: {
+    status?: string; visitType?: string; purposes?: string[];
+    summary?: string; interestLevel?: string | null; newLeads?: number;
+    checkinAt?: string; duration?: number; employee?: string;
+    before?: Record<string, any>; after?: Record<string, any>; changes?: string[];
+  };
+}
+
+// ── Agency Timeline Dialog ─────────────────────────────────────────────────
+const INTEREST_COLOR: Record<string, 'success' | 'warning' | 'error' | 'default'> = {
+  high: 'success', medium: 'warning', low: 'error',
+};
+
+function TimelineDotIcon({ icon }: { icon?: string }) {
+  const sx = { width: 32, height: 32, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 };
+  if (icon === 'create') return <Box sx={{ ...sx, bgcolor: 'success.main' }}><AddCircleOutlineIcon sx={{ fontSize: 18, color: '#fff' }} /></Box>;
+  if (icon === 'edit') return <Box sx={{ ...sx, bgcolor: 'primary.main' }}><EditNoteIcon sx={{ fontSize: 18, color: '#fff' }} /></Box>;
+  if (icon === 'person') return <Box sx={{ ...sx, bgcolor: 'secondary.main' }}><PersonAddIcon sx={{ fontSize: 18, color: '#fff' }} /></Box>;
+  return <Box sx={{ ...sx, bgcolor: 'info.main' }}><DirectionsWalkIcon sx={{ fontSize: 18, color: '#fff' }} /></Box>;
+}
+
+function AgencyTimelineDialog({ agencyId, agencyName, onClose }: { agencyId: string; agencyName: string; onClose: () => void }) {
+  const [events, setEvents] = useState<TimelineEvent[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState('');
+
+  useEffect(() => {
+    setLoading(true);
+    api.get(`/agencies/${agencyId}/timeline`)
+      .then((r) => setEvents(r.data.events))
+      .catch((e) => setErr(errMsg(e)))
+      .finally(() => setLoading(false));
+  }, [agencyId]);
+
+  const fmtDate = (d: string) => new Date(d).toLocaleDateString('th-TH', { day: '2-digit', month: 'short', year: '2-digit', hour: '2-digit', minute: '2-digit' });
+
+  return (
+    <Dialog open onClose={onClose} fullWidth maxWidth="sm" scroll="paper">
+      <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        <HistoryIcon /> ประวัติ — {agencyName}
+      </DialogTitle>
+      <DialogContent dividers>
+        {loading && <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}><CircularProgress /></Box>}
+        {err && <Alert severity="error">{err}</Alert>}
+        {!loading && events.length === 0 && (
+          <Typography color="text.secondary" textAlign="center" py={4}>ยังไม่มีประวัติ</Typography>
+        )}
+        {events.map((ev, i) => (
+          <Box key={i} sx={{ display: 'flex', gap: 2, mb: 2 }}>
+            {/* Dot + connector */}
+            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+              <TimelineDotIcon icon={ev.icon} />
+              {i < events.length - 1 && (
+                <Box sx={{ width: 2, flex: 1, bgcolor: 'divider', mt: 0.5, mb: 0.5, minHeight: 24 }} />
+              )}
+            </Box>
+            {/* Content */}
+            <Box sx={{ flex: 1, pb: 1 }}>
+              <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
+                <Typography variant="body2" fontWeight={700}>{ev.description}</Typography>
+                <Typography variant="caption" color="text.disabled" sx={{ whiteSpace: 'nowrap', ml: 1 }}>
+                  {fmtDate(ev.date)}
+                </Typography>
+              </Stack>
+              {ev.actor && (
+                <Typography variant="caption" color="text.secondary">โดย {ev.actor}</Typography>
+              )}
+              {ev.type === 'visit' && ev.metadata && (
+                <Stack direction="row" spacing={0.5} mt={0.5} flexWrap="wrap" useFlexGap>
+                  {ev.metadata.interestLevel && (
+                    <Chip size="small" color={INTEREST_COLOR[ev.metadata.interestLevel] ?? 'default'}
+                      label={`ความสนใจ: ${ev.metadata.interestLevel}`} />
+                  )}
+                  {(ev.metadata.newLeads ?? 0) > 0 && (
+                    <Chip size="small" color="success" label={`Lead: ${ev.metadata.newLeads}`} />
+                  )}
+                  {ev.metadata.duration != null && (
+                    <Chip size="small" variant="outlined" label={`${ev.metadata.duration} นาที`} />
+                  )}
+                  {ev.metadata.summary && (
+                    <Typography variant="caption" color="text.secondary" display="block" mt={0.5}>
+                      {ev.metadata.summary}
+                    </Typography>
+                  )}
+                </Stack>
+              )}
+              {ev.type === 'updated' && ev.metadata?.changes && (
+                <Typography variant="caption" color="text.secondary">
+                  เปลี่ยน: {ev.metadata.changes.join(', ')}
+                </Typography>
+              )}
+              {i < events.length - 1 && <Divider sx={{ mt: 1.5 }} />}
+            </Box>
+          </Box>
+        ))}
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={onClose}>ปิด</Button>
+      </DialogActions>
+    </Dialog>
+  );
 }
 
 const STAGES = ['new', 'prospect', 'onboarding', 'active', 'grade_a', 'at_risk', 'inactive'];
@@ -126,6 +239,9 @@ export default function AgenciesPage() {
 
   // tier/stage dialog
   const [tierFor, setTierFor] = useState<Agency | null>(null);
+
+  // timeline dialog
+  const [timelineFor, setTimelineFor] = useState<Agency | null>(null);
 
   // bulk geocode
   const [geocoding, setGeocoding] = useState(false);
@@ -359,9 +475,15 @@ export default function AgenciesPage() {
                   )}
                 </TableCell>
                 <TableCell align="right">
-                  <Button size="small" onClick={() => { setAssignFor(a); setAssignEmp(''); }}>
-                    {t('ag.addSeller')}
-                  </Button>
+                  <Stack direction="row" spacing={0.5} justifyContent="flex-end">
+                    <Button size="small" startIcon={<HistoryIcon fontSize="small" />}
+                      onClick={() => setTimelineFor(a)}>
+                      ประวัติ
+                    </Button>
+                    <Button size="small" onClick={() => { setAssignFor(a); setAssignEmp(''); }}>
+                      {t('ag.addSeller')}
+                    </Button>
+                  </Stack>
                 </TableCell>
               </TableRow>
             ))}
@@ -567,6 +689,14 @@ export default function AgenciesPage() {
           <Button variant="contained" onClick={saveTier}>{t('common.save')}</Button>
         </DialogActions>
       </Dialog>
+      {/* ─── Agency Timeline ─── */}
+      {timelineFor && (
+        <AgencyTimelineDialog
+          agencyId={timelineFor.id}
+          agencyName={timelineFor.name}
+          onClose={() => setTimelineFor(null)}
+        />
+      )}
     </Box>
   );
 }

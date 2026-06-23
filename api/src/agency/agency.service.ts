@@ -82,18 +82,124 @@ export class AgencyService {
     return { duplicates: hits };
   }
 
-  async create(dto: CreateAgencyDto) {
+  async create(dto: CreateAgencyDto, userId?: string) {
     const dup = await this.prisma.agency.findUnique({ where: { code: dto.code } });
     if (dup) throw new BadRequestException(`รหัส Agency ${dto.code} ถูกใช้แล้ว`);
-    return this.prisma.agency.create({ data: dto });
+    const agency = await this.prisma.agency.create({ data: dto });
+    await this.prisma.auditLog.create({
+      data: { userId, action: 'create', entity: 'agency', entityId: agency.id,
+        metadata: { after: { name: agency.name, code: agency.code } } },
+    });
+    return agency;
   }
 
-  async update(id: string, dto: UpdateAgencyDto) {
-    await this.get(id);
-    // ตั้งพิกัดเอง = ยืนยันแล้ว (manual)
+  async update(id: string, dto: UpdateAgencyDto, userId?: string) {
+    const before = await this.get(id);
     const data: Prisma.AgencyUpdateInput = { ...dto };
     if (dto.latitude != null && dto.longitude != null) data.geocodeSource = 'manual';
-    return this.prisma.agency.update({ where: { id }, data });
+    const after = await this.prisma.agency.update({ where: { id }, data });
+    // บันทึก fields ที่เปลี่ยน
+    const changes = Object.keys(dto).filter(
+      (k) => (before as any)[k] !== (dto as any)[k],
+    );
+    if (changes.length) {
+      const beforeSnap = Object.fromEntries(changes.map((k) => [k, (before as any)[k]]));
+      const afterSnap = Object.fromEntries(changes.map((k) => [k, (after as any)[k]]));
+      await this.prisma.auditLog.create({
+        data: { userId, action: 'update', entity: 'agency', entityId: id,
+          metadata: { before: beforeSnap, after: afterSnap, changes } },
+      });
+    }
+    return after;
+  }
+
+  // ── Agency Timeline ────────────────────────────────────────────────────────
+  async getTimeline(agencyId: string) {
+    const [agency, visits, auditEntries, assignments] = await Promise.all([
+      this.prisma.agency.findUnique({ where: { id: agencyId }, select: { name: true, createdAt: true } }),
+      this.prisma.visitPlan.findMany({
+        where: { agencyId },
+        include: {
+          employee: { select: { name: true, code: true } },
+          report: { select: { visitType: true, purposes: true, summary: true, interestLevel: true, newLeads: true } },
+          checkin: { select: { checkinAt: true, checkOutAt: true, durationMinutes: true } },
+        },
+        orderBy: { planDate: 'desc' },
+        take: 100,
+      }),
+      this.prisma.auditLog.findMany({
+        where: { entity: 'agency', entityId: agencyId },
+        include: { user: { select: { name: true } } },
+        orderBy: { createdAt: 'desc' },
+        take: 50,
+      }),
+      this.prisma.agencyAssignment.findMany({
+        where: { agencyId },
+        include: { employee: { select: { name: true, code: true } } },
+        orderBy: { assignedAt: 'desc' },
+      }),
+    ]);
+
+    if (!agency) throw new NotFoundException('ไม่พบ Agency');
+
+    type TimelineEvent = {
+      type: string; date: string; actor?: string;
+      icon?: string; description: string; metadata?: any;
+    };
+
+    const events: TimelineEvent[] = [];
+
+    // Audit events (create/update)
+    for (const a of auditEntries) {
+      if (a.action === 'create') {
+        events.push({ type: 'created', date: a.createdAt.toISOString(),
+          actor: a.user?.name ?? 'System', icon: 'create',
+          description: 'เพิ่ม Agency เข้าระบบ' });
+      } else if (a.action === 'update') {
+        const meta = a.metadata as any;
+        const changed: string[] = meta?.changes ?? [];
+        events.push({ type: 'updated', date: a.createdAt.toISOString(),
+          actor: a.user?.name ?? 'System', icon: 'edit',
+          description: `แก้ไขข้อมูล${changed.length ? ': ' + changed.join(', ') : ''}`,
+          metadata: meta });
+      }
+    }
+
+    // Assignment events
+    for (const asg of assignments) {
+      events.push({ type: 'assigned', date: asg.assignedAt.toISOString(),
+        actor: 'System', icon: 'person',
+        description: `มอบหมายให้ ${asg.employee.name} (${asg.employee.code})${asg.isActive ? '' : ' [ยกเลิกแล้ว]'}` });
+    }
+
+    // Visit events
+    for (const v of visits) {
+      const statusLabel: Record<string, string> = {
+        done: '✅ เสร็จสิ้น', cancelled: '❌ ยกเลิก', pending: '📅 รอ',
+        on_route: '🚗 กำลังเดินทาง', waiting_confirmation: '⏳ รอยืนยัน', postponed: '📌 เลื่อน',
+      };
+      const typeLabel = v.report?.visitType === 'agency_brings_client' ? 'AG พา Client มา' : 'ไปเยี่ยม Agency';
+      events.push({
+        type: 'visit', date: v.planDate.toISOString(),
+        actor: v.employee.name, icon: 'visit',
+        description: `${statusLabel[v.status] ?? v.status} — ${typeLabel}`,
+        metadata: {
+          status: v.status,
+          visitType: v.report?.visitType,
+          purposes: v.report?.purposes ?? [],
+          summary: v.report?.summary,
+          interestLevel: v.report?.interestLevel,
+          newLeads: v.report?.newLeads ?? 0,
+          checkinAt: v.checkin?.checkinAt,
+          duration: v.checkin?.durationMinutes,
+          employee: v.employee.name,
+        },
+      });
+    }
+
+    events.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+    return { agencyId, agencyName: agency.name, events };
   }
 
   // เติมพิกัดอัตโนมัติให้ agency ที่ยังไม่มี ผ่าน Google Geocoding API

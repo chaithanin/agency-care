@@ -613,6 +613,7 @@ model AuditLog {
   entity    String // ชื่อ entity เช่น "agency"
   entityId  String?     @map("entity_id")
   ip        String?
+  metadata  Json?       // { before, after, changes: string[] }
   createdAt DateTime    @default(now()) @map("created_at")
 
   user User? @relation(fields: [userId], references: [id], onDelete: SetNull)

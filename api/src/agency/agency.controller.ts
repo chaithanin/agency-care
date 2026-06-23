@@ -2,6 +2,7 @@ import { Body, Controller, Get, Param, Patch, Post, Query } from '@nestjs/common
 import { AgencyService } from './agency.service';
 import { CreateAgencyDto, UpdateAgencyDto } from './dto/agency.dto';
 import { Roles } from '../auth/guards';
+import { CurrentUser, RequestUser } from '../common/current-user.decorator';
 
 @Controller('agencies')
 export class AgencyController {
@@ -40,6 +41,11 @@ export class AgencyController {
     return this.service.get(id);
   }
 
+  @Get(':id/timeline')
+  getTimeline(@Param('id') id: string) {
+    return this.service.getTimeline(id);
+  }
+
   // เติมพิกัดอัตโนมัติเป็นชุด (ทีละ limit ร้าน)
   @Roles('admin', 'closer')
   @Post('geocode')
@@ -49,13 +55,13 @@ export class AgencyController {
 
   @Roles('admin', 'closer')
   @Post()
-  create(@Body() dto: CreateAgencyDto) {
-    return this.service.create(dto);
+  create(@CurrentUser() user: RequestUser, @Body() dto: CreateAgencyDto) {
+    return this.service.create(dto, user.id);
   }
 
   @Roles('admin', 'closer')
   @Patch(':id')
-  update(@Param('id') id: string, @Body() dto: UpdateAgencyDto) {
-    return this.service.update(id, dto);
+  update(@CurrentUser() user: RequestUser, @Param('id') id: string, @Body() dto: UpdateAgencyDto) {
+    return this.service.update(id, dto, user.id);
   }
 }
