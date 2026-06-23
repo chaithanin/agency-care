@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Dialog, DialogContent, DialogActions, Button, Box, CircularProgress, Typography } from '@mui/material';
 import CameraAltIcon from '@mui/icons-material/CameraAlt';
+import { useT } from '../i18n';
 
 // กล้องในแอป (getUserMedia) — ถ่ายรูปเท่านั้น ไม่มี option เลือกไฟล์
 export default function CameraCapture({
@@ -12,6 +13,7 @@ export default function CameraCapture({
   onClose: () => void;
   onCapture: (blob: Blob) => void;
 }) {
+  const { t } = useT();
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const [err, setErr] = useState('');
@@ -29,7 +31,7 @@ export default function CameraCapture({
     let cancelled = false;
     (async () => {
       try {
-        if (!navigator.mediaDevices?.getUserMedia) throw new Error('อุปกรณ์ไม่รองรับกล้อง');
+        if (!navigator.mediaDevices?.getUserMedia) throw new Error(t('camera.noSupport'));
         const stream = await navigator.mediaDevices.getUserMedia({
           video: { facingMode: { ideal: 'environment' } },
           audio: false,
@@ -45,7 +47,7 @@ export default function CameraCapture({
           setReady(true);
         }
       } catch (e) {
-        setErr('เปิดกล้องไม่ได้: ' + (e as Error).message + ' (ต้องอนุญาตกล้อง + ใช้ HTTPS)');
+        setErr(t('camera.openFailed') + ': ' + (e as Error).message);
       }
     })();
     return () => {
@@ -92,9 +94,9 @@ export default function CameraCapture({
         )}
       </DialogContent>
       <DialogActions>
-        <Button onClick={close}>ยกเลิก</Button>
+        <Button onClick={close}>{t('common.cancel')}</Button>
         <Button variant="contained" startIcon={<CameraAltIcon />} onClick={capture} disabled={!ready || !!err}>
-          ถ่ายรูป
+          {t('camera.capture')}
         </Button>
       </DialogActions>
     </Dialog>

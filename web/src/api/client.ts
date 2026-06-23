@@ -67,5 +67,6 @@ export function errMsg(e: unknown): string {
   const anyE = e as { response?: { data?: { message?: string | string[] } } };
   const m = anyE?.response?.data?.message;
   if (Array.isArray(m)) return m.join(', ');
-  return m ?? 'เกิดข้อผิดพลาด';
+  const lang = localStorage.getItem('lang') ?? 'th';
+  return m ?? (lang === 'en' ? 'An error occurred' : 'เกิดข้อผิดพลาด');
 }
