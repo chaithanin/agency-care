@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
-  Alert, Box, Button, Chip, CircularProgress,
+  Alert, Box, Button, Chip,
   Dialog, DialogActions, DialogContent, DialogTitle,
   FormControl, InputLabel, LinearProgress, MenuItem,
   Paper, Select, Stack, Tab, Table, TableBody, TableCell,
@@ -62,7 +62,6 @@ function StockBar({ qty, reorder }: { qty: number; reorder: number }) {
 
 // ─── Tab 1: Stock Overview ────────────────────────────────────────────────────
 function StockTab() {
-  const { t } = useT();
   const [data, setData] = useState<{ lowStockCount: number; urgentCount: number; items: InvItem[] } | null>(null);
   const [loading, setLoading] = useState(true);
   const [catFilter, setCatFilter] = useState('all');
