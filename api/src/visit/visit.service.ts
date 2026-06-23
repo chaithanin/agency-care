@@ -432,21 +432,160 @@ export class VisitService {
   // ---- Report ----
   async submitReport(user: RequestUser, planId: string, dto: ReportDto) {
     const plan = await this.getPlan(user, planId);
+    const data = {
+      purposes: dto.purposes,
+      visitType: dto.visitType,
+      summary: dto.summary,
+      problems: dto.problems,
+      actionPlan: dto.actionPlan,
+      interestLevel: dto.interestLevel,
+      newLeads: dto.newLeads,
+      nextVisitDate: dto.nextVisitDate ? new Date(dto.nextVisitDate) : undefined,
+    };
     return this.prisma.visitReport.upsert({
       where: { visitPlanId: plan.id },
-      create: {
-        visitPlanId: plan.id,
-        purposes: dto.purposes,
-        summary: dto.summary,
-        problems: dto.problems,
-        actionPlan: dto.actionPlan,
-      },
-      update: {
-        purposes: dto.purposes,
-        summary: dto.summary,
-        problems: dto.problems,
-        actionPlan: dto.actionPlan,
+      create: { visitPlanId: plan.id, ...data },
+      update: data,
+    });
+  }
+
+  // ---- Site Visit Report Dashboard ----
+  async reportDashboard(user: RequestUser, date?: string) {
+    const targetDate = date ? new Date(date) : new Date();
+    const planDate = new Date(targetDate.toISOString().slice(0, 10));
+
+    const roleFilter = await this.buildRoleFilter(user);
+
+    const plans = await this.prisma.visitPlan.findMany({
+      where: { planDate, ...roleFilter },
+      include: {
+        checkin: { select: { withinRadius: true, photos: { select: { id: true } } } },
       },
     });
+
+    const ACTIVE = ['pending', 'waiting_confirmation', 'confirmed', 'on_route'];
+    return {
+      scheduled: plans.length,
+      completed: plans.filter((p) => p.status === 'done').length,
+      confirmed: plans.filter((p) => p.status === 'confirmed').length,
+      overdue: plans.filter((p) => ACTIVE.includes(p.status) && p.status !== 'confirmed').length,
+      cancelled: plans.filter((p) => p.status === 'cancelled').length,
+      checkinSuccess: plans.filter((p) => p.checkin?.withinRadius).length,
+      photosUploaded: plans.reduce((s, p) => s + (p.checkin?.photos.length ?? 0), 0),
+    };
+  }
+
+  // ---- Site Visit Report List ----
+  async getReportList(
+    user: RequestUser,
+    params: {
+      from?: string; to?: string; date?: string;
+      employeeId?: string; agencyId?: string; status?: string;
+      province?: string; agencyLevel?: string; agencyType?: string;
+    },
+  ) {
+    const roleFilter = await this.buildRoleFilter(user);
+    const where: Prisma.VisitPlanWhereInput = { ...roleFilter };
+
+    if (params.date) {
+      where.planDate = new Date(params.date);
+    } else {
+      const dateFilter: Prisma.DateTimeFilter = {};
+      if (params.from) dateFilter.gte = new Date(params.from);
+      if (params.to) dateFilter.lte = new Date(params.to);
+      if (Object.keys(dateFilter).length) where.planDate = dateFilter;
+    }
+
+    if (params.employeeId) where.employeeId = params.employeeId;
+    if (params.agencyId) where.agencyId = params.agencyId;
+    if (params.status) where.status = params.status as any;
+    if (params.province || params.agencyLevel || params.agencyType) {
+      where.agency = {};
+      if (params.province) where.agency = { ...where.agency, province: params.province } as any;
+      if (params.agencyLevel) where.agency = { ...where.agency, level: params.agencyLevel } as any;
+      if (params.agencyType) where.agency = { ...where.agency, type: params.agencyType } as any;
+    }
+
+    return this.prisma.visitPlan.findMany({
+      where,
+      orderBy: [{ planDate: 'desc' }, { createdAt: 'desc' }],
+      include: {
+        agency: { select: { id: true, code: true, name: true, zone: true, province: true, level: true, type: true } },
+        employee: { select: { id: true, code: true, name: true } },
+        checkin: {
+          select: {
+            id: true, checkinAt: true, checkOutAt: true, durationMinutes: true,
+            withinRadius: true, distanceMeters: true, latitude: true, longitude: true,
+            contactName: true, contactPosition: true, contactPhone: true,
+            photos: { select: { id: true, url: true, phase: true, takenAt: true } },
+          },
+        },
+        report: true,
+        workPhotos: { select: { id: true, url: true, caption: true, takenAt: true } },
+        tasks: { where: { status: { not: 'done' } }, select: { id: true, title: true, dueDate: true } },
+      },
+    });
+  }
+
+  // ---- AI Insight ----
+  async getAiInsight(user: RequestUser, planId: string) {
+    const plan = await this.getPlan(user, planId);
+    const agencyId = plan.agencyId;
+
+    // ประวัติการเยี่ยมทั้งหมดของ Agency นี้
+    const history = await this.prisma.visitPlan.findMany({
+      where: { agencyId, status: 'done' },
+      orderBy: { planDate: 'desc' },
+      take: 20,
+      include: { report: { select: { newLeads: true, interestLevel: true } } },
+    });
+
+    const daysSinceLast = history.length > 0
+      ? Math.floor((Date.now() - new Date(history[0].planDate).getTime()) / 86400000)
+      : 999;
+
+    const totalLeads = history.reduce((s, h) => s + (h.report?.newLeads ?? 0), 0);
+
+    // visits in last 3 months
+    const threeMonthsAgo = new Date(); threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+    const recentVisits = history.filter((h) => new Date(h.planDate) >= threeMonthsAgo).length;
+
+    // ความสนใจล่าสุด
+    const latestInterest = history[0]?.report?.interestLevel ?? null;
+
+    // Relationship score (0-100)
+    const freqScore = Math.min(30, recentVisits * 5);
+    const leadScore = Math.min(20, totalLeads * 2);
+    const recencyScore = Math.max(0, 50 - Math.floor(daysSinceLast / 3));
+    const relationshipScore = freqScore + leadScore + recencyScore;
+
+    const riskLevel =
+      relationshipScore >= 70 ? 'low'
+      : relationshipScore >= 45 ? 'medium'
+      : 'high';
+
+    const suggestRevisitDays =
+      daysSinceLast > 30 ? 7
+      : daysSinceLast > 14 ? 14
+      : 30;
+
+    return {
+      daysSinceLast,
+      totalVisits: history.length,
+      recentVisits,
+      totalLeads,
+      latestInterest,
+      relationshipScore,
+      riskLevel,
+      suggestRevisitDays,
+    };
+  }
+
+  private async buildRoleFilter(user: RequestUser): Promise<Prisma.VisitPlanWhereInput> {
+    if (user.activeRole === 'sales') {
+      const emp = await this.requireEmployee(user.id);
+      return { employeeId: emp.id };
+    }
+    return {};
   }
 }

@@ -129,6 +129,35 @@ export class VisitController {
     return result;
   }
 
+  // ---- Site Visit Report Dashboard ----
+  @Get('report-dashboard')
+  reportDashboard(@CurrentUser() user: RequestUser, @Query('date') date?: string) {
+    return this.service.reportDashboard(user, date);
+  }
+
+  // ---- Site Visit Report List ----
+  @Get('report')
+  getReportList(
+    @CurrentUser() user: RequestUser,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+    @Query('date') date?: string,
+    @Query('employeeId') employeeId?: string,
+    @Query('agencyId') agencyId?: string,
+    @Query('status') status?: string,
+    @Query('province') province?: string,
+    @Query('agencyLevel') agencyLevel?: string,
+    @Query('agencyType') agencyType?: string,
+  ) {
+    return this.service.getReportList(user, { from, to, date, employeeId, agencyId, status, province, agencyLevel, agencyType });
+  }
+
+  // ---- AI Insight ----
+  @Get('plans/:id/ai-insight')
+  getAiInsight(@CurrentUser() user: RequestUser, @Param('id') id: string) {
+    return this.service.getAiInsight(user, id);
+  }
+
   // ---- Smart Replacement — ร้านทดแทนใกล้เคียงเมื่อ reschedule ----
   @Get('plans/:id/suggestions')
   getSuggestions(

@@ -145,11 +145,16 @@ export default function Layout({ children }: { children: ReactNode }) {
         ...baseManagerNav,
         { to: '/tasks', label: t('nav.tasks'), icon: <AssignmentRoundedIcon /> },
         { to: '/auto-assign', label: t('nav.autoassign'), icon: <AutoAwesomeRoundedIcon /> },
+        { to: '/site-visit-report', label: t('nav.siteVisitReport'), icon: <AssignmentRoundedIcon /> },
         { to: '/analytics', label: t('nav.ai'), icon: <PsychologyRoundedIcon /> },
         { to: '/users', label: t('nav.users'), icon: <ManageAccountsRoundedIcon /> },
       ]
     : isCloser
-    ? [...baseManagerNav, { to: '/tasks', label: t('nav.tasks'), icon: <AssignmentRoundedIcon /> }]
+    ? [
+        ...baseManagerNav,
+        { to: '/tasks', label: t('nav.tasks'), icon: <AssignmentRoundedIcon /> },
+        { to: '/site-visit-report', label: t('nav.siteVisitReport'), icon: <AssignmentRoundedIcon /> },
+      ]
     : [
         { to: '/', label: t('nav.myWork'), icon: <HomeRoundedIcon /> },
         { to: '/my-day', label: t('nav.myDay'), icon: <TodayRoundedIcon /> },

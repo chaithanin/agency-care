@@ -389,9 +389,15 @@ model VisitReport {
 
   // วัตถุประสงค์ (เลือกได้หลายข้อ) เช่น ["visit","close_sale","install_posm"]
   purposes   String[]
+  visitType  String? @map("visit_type") // visit_agency | agency_brings_client
   summary    String? // สรุปผล
   problems   String? // ปัญหาที่พบ
   actionPlan String?  @map("action_plan") // แผนต่อไป
+
+  // ผลการเข้าเยี่ยม
+  interestLevel String?   @map("interest_level") // high | medium | low
+  newLeads      Int?      @map("new_leads")
+  nextVisitDate DateTime? @map("next_visit_date") @db.Date
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")

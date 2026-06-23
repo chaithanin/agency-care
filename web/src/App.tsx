@@ -24,6 +24,7 @@ import UsersPage from './pages/UsersPage';
 import CalendarPage from './pages/CalendarPage';
 import TasksPage from './pages/TasksPage';
 import NotificationsPage from './pages/NotificationsPage';
+import SiteVisitReportPage from './pages/SiteVisitReportPage';
 
 function Splash() {
   return (
@@ -67,6 +68,7 @@ export default function App() {
             <Route path="/pipeline" element={<PipelinePage />} />
             {['super_admin', 'admin'].includes(user.role) && <Route path="/users" element={<UsersPage />} />}
             <Route path="/analytics" element={<AnalyticsPage />} />
+            <Route path="/site-visit-report" element={<SiteVisitReportPage />} />
           </>
         ) : (
           <>

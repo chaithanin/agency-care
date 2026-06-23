@@ -110,6 +110,10 @@ export class ReportDto {
 
   @IsOptional()
   @IsString()
+  visitType?: string;
+
+  @IsOptional()
+  @IsString()
   summary?: string;
 
   @IsOptional()
@@ -119,4 +123,16 @@ export class ReportDto {
   @IsOptional()
   @IsString()
   actionPlan?: string;
+
+  @IsOptional()
+  @IsIn(['high', 'medium', 'low'])
+  interestLevel?: string;
+
+  @IsOptional()
+  @IsNumber()
+  newLeads?: number;
+
+  @IsOptional()
+  @IsDateString()
+  nextVisitDate?: string;
 }
