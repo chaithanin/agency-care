@@ -7,6 +7,7 @@ import {
   Alert,
   Box,
   Button,
+  Checkbox,
   Chip,
   CircularProgress,
   Dialog,
@@ -16,8 +17,10 @@ import {
   Divider,
   IconButton,
   InputAdornment,
+  LinearProgress,
   MenuItem,
   Paper,
+  Slide,
   Stack,
   Table,
   TableBody,
@@ -25,10 +28,12 @@ import {
   TableHead,
   TableRow,
   TextField,
+  Tooltip,
   Typography,
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import ClearIcon from '@mui/icons-material/Clear';
+import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import HistoryIcon from '@mui/icons-material/History';
@@ -68,7 +73,19 @@ interface Agency {
   tier?: string;
   pipelineStage?: string;
   assignments: { employee: { id: string; name: string; code: string } }[];
+  lastVisitDate?: string | null;
+  completedVisits?: number;
 }
+
+const gradeColor = (g?: string): 'success' | 'info' | 'warning' | 'error' | 'default' => {
+  if (!g) return 'default';
+  const u = g.toUpperCase();
+  if (u === 'S' || u === 'A') return 'success';
+  if (u === 'B') return 'info';
+  if (u === 'C') return 'warning';
+  if (u === 'D' || u === 'F') return 'error';
+  return 'default';
+};
 
 interface DupHit {
   id: string;
@@ -288,6 +305,47 @@ export default function AgenciesPage() {
   }, [rows, filterQ, filterGrade, filterZone, filterSeller]);
   // ─────────────────────────────────────────────────────────────────────────
 
+  // ── Multi-select & Bulk Plan ───────────────────────────────────────────────
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkOpen, setBulkOpen] = useState(false);
+  const [bulkDate, setBulkDate] = useState('');
+  const [bulkSeller, setBulkSeller] = useState('');
+  const [bulkCreating, setBulkCreating] = useState(false);
+  const [bulkMsg, setBulkMsg] = useState('');
+
+  const toggleSelect = (id: string) =>
+    setSelectedIds((prev) => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+
+  const allFilteredSelected = filtered.length > 0 && filtered.every((a) => selectedIds.has(a.id));
+  const someFilteredSelected = filtered.some((a) => selectedIds.has(a.id));
+
+  const toggleSelectAll = () => {
+    setSelectedIds((prev) => {
+      const n = new Set(prev);
+      if (allFilteredSelected) filtered.forEach((a) => n.delete(a.id));
+      else filtered.forEach((a) => n.add(a.id));
+      return n;
+    });
+  };
+
+  const selectedAgencies = rows.filter((a) => selectedIds.has(a.id));
+
+  const createBulkPlans = async () => {
+    if (!bulkDate || !bulkSeller) return;
+    setBulkCreating(true); setBulkMsg('');
+    let ok = 0;
+    for (const a of selectedAgencies) {
+      try {
+        await api.post('/visits/plans', { agencyId: a.id, employeeId: bulkSeller, planDate: bulkDate });
+        ok++;
+      } catch { /* skip individual failures */ }
+    }
+    setBulkMsg(`${t('ag.bulkOk')} ${ok}/${selectedAgencies.length}`);
+    setBulkCreating(false);
+    if (ok > 0) { setSelectedIds(new Set()); setBulkOpen(false); load(); }
+  };
+  // ──────────────────────────────────────────────────────────────────────────
+
   const load = () => api.get('/agencies').then((r) => setRows(r.data));
   useEffect(() => {
     load();
@@ -497,86 +555,178 @@ export default function AgenciesPage() {
         </Stack>
       </Paper>
 
-      <Paper>
-        <Table size="small">
+      <Paper sx={{ overflow: 'auto' }}>
+        <Table size="small" sx={{ minWidth: 900 }}>
           <TableHead>
             <TableRow>
-              <TableCell>{t('c.code')}</TableCell>
-              <TableCell>{t('c.name')}</TableCell>
-              <TableCell>Tier / Stage</TableCell>
-              <TableCell>{t('c.zone')}</TableCell>
-              <TableCell>GPS</TableCell>
-              <TableCell>{t('ag.assignedSeller')}</TableCell>
-              <TableCell align="right">{t('ag.assign')}</TableCell>
+              <TableCell padding="checkbox">
+                <Checkbox
+                  size="small"
+                  indeterminate={someFilteredSelected && !allFilteredSelected}
+                  checked={allFilteredSelected}
+                  onChange={toggleSelectAll}
+                />
+              </TableCell>
+              <TableCell sx={{ minWidth: 90 }}>{t('c.code')}</TableCell>
+              <TableCell sx={{ minWidth: 160 }}>{t('c.name')}</TableCell>
+              <TableCell sx={{ minWidth: 70 }}>Grade</TableCell>
+              <TableCell sx={{ minWidth: 130 }}>Tags</TableCell>
+              <TableCell sx={{ minWidth: 100 }}>{t('ag.lastVisit')}</TableCell>
+              <TableCell sx={{ minWidth: 150 }}>Tier / Stage</TableCell>
+              <TableCell sx={{ minWidth: 100 }}>{t('c.zone')}</TableCell>
+              <TableCell sx={{ minWidth: 140 }}>{t('ag.assignedSeller')}</TableCell>
+              <TableCell align="right" sx={{ minWidth: 220 }}>{t('ag.actions')}</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
-            {filtered.map((a) => (
-              <TableRow key={a.id} hover>
-                <TableCell>
-                  <Typography
-                    variant="body2" sx={{ cursor: 'pointer', '&:hover': { textDecoration: 'underline' } }}
-                    onClick={() => openEdit(a)}
-                  >
-                    {a.code}
-                  </Typography>
-                </TableCell>
-                <TableCell>
-                  <Typography
-                    variant="body2" sx={{ cursor: 'pointer', '&:hover': { textDecoration: 'underline' } }}
-                    onClick={() => openEdit(a)}
-                  >
-                    {a.name}
-                  </Typography>
-                </TableCell>
-                <TableCell>
-                  <Stack direction="row" spacing={0.5}>
-                    <Chip size="small" clickable color={tierColor(a.tier)} label={a.tier ?? 'gold'}
-                      onClick={() => setTierFor({ ...a })} />
-                    <Chip size="small" variant="outlined" label={t('st.' + (a.pipelineStage ?? 'active'))}
-                      onClick={() => setTierFor({ ...a })} />
-                  </Stack>
-                </TableCell>
-                <TableCell>{a.zone || '-'}</TableCell>
-                <TableCell>
-                  <Chip size="small" clickable
-                    color={a.latitude == null ? 'warning' : a.geocodeSource === 'google' ? 'info' : 'success'}
-                    label={a.latitude == null ? t('ag.setGps') : a.geocodeSource === 'google' ? t('ag.autoCheck') : t('ag.confirmed')}
-                    onClick={() => { setGpsFor(a); setGpsText(''); setGpsErr(''); }}
-                  />
-                </TableCell>
-                <TableCell>
-                  {a.assignments.length ? (
-                    <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
-                      {a.assignments.map((x) => (
-                        <Chip key={x.employee.id} size="small" label={x.employee.name}
-                          onDelete={() => doUnassign(a.id, x.employee.id)} />
+            {filtered.map((a) => {
+              const tags = (a.tags ?? '').split(',').map((s) => s.trim()).filter(Boolean);
+              const isSelected = selectedIds.has(a.id);
+              return (
+                <TableRow key={a.id} hover selected={isSelected}>
+                  <TableCell padding="checkbox">
+                    <Checkbox size="small" checked={isSelected} onChange={() => toggleSelect(a.id)} />
+                  </TableCell>
+                  <TableCell>
+                    <Typography variant="body2" sx={{ cursor: 'pointer', '&:hover': { textDecoration: 'underline' } }}
+                      onClick={() => openEdit(a)}>
+                      {a.code}
+                    </Typography>
+                  </TableCell>
+                  <TableCell>
+                    <Typography variant="body2" sx={{ cursor: 'pointer', '&:hover': { textDecoration: 'underline' } }}
+                      onClick={() => openEdit(a)}>
+                      {a.name}
+                    </Typography>
+                  </TableCell>
+                  <TableCell>
+                    {a.gradeRelationship ? (
+                      <Chip size="small" color={gradeColor(a.gradeRelationship)} label={a.gradeRelationship} />
+                    ) : <Typography variant="caption" color="text.disabled">—</Typography>}
+                  </TableCell>
+                  <TableCell>
+                    <Stack direction="row" spacing={0.3} flexWrap="wrap" useFlexGap>
+                      {tags.slice(0, 3).map((tg) => (
+                        <Chip key={tg} size="small" variant="outlined" label={tg} sx={{ fontSize: 10, height: 18 }} />
                       ))}
+                      {tags.length > 3 && <Typography variant="caption" color="text.secondary">+{tags.length - 3}</Typography>}
                     </Stack>
-                  ) : (
-                    <Typography variant="caption" color="text.secondary">{t('ag.notAssigned')}</Typography>
-                  )}
-                </TableCell>
-                <TableCell align="right">
-                  <Stack direction="row" spacing={0.5} justifyContent="flex-end">
-                    <Button size="small" startIcon={<ArticleOutlinedIcon fontSize="small" />}
-                      onClick={() => navigate(`/agencies/${a.id}/form`)}>
-                      {t('ag.formBtn')}
-                    </Button>
-                    <Button size="small" startIcon={<HistoryIcon fontSize="small" />}
-                      onClick={() => setTimelineFor(a)}>
-                      {t('ag.history')}
-                    </Button>
-                    <Button size="small" onClick={() => { setAssignFor(a); setAssignEmp(''); }}>
-                      {t('ag.addSeller')}
-                    </Button>
-                  </Stack>
-                </TableCell>
-              </TableRow>
-            ))}
+                  </TableCell>
+                  <TableCell>
+                    {a.lastVisitDate ? (
+                      <Tooltip title={`${a.completedVisits ?? 0} ${t('ag.visits')}`}>
+                        <Stack direction="row" alignItems="center" spacing={0.4}>
+                          <CalendarMonthIcon sx={{ fontSize: 13, color: 'text.secondary' }} />
+                          <Typography variant="caption">{a.lastVisitDate}</Typography>
+                        </Stack>
+                      </Tooltip>
+                    ) : <Typography variant="caption" color="text.disabled">—</Typography>}
+                  </TableCell>
+                  <TableCell>
+                    <Stack direction="row" spacing={0.5}>
+                      <Chip size="small" clickable color={tierColor(a.tier)} label={a.tier ?? 'gold'}
+                        onClick={() => setTierFor({ ...a })} />
+                      <Chip size="small" variant="outlined" label={t('st.' + (a.pipelineStage ?? 'active'))}
+                        onClick={() => setTierFor({ ...a })} />
+                    </Stack>
+                  </TableCell>
+                  <TableCell>{a.zone || '-'}</TableCell>
+                  <TableCell>
+                    {a.assignments.length ? (
+                      <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
+                        {a.assignments.map((x) => (
+                          <Chip key={x.employee.id} size="small" label={x.employee.name}
+                            onDelete={() => doUnassign(a.id, x.employee.id)} />
+                        ))}
+                      </Stack>
+                    ) : (
+                      <Typography variant="caption" color="text.secondary">{t('ag.notAssigned')}</Typography>
+                    )}
+                  </TableCell>
+                  <TableCell align="right">
+                    <Stack direction="row" spacing={0.5} justifyContent="flex-end">
+                      <Tooltip title="GPS">
+                        <Chip size="small" clickable
+                          color={a.latitude == null ? 'warning' : a.geocodeSource === 'google' ? 'info' : 'success'}
+                          label={a.latitude == null ? 'GPS?' : '📍'}
+                          onClick={() => { setGpsFor(a); setGpsText(''); setGpsErr(''); }}
+                        />
+                      </Tooltip>
+                      <Button size="small" startIcon={<ArticleOutlinedIcon fontSize="small" />}
+                        onClick={() => navigate(`/agencies/${a.id}/form`)}>
+                        {t('ag.formBtn')}
+                      </Button>
+                      <Button size="small" startIcon={<HistoryIcon fontSize="small" />}
+                        onClick={() => setTimelineFor(a)}>
+                        {t('ag.history')}
+                      </Button>
+                      <Button size="small" onClick={() => { setAssignFor(a); setAssignEmp(''); }}>
+                        {t('ag.addSeller')}
+                      </Button>
+                    </Stack>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
           </TableBody>
         </Table>
       </Paper>
+
+      {/* ── Bulk Plan Floating Bar ── */}
+      <Slide direction="up" in={selectedIds.size > 0} mountOnEnter unmountOnExit>
+        <Paper elevation={8} sx={{
+          position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)',
+          px: 3, py: 1.5, zIndex: 1300, borderRadius: 3, minWidth: 320,
+        }}>
+          <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap" useFlexGap>
+            <Typography fontWeight={700} color="primary.main">
+              ✓ {selectedIds.size} {t('ag.selected')}
+            </Typography>
+            <Button size="small" variant="contained" startIcon={<CalendarMonthIcon />}
+              onClick={() => { setBulkDate(''); setBulkSeller(''); setBulkMsg(''); setBulkOpen(true); }}>
+              {t('ag.createPlans')}
+            </Button>
+            <Button size="small" variant="outlined" color="inherit"
+              onClick={() => setSelectedIds(new Set())}>
+              {t('ag.clearSel')}
+            </Button>
+          </Stack>
+        </Paper>
+      </Slide>
+
+      {/* ── Bulk Plan Dialog ── */}
+      <Dialog open={bulkOpen} onClose={() => setBulkOpen(false)} fullWidth maxWidth="sm">
+        <DialogTitle>{t('ag.createPlans')} ({selectedAgencies.length} {t('c.agencies')})</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} mt={1}>
+            {bulkMsg && <Alert severity={bulkMsg.includes('0/') ? 'error' : 'success'}>{bulkMsg}</Alert>}
+            <TextField type="date" label={t('ag.planDate')} value={bulkDate}
+              onChange={(e) => setBulkDate(e.target.value)}
+              InputLabelProps={{ shrink: true }} size="small" />
+            <TextField select label={t('c.seller')} value={bulkSeller}
+              onChange={(e) => setBulkSeller(e.target.value)} size="small">
+              {employees.map((e) => <MenuItem key={e.id} value={e.id}>{e.name} ({e.code})</MenuItem>)}
+            </TextField>
+            {bulkCreating && <LinearProgress />}
+            <Box>
+              <Typography variant="caption" color="text.secondary" fontWeight={600}>{t('ag.selectedList')}:</Typography>
+              <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap mt={0.5}>
+                {selectedAgencies.map((a) => (
+                  <Chip key={a.id} size="small" label={`${a.code} ${a.name}`}
+                    onDelete={() => toggleSelect(a.id)} />
+                ))}
+              </Stack>
+            </Box>
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setBulkOpen(false)}>{t('common.cancel')}</Button>
+          <Button variant="contained" onClick={createBulkPlans}
+            disabled={!bulkDate || !bulkSeller || bulkCreating}>
+            {t('ag.createPlansBtn')} ({selectedAgencies.length})
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* ─── Enhanced Agency Form Dialog ──────────────────────────────────── */}
       <Dialog open={open} onClose={() => setOpen(false)} fullWidth maxWidth="md" scroll="paper">

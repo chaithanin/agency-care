@@ -11,7 +11,7 @@ export class AgencyService {
     private config: ConfigService,
   ) {}
 
-  list(params: { zone?: string; status?: string; q?: string }) {
+  async list(params: { zone?: string; status?: string; q?: string }) {
     const where: Prisma.AgencyWhereInput = {};
     if (params.zone) where.zone = params.zone;
     if (params.status === 'active' || params.status === 'inactive') where.status = params.status;
@@ -21,7 +21,7 @@ export class AgencyService {
         { code: { contains: params.q, mode: 'insensitive' } },
       ];
     }
-    return this.prisma.agency.findMany({
+    const agencies = await this.prisma.agency.findMany({
       where,
       orderBy: { code: 'asc' },
       include: {
@@ -29,8 +29,23 @@ export class AgencyService {
           where: { isActive: true },
           include: { employee: { select: { id: true, name: true, code: true } } },
         },
+        visitPlans: {
+          where: { status: 'done' },
+          orderBy: { planDate: 'desc' },
+          take: 1,
+          select: { planDate: true },
+        },
+        _count: {
+          select: { visitPlans: { where: { status: 'done' } } },
+        },
       },
     });
+    return agencies.map((a) => ({
+      ...a,
+      lastVisitDate: a.visitPlans[0]?.planDate?.toISOString().slice(0, 10) ?? null,
+      completedVisits: a._count.visitPlans,
+      visitPlans: undefined,
+    }));
   }
 
   async get(id: string) {
