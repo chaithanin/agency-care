@@ -52,6 +52,7 @@ export default function EmployeesPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [form, setForm] = useState({ ...emptyCreate });
   const [edit, setEdit] = useState<Employee | null>(null);
+  const [editEmail, setEditEmail] = useState('');
   const [error, setError] = useState('');
   const [notifyMsg, setNotifyMsg] = useState('');
   const [notifying, setNotifying] = useState(false);
@@ -109,6 +110,7 @@ export default function EmployeesPage() {
         teamId: edit.teamId ?? '',
         inTraining: edit.inTraining,
         isActive: edit.isActive,
+        ...(edit.user && editEmail ? { email: editEmail } : {}),
       });
       setEdit(null);
       load();
@@ -164,7 +166,7 @@ export default function EmployeesPage() {
                 </TableCell>
                 <TableCell align="right">{e._count.assignments}</TableCell>
                 <TableCell align="center">
-                  <IconButton size="small" onClick={() => { setError(''); setEdit({ ...e }); }}><EditIcon fontSize="small" /></IconButton>
+                  <IconButton size="small" onClick={() => { setError(''); setEditEmail(e.user?.email ?? ''); setEdit({ ...e }); }}><EditIcon fontSize="small" /></IconButton>
                 </TableCell>
               </TableRow>
             ))}
@@ -219,11 +221,20 @@ export default function EmployeesPage() {
                 </TextField>
               </Stack>
               <TextField label="LINE User ID" value={edit.lineUserId ?? ''} onChange={(e) => setEdit({ ...edit, lineUserId: e.target.value })} placeholder="Uxxxxxxxx..." />
+              {edit.user ? (
+                <TextField
+                  label={t('emp.emailEdit')}
+                  type="email"
+                  value={editEmail}
+                  onChange={(e) => setEditEmail(e.target.value)}
+                />
+              ) : (
+                <Typography variant="caption" color="text.secondary">{t('emp.noAccount')}</Typography>
+              )}
               <Stack direction="row" spacing={2}>
                 <FormControlLabel control={<Checkbox checked={!!edit.inTraining} onChange={(e) => setEdit({ ...edit, inTraining: e.target.checked })} />} label={t('emp.training2')} />
                 <FormControlLabel control={<Checkbox checked={edit.isActive} onChange={(e) => setEdit({ ...edit, isActive: e.target.checked })} />} label={t('emp.activeUse')} />
               </Stack>
-              {edit.user && <Typography variant="caption" color="text.secondary">{t('emp.loginAcct')}: {edit.user.email}</Typography>}
             </Stack>
           )}
         </DialogContent>

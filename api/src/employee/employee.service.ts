@@ -58,9 +58,18 @@ export class EmployeeService {
   }
 
   async update(id: string, dto: UpdateEmployeeDto) {
-    await this.get(id);
+    const emp = await this.get(id);
+    const { email, ...rest } = dto;
+
+    if (email) {
+      if (!emp.userId) throw new BadRequestException('พนักงานนี้ยังไม่มีบัญชี login');
+      const dup = await this.prisma.user.findFirst({ where: { email, NOT: { id: emp.userId } } });
+      if (dup) throw new BadRequestException(`อีเมล ${email} ถูกใช้แล้ว`);
+      await this.prisma.user.update({ where: { id: emp.userId }, data: { email } });
+    }
+
     // teamId '' -> null (ไม่สังกัดทีม)
-    const data = { ...dto, teamId: dto.teamId === '' ? null : dto.teamId };
+    const data = { ...rest, teamId: dto.teamId === '' ? null : dto.teamId };
     return this.prisma.employee.update({ where: { id }, data });
   }
 }

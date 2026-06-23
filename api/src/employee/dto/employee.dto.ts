@@ -6,6 +6,7 @@ import {
   IsString,
   MinLength,
 } from 'class-validator';
+
 import { EmployeePosition } from '@prisma/client';
 
 export class CreateEmployeeDto {
@@ -70,4 +71,8 @@ export class UpdateEmployeeDto {
   @IsOptional()
   @IsBoolean()
   isActive?: boolean;
+
+  @IsOptional()
+  @IsEmail()
+  email?: string;
 }
