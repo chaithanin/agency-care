@@ -17,6 +17,7 @@ import { memoryStorage } from 'multer';
 import { PhotoPhase } from '@prisma/client';
 import { VisitService } from './visit.service';
 import {
+  CallConfirmDto,
   CheckinDto,
   CreatePlanDto,
   FollowUpDto,
@@ -126,6 +127,16 @@ export class VisitController {
       }).catch(() => {});
     }
     return result;
+  }
+
+  // ---- Call Confirm — บันทึกผลโทรยืนยันนัดหมาย ----
+  @Post('plans/:id/call-confirm')
+  callConfirm(
+    @CurrentUser() user: RequestUser,
+    @Param('id') id: string,
+    @Body() dto: CallConfirmDto,
+  ) {
+    return this.service.callConfirm(user, id, dto);
   }
 
   // ---- ผู้เข้าพบ ----

@@ -12,7 +12,7 @@ import ProductsPage from './pages/ProductsPage';
 import KpiPage from './pages/KpiPage';
 import ModelsPage from './pages/ModelsPage';
 import RoutePage from './pages/RoutePage';
-import AutoAssignPage from './pages/AutoAssignPage';
+import AssignmentPlannerPage from './pages/AssignmentPlannerPage';
 import AnalyticsPage from './pages/AnalyticsPage';
 import MyVisitsPage from './pages/MyVisitsPage';
 import VisitDetailPage from './pages/VisitDetailPage';
@@ -60,7 +60,7 @@ export default function App() {
             <Route path="/products" element={<ProductsPage />} />
             <Route path="/models" element={<ModelsPage />} />
             <Route path="/kpi" element={<KpiPage />} />
-            <Route path="/auto-assign" element={<AutoAssignPage />} />
+            <Route path="/auto-assign" element={<AssignmentPlannerPage />} />
             <Route path="/scheduling" element={<SchedulingPage />} />
             <Route path="/calendar" element={<CalendarPage />} />
             <Route path="/seller-performance" element={<SellerPerformancePage />} />

@@ -240,6 +240,51 @@ export class VisitService {
     return this.prisma.visitPlan.findUnique({ where: { id }, select: { id: true, agencyId: true, employeeId: true } });
   }
 
+  // ---- Call Confirm — โทรยืนยันนัดหมายวันก่อนเยี่ยม ─────────────────────
+  async callConfirm(user: RequestUser, planId: string, dto: import('./dto/visit.dto').CallConfirmDto) {
+    const plan = await this.getPlan(user, planId);
+    if (plan.status === 'done') throw new BadRequestException('เข้าเยี่ยมไปแล้ว');
+    if (plan.status === 'cancelled') throw new BadRequestException('แผนนี้ถูกยกเลิกแล้ว');
+
+    let newStatus: string = plan.status;
+    let rescheduledPlanId: string | null = null;
+
+    if (dto.result === 'confirmed') {
+      newStatus = 'confirmed';
+    } else if (dto.result === 'rescheduled') {
+      newStatus = 'rescheduled';
+      // สร้างแผนใหม่สำหรับวันที่เลื่อนไป
+      if (dto.rescheduledTo) {
+        const newPlan = await this.prisma.visitPlan.create({
+          data: {
+            agencyId: plan.agencyId,
+            employeeId: plan.employeeId,
+            planDate: new Date(dto.rescheduledTo),
+            status: 'pending',
+            note: `เลื่อนจาก ${plan.planDate.toISOString().slice(0, 10)}`,
+          },
+        });
+        rescheduledPlanId = newPlan.id;
+      }
+    } else if (dto.result === 'cancelled') {
+      newStatus = 'cancelled';
+    }
+    // no_answer: status stays the same
+
+    const updated = await this.prisma.visitPlan.update({
+      where: { id: planId },
+      data: {
+        status: newStatus as any,
+        callConfirmAt: new Date(),
+        callConfirmResult: dto.result,
+        callNote: dto.note,
+        rescheduledTo: dto.rescheduledTo ? new Date(dto.rescheduledTo) : undefined,
+      },
+    });
+
+    return { updated, rescheduledPlanId };
+  }
+
   // ---- Contact (ผู้เข้าพบ) — อัปเดตหลัง check-in ได้ ----
   async setContact(
     user: RequestUser,

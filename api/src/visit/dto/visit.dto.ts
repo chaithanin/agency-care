@@ -3,13 +3,27 @@ import {
   IsBoolean,
   IsDateString,
   IsEnum,
+  IsIn,
   IsLatitude,
   IsLongitude,
   IsNumber,
   IsOptional,
   IsString,
 } from 'class-validator';
-import { VisitStatus } from '@prisma/client';
+import { CallConfirmResult, VisitStatus } from '@prisma/client';
+
+export class CallConfirmDto {
+  @IsEnum(CallConfirmResult)
+  result!: CallConfirmResult;
+
+  @IsOptional()
+  @IsString()
+  note?: string;
+
+  @IsOptional()
+  @IsDateString()
+  rescheduledTo?: string; // YYYY-MM-DD — ถ้า result = rescheduled
+}
 
 export class CreatePlanDto {
   @IsString()

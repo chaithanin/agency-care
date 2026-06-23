@@ -52,10 +52,30 @@ enum AgencyStatus {
 }
 
 enum VisitStatus {
-  pending // รอเข้าเยี่ยม
-  done // เข้าเยี่ยมแล้ว
-  postponed // เลื่อน
-  cancelled // ยกเลิก
+  pending               // รอเข้าเยี่ยม (สร้างแผนแล้ว)
+  waiting_confirmation  // รอโทร confirm (วันก่อนเยี่ยม)
+  confirmed             // Agency ยืนยันนัดแล้ว
+  rescheduled           // Agency ขอเลื่อนนัด
+  on_route              // Sale กำลังเดินทาง
+  done                  // เข้าเยี่ยมสำเร็จ
+  postponed             // เลื่อน (ค่าเดิม — backward compat)
+  cancelled             // ยกเลิก
+}
+
+enum CallConfirmResult {
+  confirmed  // Agency รับสาย + ยืนยันนัด
+  rescheduled // Agency ขอเลื่อน
+  no_answer  // โทรไม่ติด
+  cancelled  // Agency ยกเลิก
+}
+
+enum AssignmentPlanStatus {
+  draft            // AI สร้างเสนอ — ยังแก้ไขได้
+  pending_approval // ส่งอนุมัติแล้ว — รอ Admin/Closer
+  approved         // อนุมัติแล้ว — รอ Publish
+  published        // เผยแพร่ + แจกงานให้ Sale แล้ว
+  active           // กำลังดำเนินงาน (เดือนปัจจุบัน)
+  closed           // ปิดเดือนแล้ว
 }
 
 enum PhotoPhase {
@@ -114,6 +134,9 @@ model User {
   employee       Employee?
   auditLogs      AuditLog[]
   notifications  InAppNotification[]
+  createdPlans   AssignmentPlan[]    @relation("PlanCreatedBy")
+  approvedPlans  AssignmentPlan[]    @relation("PlanApprovedBy")
+  planVersions   PlanVersion[]
 
   @@map("users")
 }
@@ -145,6 +168,7 @@ model Employee {
   dailySchedules DailySchedule[]
   addedAgencies  Agency[]        @relation("AgencyAddedBy")
   tasks          Task[]
+  planVersionItems PlanVersionItem[]
 
   @@index([zone])
   @@index([teamId])
@@ -205,6 +229,7 @@ model Agency {
   addedBy       Employee?           @relation("AgencyAddedBy", fields: [addedById], references: [id], onDelete: SetNull)
   scheduleItems DailyScheduleItem[]
   tasks         Task[]
+  planVersionItems PlanVersionItem[]
 
   @@index([zone])
   @@index([province])
@@ -258,6 +283,11 @@ model VisitPlan {
   planDate   DateTime    @map("plan_date") @db.Date // วันที่นัดเยี่ยม
   status     VisitStatus @default(pending)
   note       String?
+  // Pre-site visit confirmation
+  callConfirmAt     DateTime?         @map("call_confirm_at")
+  callConfirmResult CallConfirmResult? @map("call_confirm_result")
+  callNote          String?           @map("call_note")
+  rescheduledTo     DateTime?         @map("rescheduled_to") @db.Date
   createdAt  DateTime    @default(now()) @map("created_at")
   updatedAt  DateTime    @updatedAt @map("updated_at")
 
@@ -678,4 +708,69 @@ model DailyScheduleItem {
   @@index([scheduleId])
   @@index([agencyId])
   @@map("daily_schedule_items")
+}
+
+// ============================================================
+// AI Assignment Planner — แผนแจกงานรายเดือน
+// ============================================================
+
+model AssignmentPlan {
+  id            String               @id @default(cuid())
+  period        String               // "2026-07" — เดือนที่วางแผน
+  title         String?              // หัวเรื่อง optional
+  status        AssignmentPlanStatus @default(draft)
+  note          String?
+  totalAgencies Int                  @default(0) @map("total_agencies")
+  totalSales    Int                  @default(0) @map("total_sales")
+  createdById   String               @map("created_by_id")
+  approvedById  String?              @map("approved_by_id")
+  approvedAt    DateTime?            @map("approved_at")
+  publishedAt   DateTime?            @map("published_at")
+  createdAt     DateTime             @default(now()) @map("created_at")
+  updatedAt     DateTime             @updatedAt @map("updated_at")
+
+  createdBy  User         @relation("PlanCreatedBy", fields: [createdById], references: [id])
+  approvedBy User?        @relation("PlanApprovedBy", fields: [approvedById], references: [id])
+  versions   PlanVersion[]
+
+  @@index([period])
+  @@index([status])
+  @@map("assignment_plans")
+}
+
+model PlanVersion {
+  id          String   @id @default(cuid())
+  planId      String   @map("plan_id")
+  versionNo   Int      @map("version_no")   // 1, 2, 3...
+  note        String?                        // เหตุผลที่แก้ไข
+  isCurrent   Boolean  @default(false) @map("is_current")
+  createdById String   @map("created_by_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  plan      AssignmentPlan    @relation(fields: [planId], references: [id], onDelete: Cascade)
+  createdBy User              @relation(fields: [createdById], references: [id])
+  items     PlanVersionItem[]
+
+  @@unique([planId, versionNo])
+  @@index([planId])
+  @@map("plan_versions")
+}
+
+model PlanVersionItem {
+  id         String  @id @default(cuid())
+  versionId  String  @map("version_id")
+  agencyId   String  @map("agency_id")
+  employeeId String  @map("employee_id")
+  isLocked   Boolean @default(false) @map("is_locked")
+  note       String?
+
+  version  PlanVersion @relation(fields: [versionId], references: [id], onDelete: Cascade)
+  agency   Agency      @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  employee Employee    @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@unique([versionId, agencyId])
+  @@index([versionId])
+  @@index([agencyId])
+  @@index([employeeId])
+  @@map("plan_version_items")
 }
