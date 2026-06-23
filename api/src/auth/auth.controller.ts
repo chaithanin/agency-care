@@ -1,8 +1,8 @@
-import { Body, Controller, Get, Ip, Post } from '@nestjs/common';
+import { Body, Controller, Get, Ip, Param, Patch, Post } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import { LoginDto, RefreshDto } from './dto/login.dto';
-import { Public } from './guards';
+import { Public, Roles } from './guards';
 import { CurrentUser } from '../common/current-user.decorator';
 
 @Controller('auth')
@@ -26,5 +26,16 @@ export class AuthController {
   @Get('me')
   me(@CurrentUser('id') userId: string) {
     return this.auth.me(userId);
+  }
+
+  @Patch('switch-role')
+  switchRole(@CurrentUser('id') userId: string, @Body('role') role: string) {
+    return this.auth.switchRole(userId, role);
+  }
+
+  @Post('impersonate/:targetId')
+  @Roles('admin', 'super_admin')
+  impersonate(@CurrentUser('id') adminId: string, @Param('targetId') targetId: string) {
+    return this.auth.impersonate(adminId, targetId);
   }
 }

@@ -29,7 +29,7 @@ export class RouteService {
 
   async planRoute(user: RequestUser, params: { date: string; employeeId?: string }) {
     let employeeId = params.employeeId;
-    if (user.role === 'sales') {
+    if (user.activeRole === 'sales') {
       const emp = await this.prisma.employee.findUnique({ where: { userId: user.id } });
       if (!emp) throw new ForbiddenException('บัญชีนี้ไม่ได้ผูกกับเซลส์');
       employeeId = emp.id;

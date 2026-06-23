@@ -15,6 +15,7 @@ export class UserService {
         email: true,
         name: true,
         role: true,
+        additionalRoles: true,
         isActive: true,
         createdAt: true,
         employee: { select: { id: true, code: true, name: true } },
@@ -32,8 +33,9 @@ export class UserService {
     const dup = await this.prisma.user.findUnique({ where: { email: dto.email } });
     if (dup) throw new BadRequestException(`อีเมล ${dto.email} ถูกใช้แล้ว`);
     const passwordHash = await argon2.hash(dto.password);
+    const role = dto.role ?? 'sales';
     const u = await this.prisma.user.create({
-      data: { email: dto.email, name: dto.name, role: dto.role ?? 'sales', passwordHash },
+      data: { email: dto.email, name: dto.name, role, activeRole: role, passwordHash },
     });
     return { id: u.id, email: u.email, name: u.name, role: u.role, isActive: u.isActive };
   }
@@ -42,7 +44,14 @@ export class UserService {
     await this.getOrThrow(id);
     const u = await this.prisma.user.update({
       where: { id },
-      data: { name: dto.name, role: dto.role, isActive: dto.isActive },
+      data: {
+        name: dto.name,
+        role: dto.role,
+        additionalRoles: dto.additionalRoles,
+        isActive: dto.isActive,
+        // sync activeRole when primary role changes
+        ...(dto.role !== undefined ? { activeRole: dto.role } : {}),
+      },
     });
     return { id: u.id, email: u.email, name: u.name, role: u.role, isActive: u.isActive };
   }

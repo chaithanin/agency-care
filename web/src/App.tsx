@@ -45,7 +45,7 @@ export default function App() {
     );
   }
 
-  const isManager = user.role === 'admin' || user.role === 'closer';
+  const isManager = user.activeRole !== 'sales';
 
   return (
     <Layout>
@@ -65,7 +65,7 @@ export default function App() {
             <Route path="/calendar" element={<CalendarPage />} />
             <Route path="/seller-performance" element={<SellerPerformancePage />} />
             <Route path="/pipeline" element={<PipelinePage />} />
-            {user.role === 'admin' && <Route path="/users" element={<UsersPage />} />}
+            {['super_admin', 'admin'].includes(user.role) && <Route path="/users" element={<UsersPage />} />}
             <Route path="/analytics" element={<AnalyticsPage />} />
           </>
         ) : (

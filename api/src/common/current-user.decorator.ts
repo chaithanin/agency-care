@@ -5,7 +5,12 @@ export interface RequestUser {
   id: string;
   email: string;
   name: string;
-  role: UserRole;
+  role: UserRole;       // permanent role (for permission guards)
+  activeRole: UserRole; // current active role (for data scoping)
+  additionalRoles: string[];
+  isImpersonated: boolean;
+  impersonatorId?: string;
+  impersonatorName?: string;
 }
 
 export const CurrentUser = createParamDecorator(

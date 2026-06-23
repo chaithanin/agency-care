@@ -24,7 +24,7 @@ export class TaskService {
     const assignedToId = dto.assignedToId ?? callerEmp.id;
 
     // closer/sales can only assign to self or their team members
-    if (user.role === 'sales' && assignedToId !== callerEmp.id) {
+    if (user.activeRole === 'sales' && assignedToId !== callerEmp.id) {
       throw new ForbiddenException('เซลส์สร้างงานให้ตัวเองเท่านั้น');
     }
 
@@ -47,10 +47,10 @@ export class TaskService {
   async list(user: RequestUser, params: { status?: string; assignedToId?: string; agencyId?: string }) {
     const where: Prisma.TaskWhereInput = {};
 
-    if (user.role === 'sales') {
+    if (user.activeRole === 'sales') {
       const emp = await this.callerEmployee(user.id);
       where.assignedToId = emp.id;
-    } else if (user.role === 'closer') {
+    } else if (user.activeRole === 'closer') {
       // Closer sees own team
       const emp = await this.callerEmployee(user.id);
       if (emp.teamId) {
@@ -62,7 +62,7 @@ export class TaskService {
     // admin sees all
 
     if (params.status) where.status = params.status as any;
-    if (params.assignedToId && user.role === 'admin') where.assignedToId = params.assignedToId;
+    if (params.assignedToId && user.activeRole !== 'sales') where.assignedToId = params.assignedToId;
     if (params.agencyId) where.agencyId = params.agencyId;
 
     return this.prisma.task.findMany({
@@ -79,7 +79,7 @@ export class TaskService {
   async update(user: RequestUser, id: string, dto: UpdateTaskDto) {
     const task = await this.prisma.task.findUnique({ where: { id } });
     if (!task) throw new NotFoundException('ไม่พบงาน');
-    if (user.role === 'sales') {
+    if (user.activeRole === 'sales') {
       const emp = await this.callerEmployee(user.id);
       if (task.assignedToId !== emp.id) throw new ForbiddenException('ไม่ใช่งานของคุณ');
     }
@@ -92,14 +92,14 @@ export class TaskService {
       data.status = dto.status;
       if (dto.status === 'done') data.doneAt = new Date();
     }
-    if (dto.assignedToId !== undefined && user.role !== 'sales') data.assignedTo = { connect: { id: dto.assignedToId } };
+    if (dto.assignedToId !== undefined && user.activeRole !== 'sales') data.assignedTo = { connect: { id: dto.assignedToId } };
     return this.prisma.task.update({ where: { id }, data });
   }
 
   async delete(user: RequestUser, id: string) {
     const task = await this.prisma.task.findUnique({ where: { id } });
     if (!task) throw new NotFoundException('ไม่พบงาน');
-    if (user.role === 'sales') {
+    if (user.activeRole === 'sales') {
       const emp = await this.callerEmployee(user.id);
       if (task.assignedToId !== emp.id) throw new ForbiddenException('ไม่ใช่งานของคุณ');
       if (task.type !== 'manual') throw new ForbiddenException('ลบได้เฉพาะ Manual Task');
@@ -110,10 +110,10 @@ export class TaskService {
   // Dashboard summary by role
   async summary(user: RequestUser) {
     let where: Prisma.TaskWhereInput = {};
-    if (user.role === 'sales') {
+    if (user.activeRole === 'sales') {
       const emp = await this.callerEmployee(user.id);
       where = { assignedToId: emp.id };
-    } else if (user.role === 'closer') {
+    } else if (user.activeRole === 'closer') {
       const emp = await this.callerEmployee(user.id);
       where = emp.teamId ? { assignedTo: { teamId: emp.teamId } } : { assignedToId: emp.id };
     }

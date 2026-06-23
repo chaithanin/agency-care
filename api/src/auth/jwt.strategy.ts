@@ -9,6 +9,12 @@ export interface JwtPayload {
   email: string;
   name: string;
   role: UserRole;
+  activeRole: UserRole;
+  additionalRoles: string[];
+  // impersonation fields (only present in impersonation tokens)
+  isImpersonated?: boolean;
+  impersonatorId?: string;
+  impersonatorName?: string;
 }
 
 @Injectable()
@@ -21,13 +27,17 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     });
   }
 
-  // ค่า return จะถูกแนบเข้า req.user
   validate(payload: JwtPayload) {
     return {
       id: payload.sub,
       email: payload.email,
       name: payload.name,
       role: payload.role,
+      activeRole: payload.activeRole ?? payload.role,
+      additionalRoles: payload.additionalRoles ?? [],
+      isImpersonated: payload.isImpersonated ?? false,
+      impersonatorId: payload.impersonatorId,
+      impersonatorName: payload.impersonatorName,
     };
   }
 }

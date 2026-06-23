@@ -16,6 +16,10 @@ import {
   Divider,
   Badge,
   useMediaQuery,
+  Menu,
+  MenuItem,
+  Button,
+  Chip,
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import { Link, useLocation } from 'react-router-dom';
@@ -42,8 +46,10 @@ import HomeRoundedIcon from '@mui/icons-material/HomeRounded';
 import TodayRoundedIcon from '@mui/icons-material/TodayRounded';
 import NotificationsRoundedIcon from '@mui/icons-material/NotificationsRounded';
 import AssignmentRoundedIcon from '@mui/icons-material/AssignmentRounded';
+import SwapHorizRoundedIcon from '@mui/icons-material/SwapHorizRounded';
+import VisibilityRoundedIcon from '@mui/icons-material/VisibilityRounded';
 import Hub from '@mui/icons-material/HubRounded';
-import { useAuth } from '../auth/AuthContext';
+import { useAuth, type Role } from '../auth/AuthContext';
 import { useT } from '../i18n';
 import { api } from '../api/client';
 import { Link as RouterLink } from 'react-router-dom';
@@ -56,22 +62,48 @@ function initials(name?: string) {
   return (p[0]?.[0] ?? '') + (p[1]?.[0] ?? '');
 }
 
+const roleLabel: Record<Role, string> = {
+  super_admin: 'Super Admin',
+  admin: 'Admin',
+  closer: 'Closer',
+  sales: 'Sales',
+};
+
 export default function Layout({ children }: { children: ReactNode }) {
-  const { user, logout } = useAuth();
+  const { user, logout, switchRole, stopImpersonation } = useAuth();
   const { t, lang, setLang } = useT();
   const loc = useLocation();
   const theme = useTheme();
   const mdUp = useMediaQuery(theme.breakpoints.up('md'));
-  const isAdmin = user?.role === 'admin';
-  const isCloser = user?.role === 'closer';
+
+  const isAdmin = ['super_admin', 'admin'].includes(user?.activeRole ?? '');
+  const isCloser = user?.activeRole === 'closer';
   const isManager = isAdmin || isCloser;
+
   const [mobileOpen, setMobileOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [roleMenuAnchor, setRoleMenuAnchor] = useState<null | HTMLElement>(null);
+  const [switchingRole, setSwitchingRole] = useState(false);
 
   const loadUnread = useCallback(() => {
     api.get('/notifications/my/unread-count').then(r => setUnreadCount(r.data?.count ?? 0)).catch(() => {});
   }, []);
   useEffect(() => { if (user) { loadUnread(); const id = setInterval(loadUnread, 60000); return () => clearInterval(id); } }, [user, loadUnread]);
+
+  // Role switching
+  const availableRoles: Role[] = user ? [user.role, ...user.additionalRoles as Role[]] : [];
+  const canSwitchRole = availableRoles.length > 1 && !user?.isImpersonated;
+
+  const handleSwitchRole = async (role: Role) => {
+    setRoleMenuAnchor(null);
+    if (role === user?.activeRole) return;
+    setSwitchingRole(true);
+    try {
+      await switchRole(role);
+    } finally {
+      setSwitchingRole(false);
+    }
+  };
 
   // แจ้งเตือนงานเมื่อ sale/closer เข้าระบบ (ครั้งเดียวต่อ session)
   const [loginMsg, setLoginMsg] = useState('');
@@ -201,7 +233,7 @@ export default function Layout({ children }: { children: ReactNode }) {
         <Box sx={{ flex: 1, minWidth: 0 }}>
           <Typography variant="body2" fontWeight={700} noWrap>{user?.name}</Typography>
           <Typography variant="caption" color="text.secondary" noWrap sx={{ textTransform: 'capitalize' }}>
-            {user?.role}
+            {user?.activeRole ? roleLabel[user.activeRole] : user?.role}
           </Typography>
         </Box>
         <Tooltip title={t('common.logout')}>
@@ -214,94 +246,173 @@ export default function Layout({ children }: { children: ReactNode }) {
   );
 
   return (
-    <Box sx={{ display: 'flex', minHeight: '100vh' }}>
-      {/* Sidebar */}
-      <Box component="nav" sx={{ width: { md: DRAWER_WIDTH }, flexShrink: { md: 0 } }}>
-        {mdUp ? (
-          <Drawer
-            variant="permanent"
-            open
-            PaperProps={{
-              sx: {
-                width: DRAWER_WIDTH, border: 'none',
-                background: '#100e1c',
-                borderRight: '1px solid rgba(255,255,255,0.06)',
-              },
-            }}
-          >
-            {drawer}
-          </Drawer>
-        ) : (
-          <Drawer
-            variant="temporary"
-            open={mobileOpen}
-            onClose={() => setMobileOpen(false)}
-            ModalProps={{ keepMounted: true }}
-            PaperProps={{
-              sx: {
-                width: DRAWER_WIDTH, border: 'none',
-                background: '#100e1c',
-              },
-            }}
-          >
-            {drawer}
-          </Drawer>
-        )}
-      </Box>
-
-      {/* Main */}
-      <Box sx={{ flexGrow: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
-        {/* Top bar */}
-        <Stack
-          direction="row"
-          alignItems="center"
-          justifyContent="space-between"
-          sx={{ px: { xs: 2, md: 3.5 }, pt: { xs: 2, md: 3 }, pb: 1.5, gap: 1 }}
-        >
-          <Stack direction="row" alignItems="center" spacing={1.5} sx={{ minWidth: 0 }}>
-            {!mdUp && (
-              <IconButton onClick={() => setMobileOpen(true)} sx={{ color: 'text.primary' }}>
-                <MenuRoundedIcon />
-              </IconButton>
-            )}
-            <Box sx={{ minWidth: 0 }}>
-              <Typography variant="h5" noWrap sx={{ lineHeight: 1.15 }}>
-                {greet}, {user?.name?.split(' ')[0]} 👋
-              </Typography>
-              <Typography variant="body2" color="text.secondary" noWrap sx={{ textTransform: 'capitalize' }}>
-                {dateStr}
-              </Typography>
-            </Box>
-          </Stack>
-
+    <Box sx={{ display: 'flex', minHeight: '100vh', flexDirection: 'column' }}>
+      {/* Impersonation banner */}
+      {user?.isImpersonated && (
+        <Box sx={{
+          bgcolor: 'warning.main', color: 'warning.contrastText',
+          px: 2, py: 0.75, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          flexShrink: 0, zIndex: 1300,
+        }}>
           <Stack direction="row" alignItems="center" spacing={1}>
-            <Tooltip title={lang === 'th' ? 'English' : 'ภาษาไทย'}>
-              <IconButton
-                onClick={() => setLang(lang === 'th' ? 'en' : 'th')}
-                sx={{
-                  color: 'text.secondary', border: '1px solid rgba(255,255,255,0.08)',
-                  borderRadius: 2.5, px: 1, gap: 0.5,
-                }}
-              >
-                <TranslateRoundedIcon fontSize="small" />
-                <Typography variant="caption" fontWeight={700}>{lang === 'th' ? 'TH' : 'EN'}</Typography>
-              </IconButton>
-            </Tooltip>
-            <Tooltip title={t('nav.notifications')}>
-              <IconButton component={RouterLink} to="/notifications" sx={{ color: 'text.secondary' }}>
-                <Badge badgeContent={unreadCount > 0 ? unreadCount : undefined} color="error" max={99}>
-                  <NotificationsRoundedIcon />
-                </Badge>
-              </IconButton>
-            </Tooltip>
-            <Avatar sx={{ width: 38, height: 38, bgcolor: 'primary.main', fontSize: 14, fontWeight: 700 }}>
-              {initials(user?.name)}
-            </Avatar>
+            <VisibilityRoundedIcon fontSize="small" />
+            <Typography variant="body2" fontWeight={600}>
+              {lang === 'th'
+                ? `คุณกำลังดูระบบในฐานะ "${user.name}" (${roleLabel[user.activeRole]})`
+                : `Viewing as "${user.name}" (${roleLabel[user.activeRole]})`}
+            </Typography>
+            {user.impersonatorName && (
+              <Chip
+                size="small"
+                label={lang === 'th' ? `โดย ${user.impersonatorName}` : `by ${user.impersonatorName}`}
+                sx={{ bgcolor: 'rgba(0,0,0,0.12)' }}
+              />
+            )}
           </Stack>
-        </Stack>
+          <Button
+            size="small"
+            variant="outlined"
+            onClick={stopImpersonation}
+            sx={{ color: 'inherit', borderColor: 'rgba(0,0,0,0.3)', fontWeight: 700 }}
+          >
+            {lang === 'th' ? 'ออกจากโหมดนี้' : 'Exit View'}
+          </Button>
+        </Box>
+      )}
 
-        {/* Page content */}
-        <Box sx={{ flex: 1, px: { xs: 2, md: 3.5 }, pb: 5, pt: 1 }}>{children}</Box>
+      <Box sx={{ display: 'flex', flex: 1, minHeight: 0 }}>
+        {/* Sidebar */}
+        <Box component="nav" sx={{ width: { md: DRAWER_WIDTH }, flexShrink: { md: 0 } }}>
+          {mdUp ? (
+            <Drawer
+              variant="permanent"
+              open
+              PaperProps={{
+                sx: {
+                  width: DRAWER_WIDTH, border: 'none',
+                  background: '#100e1c',
+                  borderRight: '1px solid rgba(255,255,255,0.06)',
+                  top: user?.isImpersonated ? '40px' : 0,
+                  height: user?.isImpersonated ? 'calc(100vh - 40px)' : '100vh',
+                },
+              }}
+            >
+              {drawer}
+            </Drawer>
+          ) : (
+            <Drawer
+              variant="temporary"
+              open={mobileOpen}
+              onClose={() => setMobileOpen(false)}
+              ModalProps={{ keepMounted: true }}
+              PaperProps={{
+                sx: {
+                  width: DRAWER_WIDTH, border: 'none',
+                  background: '#100e1c',
+                },
+              }}
+            >
+              {drawer}
+            </Drawer>
+          )}
+        </Box>
+
+        {/* Main */}
+        <Box sx={{ flexGrow: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+          {/* Top bar */}
+          <Stack
+            direction="row"
+            alignItems="center"
+            justifyContent="space-between"
+            sx={{ px: { xs: 2, md: 3.5 }, pt: { xs: 2, md: 3 }, pb: 1.5, gap: 1 }}
+          >
+            <Stack direction="row" alignItems="center" spacing={1.5} sx={{ minWidth: 0 }}>
+              {!mdUp && (
+                <IconButton onClick={() => setMobileOpen(true)} sx={{ color: 'text.primary' }}>
+                  <MenuRoundedIcon />
+                </IconButton>
+              )}
+              <Box sx={{ minWidth: 0 }}>
+                <Typography variant="h5" noWrap sx={{ lineHeight: 1.15 }}>
+                  {greet}, {user?.name?.split(' ')[0]} 👋
+                </Typography>
+                <Typography variant="body2" color="text.secondary" noWrap sx={{ textTransform: 'capitalize' }}>
+                  {dateStr}
+                </Typography>
+              </Box>
+            </Stack>
+
+            <Stack direction="row" alignItems="center" spacing={1}>
+              {/* Switch Role dropdown */}
+              {canSwitchRole && (
+                <>
+                  <Tooltip title={lang === 'th' ? 'สลับ Role' : 'Switch Role'}>
+                    <Button
+                      size="small"
+                      startIcon={<SwapHorizRoundedIcon />}
+                      onClick={(e) => setRoleMenuAnchor(e.currentTarget)}
+                      disabled={switchingRole}
+                      sx={{
+                        color: 'text.secondary',
+                        border: '1px solid rgba(255,255,255,0.08)',
+                        borderRadius: 2.5, px: 1.5, gap: 0.5, textTransform: 'none',
+                      }}
+                    >
+                      <Typography variant="caption" fontWeight={700}>
+                        {user?.activeRole ? roleLabel[user.activeRole] : ''}
+                      </Typography>
+                    </Button>
+                  </Tooltip>
+                  <Menu
+                    anchorEl={roleMenuAnchor}
+                    open={Boolean(roleMenuAnchor)}
+                    onClose={() => setRoleMenuAnchor(null)}
+                  >
+                    {availableRoles.map((r) => (
+                      <MenuItem
+                        key={r}
+                        selected={r === user?.activeRole}
+                        onClick={() => handleSwitchRole(r)}
+                        sx={{ minWidth: 140 }}
+                      >
+                        {roleLabel[r]}
+                        {r === user?.activeRole && (
+                          <Chip size="small" label="Active" color="primary" sx={{ ml: 1 }} />
+                        )}
+                      </MenuItem>
+                    ))}
+                  </Menu>
+                </>
+              )}
+
+              <Tooltip title={lang === 'th' ? 'English' : 'ภาษาไทย'}>
+                <IconButton
+                  onClick={() => setLang(lang === 'th' ? 'en' : 'th')}
+                  sx={{
+                    color: 'text.secondary', border: '1px solid rgba(255,255,255,0.08)',
+                    borderRadius: 2.5, px: 1, gap: 0.5,
+                  }}
+                >
+                  <TranslateRoundedIcon fontSize="small" />
+                  <Typography variant="caption" fontWeight={700}>{lang === 'th' ? 'TH' : 'EN'}</Typography>
+                </IconButton>
+              </Tooltip>
+              <Tooltip title={t('nav.notifications')}>
+                <IconButton component={RouterLink} to="/notifications" sx={{ color: 'text.secondary' }}>
+                  <Badge badgeContent={unreadCount > 0 ? unreadCount : undefined} color="error" max={99}>
+                    <NotificationsRoundedIcon />
+                  </Badge>
+                </IconButton>
+              </Tooltip>
+              <Avatar sx={{ width: 38, height: 38, bgcolor: 'primary.main', fontSize: 14, fontWeight: 700 }}>
+                {initials(user?.name)}
+              </Avatar>
+            </Stack>
+          </Stack>
+
+          {/* Page content */}
+          <Box sx={{ flex: 1, px: { xs: 2, md: 3.5 }, pb: 5, pt: 1 }}>{children}</Box>
+        </Box>
       </Box>
 
       <Snackbar

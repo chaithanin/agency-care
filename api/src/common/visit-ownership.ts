@@ -11,7 +11,7 @@ export async function assertVisitAccess(
 ) {
   const plan = await prisma.visitPlan.findUnique({ where: { id: visitPlanId } });
   if (!plan) throw new NotFoundException('ไม่พบแผนการเยี่ยม');
-  if (user.role === 'sales') {
+  if (user.activeRole === 'sales') {
     const emp = await prisma.employee.findUnique({ where: { userId: user.id } });
     if (!emp || plan.employeeId !== emp.id) throw new ForbiddenException('ไม่ใช่งานของคุณ');
   }

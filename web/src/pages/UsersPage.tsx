@@ -2,27 +2,39 @@ import { useEffect, useState } from 'react';
 import {
   Box, Button, Typography, Paper, Table, TableHead, TableRow, TableCell, TableBody,
   Dialog, DialogTitle, DialogContent, DialogActions, TextField, Stack, Chip, Alert,
-  MenuItem, FormControlLabel, Checkbox, IconButton,
+  MenuItem, FormControlLabel, Checkbox, IconButton, Tooltip,
+  FormGroup,
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import KeyIcon from '@mui/icons-material/Key';
+import VisibilityRoundedIcon from '@mui/icons-material/VisibilityRounded';
 import { api, errMsg } from '../api/client';
 import { useT } from '../i18n';
+import { useAuth, type Role } from '../auth/AuthContext';
 
 interface User {
   id: string;
   email: string;
   name: string;
   role: string;
+  additionalRoles: string[];
   isActive: boolean;
   employee?: { id: string; code: string; name: string } | null;
 }
-const ROLES = ['admin', 'closer', 'sales'];
-const roleColor = (r: string) => (r === 'admin' ? 'error' : r === 'closer' ? 'warning' : 'primary');
+
+const ROLES: Role[] = ['super_admin', 'admin', 'closer', 'sales'];
+const roleColor = (r: string) =>
+  r === 'super_admin' ? 'secondary' : r === 'admin' ? 'error' : r === 'closer' ? 'warning' : 'primary';
+
+const roleLabel: Record<string, string> = {
+  super_admin: 'Super Admin', admin: 'Admin', closer: 'Closer', sales: 'Sales',
+};
+
 const emptyCreate = { email: '', name: '', password: '', role: 'sales' };
 
 export default function UsersPage() {
   const { t } = useT();
+  const { user: me, startImpersonation } = useAuth();
   const [rows, setRows] = useState<User[]>([]);
   const [createOpen, setCreateOpen] = useState(false);
   const [form, setForm] = useState({ ...emptyCreate });
@@ -31,6 +43,8 @@ export default function UsersPage() {
   const [pw, setPw] = useState('');
   const [error, setError] = useState('');
   const [msg, setMsg] = useState('');
+
+  const canImpersonate = me && ['admin', 'super_admin'].includes(me.role) && !me.isImpersonated;
 
   const load = () => api.get('/users').then((r) => setRows(r.data));
   useEffect(() => { load(); }, []);
@@ -42,14 +56,21 @@ export default function UsersPage() {
       setCreateOpen(false); setForm({ ...emptyCreate }); load();
     } catch (e) { setError(errMsg(e)); }
   };
+
   const saveEdit = async () => {
     if (!edit) return;
     setError('');
     try {
-      await api.patch(`/users/${edit.id}`, { name: edit.name, role: edit.role, isActive: edit.isActive });
+      await api.patch(`/users/${edit.id}`, {
+        name: edit.name,
+        role: edit.role,
+        additionalRoles: edit.additionalRoles,
+        isActive: edit.isActive,
+      });
       setEdit(null); load();
     } catch (e) { setError(errMsg(e)); }
   };
+
   const resetPw = async () => {
     if (!pwFor) return;
     setError('');
@@ -59,6 +80,21 @@ export default function UsersPage() {
     } catch (e) { setError(errMsg(e)); }
   };
 
+  const handleImpersonate = async (u: User) => {
+    setError('');
+    try {
+      const { targetName } = await startImpersonation(u.id);
+      setMsg(`กำลังดูระบบในฐานะ "${targetName}"`);
+    } catch (e) { setError(errMsg(e)); }
+  };
+
+  const toggleAdditional = (role: Role, checked: boolean) => {
+    if (!edit) return;
+    const current = edit.additionalRoles ?? [];
+    const updated = checked ? [...current, role] : current.filter((r) => r !== role);
+    setEdit({ ...edit, additionalRoles: updated });
+  };
+
   return (
     <Box>
       <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2}>
@@ -66,6 +102,7 @@ export default function UsersPage() {
         <Button variant="contained" onClick={() => { setError(''); setCreateOpen(true); }}>{t('usr.add')}</Button>
       </Stack>
 
+      {error && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')}>{error}</Alert>}
       {msg && <Alert severity="success" sx={{ mb: 2 }} onClose={() => setMsg('')}>{msg}</Alert>}
 
       <Paper>
@@ -75,6 +112,7 @@ export default function UsersPage() {
               <TableCell>{t('usr.email')}</TableCell>
               <TableCell>{t('c.name')}</TableCell>
               <TableCell>{t('usr.role')}</TableCell>
+              <TableCell>Roles เพิ่มเติม</TableCell>
               <TableCell>{t('usr.staff')}</TableCell>
               <TableCell align="center">{t('c.status')}</TableCell>
               <TableCell align="center">{t('c.manage')}</TableCell>
@@ -85,14 +123,37 @@ export default function UsersPage() {
               <TableRow key={u.id} sx={{ opacity: u.isActive ? 1 : 0.5 }}>
                 <TableCell>{u.email}</TableCell>
                 <TableCell>{u.name}</TableCell>
-                <TableCell><Chip size="small" color={roleColor(u.role)} label={u.role} /></TableCell>
+                <TableCell>
+                  <Chip size="small" color={roleColor(u.role) as any} label={roleLabel[u.role] ?? u.role} />
+                </TableCell>
+                <TableCell>
+                  <Stack direction="row" spacing={0.5} flexWrap="wrap">
+                    {(u.additionalRoles ?? []).map((r) => (
+                      <Chip key={r} size="small" variant="outlined" label={roleLabel[r] ?? r} />
+                    ))}
+                    {(!u.additionalRoles || u.additionalRoles.length === 0) && (
+                      <Typography variant="caption" color="text.disabled">—</Typography>
+                    )}
+                  </Stack>
+                </TableCell>
                 <TableCell>{u.employee ? `${u.employee.name} (${u.employee.code})` : '-'}</TableCell>
                 <TableCell align="center">
                   <Chip size="small" label={u.isActive ? t('usr.active') : t('usr.off')} color={u.isActive ? 'success' : 'default'} />
                 </TableCell>
                 <TableCell align="center">
-                  <IconButton size="small" title={t('common.edit')} onClick={() => { setError(''); setEdit({ ...u }); }}><EditIcon fontSize="small" /></IconButton>
-                  <IconButton size="small" title={t('usr.resetTitle')} onClick={() => { setError(''); setPwFor(u); setPw(''); }}><KeyIcon fontSize="small" /></IconButton>
+                  <IconButton size="small" title={t('common.edit')} onClick={() => { setError(''); setEdit({ ...u, additionalRoles: u.additionalRoles ?? [] }); }}>
+                    <EditIcon fontSize="small" />
+                  </IconButton>
+                  <IconButton size="small" title={t('usr.resetTitle')} onClick={() => { setError(''); setPwFor(u); setPw(''); }}>
+                    <KeyIcon fontSize="small" />
+                  </IconButton>
+                  {canImpersonate && u.id !== me?.id && (
+                    <Tooltip title="ดูในฐานะผู้ใช้นี้">
+                      <IconButton size="small" color="warning" onClick={() => handleImpersonate(u)}>
+                        <VisibilityRoundedIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                  )}
                 </TableCell>
               </TableRow>
             ))}
@@ -109,7 +170,7 @@ export default function UsersPage() {
             <TextField label={t('usr.email')} type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required />
             <TextField label={t('d.fullName')} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
             <TextField select label={t('usr.role')} value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}>
-              {ROLES.map((r) => <MenuItem key={r} value={r}>{r}</MenuItem>)}
+              {ROLES.map((r) => <MenuItem key={r} value={r}>{roleLabel[r]}</MenuItem>)}
             </TextField>
             <TextField label={t('d.password')} type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required helperText={t('d.minChars')} />
           </Stack>
@@ -121,17 +182,40 @@ export default function UsersPage() {
       </Dialog>
 
       {/* แก้ไขผู้ใช้ */}
-      <Dialog open={!!edit} onClose={() => setEdit(null)} fullWidth maxWidth="xs">
+      <Dialog open={!!edit} onClose={() => setEdit(null)} fullWidth maxWidth="sm">
         <DialogTitle>{t('common.edit')}: {edit?.email}</DialogTitle>
         <DialogContent>
           {edit && (
             <Stack spacing={2} mt={1}>
               {error && <Alert severity="error">{error}</Alert>}
               <TextField label={t('d.fullName')} value={edit.name} onChange={(e) => setEdit({ ...edit, name: e.target.value })} />
-              <TextField select label={t('usr.role')} value={edit.role} onChange={(e) => setEdit({ ...edit, role: e.target.value })}>
-                {ROLES.map((r) => <MenuItem key={r} value={r}>{r}</MenuItem>)}
+              <TextField select label={t('usr.role')} value={edit.role} onChange={(e) => setEdit({ ...edit, role: e.target.value, additionalRoles: [] })}>
+                {ROLES.map((r) => <MenuItem key={r} value={r}>{roleLabel[r]}</MenuItem>)}
               </TextField>
-              <FormControlLabel control={<Checkbox checked={edit.isActive} onChange={(e) => setEdit({ ...edit, isActive: e.target.checked })} />} label={t('usr.enable')} />
+              <Box>
+                <Typography variant="caption" color="text.secondary" gutterBottom display="block">
+                  Roles เพิ่มเติม (สลับได้ใน session)
+                </Typography>
+                <FormGroup row>
+                  {ROLES.filter((r) => r !== edit.role).map((r) => (
+                    <FormControlLabel
+                      key={r}
+                      control={
+                        <Checkbox
+                          size="small"
+                          checked={(edit.additionalRoles ?? []).includes(r)}
+                          onChange={(e) => toggleAdditional(r, e.target.checked)}
+                        />
+                      }
+                      label={roleLabel[r]}
+                    />
+                  ))}
+                </FormGroup>
+              </Box>
+              <FormControlLabel
+                control={<Checkbox checked={edit.isActive} onChange={(e) => setEdit({ ...edit, isActive: e.target.checked })} />}
+                label={t('usr.enable')}
+              />
             </Stack>
           )}
         </DialogContent>

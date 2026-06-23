@@ -44,7 +44,10 @@ export class RolesGuard implements CanActivate {
     ]);
     if (!required || required.length === 0) return true;
     const { user } = context.switchToHttp().getRequest();
-    if (!user || !required.includes(user.role)) {
+    if (!user) throw new ForbiddenException('คุณไม่มีสิทธิ์เข้าถึงส่วนนี้');
+    // super_admin bypasses all role checks
+    if (user.role === 'super_admin') return true;
+    if (!required.includes(user.role)) {
       throw new ForbiddenException('คุณไม่มีสิทธิ์เข้าถึงส่วนนี้');
     }
     return true;

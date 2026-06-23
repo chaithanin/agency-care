@@ -14,9 +14,10 @@ datasource db {
 // Enums
 // ============================================================
 enum UserRole {
-  admin // ผู้ดูแลระบบ / ผู้บริหาร — เห็นทุกอย่าง
-  closer // หัวหน้าทีม — เห็นเฉพาะทีมตัวเอง
-  sales // เซลส์ภาคสนาม — เห็นงานตัวเอง
+  super_admin // จัดการทั้งระบบ — สูงสุด
+  admin       // ดูแลองค์กร สลับ role ได้ + Impersonate
+  closer      // หัวหน้าทีม — เห็นเฉพาะทีมตัวเอง
+  sales       // เซลส์ภาคสนาม — เห็นงานตัวเอง
 }
 
 enum TaskPriority {
@@ -72,6 +73,7 @@ enum AuditAction {
   update
   delete
   login
+  impersonate
 }
 
 // Phase 5: ตำแหน่งพนักงาน
@@ -103,6 +105,10 @@ model User {
   isActive     Boolean  @default(true) @map("is_active")
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
+
+  // multi-role: สลับ role ใน session ได้ (Admin ↔ Closer ↔ Sales)
+  activeRole      UserRole @default(sales) @map("active_role")
+  additionalRoles String[] @default([]) @map("additional_roles") // role เพิ่มเติมที่สลับได้
 
   // เซลส์ 1 คน = 1 user (โปรไฟล์ field-sales อยู่ใน Employee)
   employee       Employee?

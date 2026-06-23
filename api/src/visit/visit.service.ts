@@ -69,7 +69,7 @@ export class VisitService {
   async listPlans(user: RequestUser, params: { date?: string; from?: string; to?: string; employeeId?: string }) {
     const where: Prisma.VisitPlanWhereInput = {};
 
-    if (user.role === 'sales') {
+    if (user.activeRole === 'sales') {
       const emp = await this.requireEmployee(user.id);
       where.employeeId = emp.id;
     } else if (params.employeeId) {
@@ -108,7 +108,7 @@ export class VisitService {
       },
     });
     if (!plan) throw new NotFoundException('ไม่พบแผนการเยี่ยม');
-    if (user.role === 'sales') {
+    if (user.activeRole === 'sales') {
       const emp = await this.requireEmployee(user.id);
       if (plan.employeeId !== emp.id) throw new ForbiddenException('ไม่ใช่งานของคุณ');
     }
