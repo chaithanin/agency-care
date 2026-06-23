@@ -1,4 +1,4 @@
-import { type ReactNode, useEffect, useState } from 'react';
+import { type ReactNode, useCallback, useEffect, useState } from 'react';
 import {
   Box,
   Typography,
@@ -14,6 +14,7 @@ import {
   Avatar,
   Tooltip,
   Divider,
+  Badge,
   useMediaQuery,
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
@@ -39,10 +40,13 @@ import PsychologyRoundedIcon from '@mui/icons-material/PsychologyRounded';
 import ManageAccountsRoundedIcon from '@mui/icons-material/ManageAccountsRounded';
 import HomeRoundedIcon from '@mui/icons-material/HomeRounded';
 import TodayRoundedIcon from '@mui/icons-material/TodayRounded';
+import NotificationsRoundedIcon from '@mui/icons-material/NotificationsRounded';
+import AssignmentRoundedIcon from '@mui/icons-material/AssignmentRounded';
 import Hub from '@mui/icons-material/HubRounded';
 import { useAuth } from '../auth/AuthContext';
 import { useT } from '../i18n';
 import { api } from '../api/client';
+import { Link as RouterLink } from 'react-router-dom';
 
 const DRAWER_WIDTH = 252;
 
@@ -62,6 +66,12 @@ export default function Layout({ children }: { children: ReactNode }) {
   const isCloser = user?.role === 'closer';
   const isManager = isAdmin || isCloser;
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  const loadUnread = useCallback(() => {
+    api.get('/notifications/my/unread-count').then(r => setUnreadCount(r.data?.count ?? 0)).catch(() => {});
+  }, []);
+  useEffect(() => { if (user) { loadUnread(); const id = setInterval(loadUnread, 60000); return () => clearInterval(id); } }, [user, loadUnread]);
 
   // แจ้งเตือนงานเมื่อ sale/closer เข้าระบบ (ครั้งเดียวต่อ session)
   const [loginMsg, setLoginMsg] = useState('');
@@ -101,17 +111,19 @@ export default function Layout({ children }: { children: ReactNode }) {
   const navItems = isAdmin
     ? [
         ...baseManagerNav,
+        { to: '/tasks', label: t('nav.tasks'), icon: <AssignmentRoundedIcon /> },
         { to: '/auto-assign', label: t('nav.autoassign'), icon: <AutoAwesomeRoundedIcon /> },
         { to: '/analytics', label: t('nav.ai'), icon: <PsychologyRoundedIcon /> },
         { to: '/users', label: t('nav.users'), icon: <ManageAccountsRoundedIcon /> },
       ]
     : isCloser
-    ? baseManagerNav
+    ? [...baseManagerNav, { to: '/tasks', label: t('nav.tasks'), icon: <AssignmentRoundedIcon /> }]
     : [
         { to: '/', label: t('nav.myWork'), icon: <HomeRoundedIcon /> },
         { to: '/my-day', label: t('nav.myDay'), icon: <TodayRoundedIcon /> },
         { to: '/calendar', label: t('nav.calendar'), icon: <CalendarMonthRoundedIcon /> },
         { to: '/route', label: t('nav.route'), icon: <RouteRoundedIcon /> },
+        { to: '/tasks', label: t('nav.tasks'), icon: <AssignmentRoundedIcon /> },
       ];
 
   const hour = new Date().getHours();
@@ -273,6 +285,13 @@ export default function Layout({ children }: { children: ReactNode }) {
               >
                 <TranslateRoundedIcon fontSize="small" />
                 <Typography variant="caption" fontWeight={700}>{lang === 'th' ? 'TH' : 'EN'}</Typography>
+              </IconButton>
+            </Tooltip>
+            <Tooltip title={t('nav.notifications')}>
+              <IconButton component={RouterLink} to="/notifications" sx={{ color: 'text.secondary' }}>
+                <Badge badgeContent={unreadCount > 0 ? unreadCount : undefined} color="error" max={99}>
+                  <NotificationsRoundedIcon />
+                </Badge>
               </IconButton>
             </Tooltip>
             <Avatar sx={{ width: 38, height: 38, bgcolor: 'primary.main', fontSize: 14, fontWeight: 700 }}>

@@ -26,10 +26,14 @@ import {
 } from './dto/visit.dto';
 import { Roles } from '../auth/guards';
 import { CurrentUser, RequestUser } from '../common/current-user.decorator';
+import { TaskService } from '../task/task.service';
 
 @Controller('visits')
 export class VisitController {
-  constructor(private service: VisitService) {}
+  constructor(
+    private service: VisitService,
+    private taskService: TaskService,
+  ) {}
 
   // ---- Plans ----
   @Roles('admin', 'closer')
@@ -111,8 +115,17 @@ export class VisitController {
 
   // ---- Check-out ----
   @Post('checkins/:checkinId/checkout')
-  checkout(@CurrentUser() user: RequestUser, @Param('checkinId') checkinId: string) {
-    return this.service.checkout(user, checkinId);
+  async checkout(@CurrentUser() user: RequestUser, @Param('checkinId') checkinId: string) {
+    const result = await this.service.checkout(user, checkinId);
+    // Auto-create follow-up task asynchronously
+    if (result.visitPlanId) {
+      this.service.getPlanById(result.visitPlanId).then(plan => {
+        if (plan) {
+          this.taskService.autoCreateAfterVisit(plan.id, plan.employeeId, plan.agencyId).catch(() => {});
+        }
+      }).catch(() => {});
+    }
+    return result;
   }
 
   // ---- ผู้เข้าพบ ----

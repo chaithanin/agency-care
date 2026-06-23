@@ -19,6 +19,25 @@ enum UserRole {
   sales // เซลส์ภาคสนาม — เห็นงานตัวเอง
 }
 
+enum TaskPriority {
+  high
+  medium
+  low
+}
+
+enum TaskStatus {
+  pending
+  in_progress
+  done
+  overdue
+}
+
+enum TaskType {
+  manual
+  auto
+  ai
+}
+
 enum AgencyLevel {
   A // เยี่ยม 4 ครั้ง/เดือน
   B // เยี่ยม 2 ครั้ง/เดือน
@@ -86,8 +105,9 @@ model User {
   updatedAt    DateTime @updatedAt @map("updated_at")
 
   // เซลส์ 1 คน = 1 user (โปรไฟล์ field-sales อยู่ใน Employee)
-  employee  Employee?
-  auditLogs AuditLog[]
+  employee       Employee?
+  auditLogs      AuditLog[]
+  notifications  InAppNotification[]
 
   @@map("users")
 }
@@ -118,6 +138,7 @@ model Employee {
   monthlyPlans   MonthlyPlan[]
   dailySchedules DailySchedule[]
   addedAgencies  Agency[]        @relation("AgencyAddedBy")
+  tasks          Task[]
 
   @@index([zone])
   @@index([teamId])
@@ -177,6 +198,7 @@ model Agency {
   modelTxns   ModelTransaction[]
   addedBy       Employee?           @relation("AgencyAddedBy", fields: [addedById], references: [id], onDelete: SetNull)
   scheduleItems DailyScheduleItem[]
+  tasks         Task[]
 
   @@index([zone])
   @@index([province])
@@ -245,6 +267,7 @@ model VisitPlan {
   salesActivities  SalesActivity[]
   modelTransactions ModelTransaction[]
   workPhotos       VisitWorkPhoto[] // รูปการทำงาน (อัปโหลดได้โดยไม่ต้อง check-in)
+  tasks            Task[]
 
   @@index([employeeId, planDate])
   @@index([agencyId, planDate])
@@ -478,6 +501,55 @@ model ModelTransaction {
   @@index([modelId])
   @@index([agencyId])
   @@map("model_transactions")
+}
+
+// ============================================================
+// Task — งานทั่วไป (manual / auto / ai)
+// ============================================================
+model Task {
+  id           String       @id @default(cuid())
+  title        String
+  description  String?
+  dueDate      DateTime?    @map("due_date") @db.Date
+  priority     TaskPriority @default(medium)
+  status       TaskStatus   @default(pending)
+  type         TaskType     @default(manual)
+  assignedToId String       @map("assigned_to_id")
+  agencyId     String?      @map("agency_id")
+  visitPlanId  String?      @map("visit_plan_id")
+  createdById  String?      @map("created_by_id") // employeeId ของคนสร้าง
+  doneAt       DateTime?    @map("done_at")
+  createdAt    DateTime     @default(now()) @map("created_at")
+  updatedAt    DateTime     @updatedAt @map("updated_at")
+
+  assignedTo Employee   @relation(fields: [assignedToId], references: [id], onDelete: Cascade)
+  agency     Agency?    @relation(fields: [agencyId], references: [id], onDelete: SetNull)
+  visitPlan  VisitPlan? @relation(fields: [visitPlanId], references: [id], onDelete: SetNull)
+
+  @@index([assignedToId, status])
+  @@index([status, dueDate])
+  @@index([agencyId])
+  @@map("tasks")
+}
+
+// ============================================================
+// InAppNotification — แจ้งเตือนใน app (Notification Center)
+// ============================================================
+model InAppNotification {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  title     String
+  body      String
+  type      String   // visit_reminder|overdue_checkin|task_due|team_summary|org_summary|ai_task
+  read      Boolean  @default(false)
+  link      String?  // deep link เช่น /tasks หรือ /visits/plans/:id
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, read])
+  @@index([userId, createdAt])
+  @@map("in_app_notifications")
 }
 
 // ============================================================

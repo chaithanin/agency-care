@@ -236,6 +236,10 @@ export class VisitService {
     });
   }
 
+  async getPlanById(id: string) {
+    return this.prisma.visitPlan.findUnique({ where: { id }, select: { id: true, agencyId: true, employeeId: true } });
+  }
+
   // ---- Contact (ผู้เข้าพบ) — อัปเดตหลัง check-in ได้ ----
   async setContact(
     user: RequestUser,

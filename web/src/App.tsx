@@ -22,6 +22,8 @@ import SellerPerformancePage from './pages/SellerPerformancePage';
 import PipelinePage from './pages/PipelinePage';
 import UsersPage from './pages/UsersPage';
 import CalendarPage from './pages/CalendarPage';
+import TasksPage from './pages/TasksPage';
+import NotificationsPage from './pages/NotificationsPage';
 
 function Splash() {
   return (
@@ -74,6 +76,8 @@ export default function App() {
           </>
         )}
         <Route path="/route" element={<RoutePage />} />
+        <Route path="/tasks" element={<TasksPage />} />
+        <Route path="/notifications" element={<NotificationsPage />} />
         <Route path="/visits/:id" element={<VisitDetailPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
