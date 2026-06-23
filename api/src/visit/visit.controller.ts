@@ -129,6 +129,16 @@ export class VisitController {
     return result;
   }
 
+  // ---- Smart Replacement — ร้านทดแทนใกล้เคียงเมื่อ reschedule ----
+  @Get('plans/:id/suggestions')
+  getSuggestions(
+    @CurrentUser() user: RequestUser,
+    @Param('id') id: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.service.getSuggestions(user, id, limit ? Number(limit) : 10);
+  }
+
   // ---- Call Confirm — บันทึกผลโทรยืนยันนัดหมาย ----
   @Post('plans/:id/call-confirm')
   callConfirm(

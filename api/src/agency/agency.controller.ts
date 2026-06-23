@@ -24,6 +24,17 @@ export class AgencyController {
     return this.service.pipelineStats();
   }
 
+  // ตรวจ duplicate ก่อนสร้าง (ต้องอยู่ก่อน :id)
+  @Roles('admin', 'closer')
+  @Get('check-duplicate')
+  checkDuplicate(
+    @Query('name') name?: string,
+    @Query('phone') phone?: string,
+    @Query('code') code?: string,
+  ) {
+    return this.service.checkDuplicate({ name, phone, code });
+  }
+
   @Get(':id')
   get(@Param('id') id: string) {
     return this.service.get(id);

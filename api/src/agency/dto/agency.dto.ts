@@ -66,6 +66,42 @@ export class CreateAgencyDto {
   @IsOptional()
   @IsLongitude()
   longitude?: number;
+
+  @IsOptional()
+  @IsString()
+  address?: string;
+
+  @IsOptional()
+  @IsString()
+  website?: string;
+
+  @IsOptional()
+  @IsString()
+  remark?: string;
+
+  @IsOptional()
+  @IsString()
+  classification?: string;
+
+  @IsOptional()
+  @IsString()
+  gradeQuality?: string;
+
+  @IsOptional()
+  @IsString()
+  gradeRelationship?: string;
+
+  @IsOptional()
+  @IsString()
+  priority?: string;
+
+  @IsOptional()
+  @IsString()
+  source?: string;
+
+  @IsOptional()
+  @IsString()
+  tags?: string;
 }
 
 export class UpdateAgencyDto extends CreateAgencyDto {

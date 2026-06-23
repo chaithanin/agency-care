@@ -61,6 +61,27 @@ export class AgencyService {
     };
   }
 
+  // ตรวจ duplicate ก่อนสร้าง — คืน array ของรายการที่น่าสงสัย
+  async checkDuplicate(params: { name?: string; phone?: string; code?: string }) {
+    const conditions: any[] = [];
+    if (params.code) conditions.push({ code: { equals: params.code, mode: 'insensitive' } });
+    if (params.phone) conditions.push({ phone: params.phone });
+    if (params.name) {
+      // ตัดคำสั้นมาก (น้อยกว่า 4 ตัว) ออก
+      const trimmed = params.name.trim();
+      if (trimmed.length >= 4) {
+        conditions.push({ name: { contains: trimmed.slice(0, 20), mode: 'insensitive' } });
+      }
+    }
+    if (!conditions.length) return { duplicates: [] };
+    const hits = await this.prisma.agency.findMany({
+      where: { OR: conditions },
+      select: { id: true, code: true, name: true, phone: true, province: true, status: true },
+      take: 5,
+    });
+    return { duplicates: hits };
+  }
+
   async create(dto: CreateAgencyDto) {
     const dup = await this.prisma.agency.findUnique({ where: { code: dto.code } });
     if (dup) throw new BadRequestException(`รหัส Agency ${dto.code} ถูกใช้แล้ว`);

@@ -240,6 +240,75 @@ export class VisitService {
     return this.prisma.visitPlan.findUnique({ where: { id }, select: { id: true, agencyId: true, employeeId: true } });
   }
 
+  // ---- Smart Replacement — หาร้านทดแทนใกล้เคียงเมื่อ reschedule ─────────
+  async getSuggestions(user: RequestUser, planId: string, limit = 10) {
+    const plan = await this.prisma.visitPlan.findUnique({
+      where: { id: planId },
+      include: {
+        agency: { select: { id: true, latitude: true, longitude: true } },
+      },
+    });
+    if (!plan) throw new NotFoundException('ไม่พบแผน');
+
+    const refLat = plan.agency.latitude;
+    const refLng = plan.agency.longitude;
+
+    // หา agencies ที่ employee นี้ดูแลอยู่ (isActive)
+    const assigned = await this.prisma.agencyAssignment.findMany({
+      where: { employeeId: plan.employeeId, isActive: true },
+      select: { agencyId: true },
+    });
+    const assignedIds = assigned.map((a) => a.agencyId).filter((id) => id !== plan.agencyId);
+
+    // หา agency ที่ยังไม่มีแผนวันนั้น (หรือ cancelled/rescheduled)
+    const planDate = plan.planDate;
+    const existingPlans = await this.prisma.visitPlan.findMany({
+      where: {
+        employeeId: plan.employeeId,
+        planDate,
+        status: { notIn: ['cancelled', 'rescheduled', 'postponed'] },
+        agencyId: { in: assignedIds },
+      },
+      select: { agencyId: true },
+    });
+    const busyIds = new Set(existingPlans.map((p) => p.agencyId));
+    const candidateIds = assignedIds.filter((id) => !busyIds.has(id));
+
+    if (!candidateIds.length) return { suggestions: [] };
+
+    const candidates = await this.prisma.agency.findMany({
+      where: {
+        id: { in: candidateIds },
+        status: 'active',
+        latitude: { not: null },
+        longitude: { not: null },
+      },
+      select: {
+        id: true, code: true, name: true, zone: true, tier: true,
+        latitude: true, longitude: true, phone: true,
+        assignments: { where: { isActive: true }, select: { employee: { select: { name: true } } } },
+      },
+    });
+
+    // คำนวณระยะทาง แล้ว sort
+    const withDist = candidates
+      .map((a) => ({
+        ...a,
+        distanceMeters:
+          refLat != null && refLng != null && a.latitude != null && a.longitude != null
+            ? Math.round(distanceMeters(refLat, refLng, a.latitude!, a.longitude!))
+            : null,
+      }))
+      .sort((a, b) => {
+        if (a.distanceMeters == null) return 1;
+        if (b.distanceMeters == null) return -1;
+        return a.distanceMeters - b.distanceMeters;
+      })
+      .slice(0, limit);
+
+    return { suggestions: withDist, planDate: planDate.toISOString().slice(0, 10) };
+  }
+
   // ---- Call Confirm — โทรยืนยันนัดหมายวันก่อนเยี่ยม ─────────────────────
   async callConfirm(user: RequestUser, planId: string, dto: import('./dto/visit.dto').CallConfirmDto) {
     const plan = await this.getPlan(user, planId);

@@ -91,7 +91,7 @@ export default function Layout({ children }: { children: ReactNode }) {
   useEffect(() => { if (user) { loadUnread(); const id = setInterval(loadUnread, 60000); return () => clearInterval(id); } }, [user, loadUnread]);
 
   // Role switching
-  const availableRoles: Role[] = user ? [user.role, ...user.additionalRoles as Role[]] : [];
+  const availableRoles: Role[] = user ? [user.role, ...((user.additionalRoles ?? []) as Role[])] : [];
   const canSwitchRole = availableRoles.length > 1 && !user?.isImpersonated;
 
   const handleSwitchRole = async (role: Role) => {

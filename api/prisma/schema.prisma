@@ -214,6 +214,15 @@ model Agency {
   longitude      Float?
   geocodeSource  String? @map("geocode_source") // manual = ยืนยันแล้ว, google = auto (ควรตรวจ)
 
+  // ที่อยู่โดยละเอียด
+  address     String? // เลขที่/ถนน/ซอย
+
+  // ข้อมูลติดต่อเพิ่มเติม
+  website     String? // เว็บไซต์
+
+  // หมายเหตุ
+  remark      String? // บันทึกภายในเพิ่มเติม
+
   // รูป (เก็บ url/path)
   photoFront  String? @map("photo_front")
   photoInside String? @map("photo_inside")
