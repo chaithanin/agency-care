@@ -26,6 +26,7 @@ import TasksPage from './pages/TasksPage';
 import NotificationsPage from './pages/NotificationsPage';
 import SiteVisitReportPage from './pages/SiteVisitReportPage';
 import ReportsPage from './pages/ReportsPage';
+import AgencyInfoFormPage from './pages/AgencyInfoFormPage';
 
 function Splash() {
   return (
@@ -56,6 +57,7 @@ export default function App() {
           <>
             <Route path="/" element={<DashboardPage />} />
             <Route path="/agencies" element={<AgenciesPage />} />
+            <Route path="/agencies/:id/form" element={<AgencyInfoFormPage />} />
             <Route path="/employees" element={<EmployeesPage />} />
             <Route path="/plans" element={<PlansPage />} />
             <Route path="/posm" element={<PosmPage />} />

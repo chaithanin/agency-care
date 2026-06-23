@@ -222,6 +222,7 @@ model Agency {
 
   // หมายเหตุ
   remark      String? // บันทึกภายในเพิ่มเติม
+  profileData Json?   @map("profile_data") // Agency Information Form (structured JSON)
 
   // รูป (เก็บ url/path)
   photoFront  String? @map("photo_front")

@@ -80,6 +80,9 @@ export class CreateAgencyDto {
   remark?: string;
 
   @IsOptional()
+  profileData?: Record<string, unknown>;
+
+  @IsOptional()
   @IsString()
   classification?: string;
 

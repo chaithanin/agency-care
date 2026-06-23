@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Accordion,
   AccordionDetails,
@@ -31,6 +32,7 @@ import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import EditNoteIcon from '@mui/icons-material/EditNote';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import DirectionsWalkIcon from '@mui/icons-material/DirectionsWalk';
+import ArticleOutlinedIcon from '@mui/icons-material/ArticleOutlined';
 import { api, errMsg } from '../api/client';
 import { useT } from '../i18n';
 
@@ -219,6 +221,7 @@ function DuplicateWarning({ hits }: { hits: DupHit[] }) {
 
 export default function AgenciesPage() {
   const { t } = useT();
+  const navigate = useNavigate();
   const [rows, setRows] = useState<Agency[]>([]);
   const [employees, setEmployees] = useState<EmpOpt[]>([]);
   const [open, setOpen] = useState(false);
@@ -476,6 +479,10 @@ export default function AgenciesPage() {
                 </TableCell>
                 <TableCell align="right">
                   <Stack direction="row" spacing={0.5} justifyContent="flex-end">
+                    <Button size="small" startIcon={<ArticleOutlinedIcon fontSize="small" />}
+                      onClick={() => navigate(`/agencies/${a.id}/form`)}>
+                      ฟอร์ม
+                    </Button>
                     <Button size="small" startIcon={<HistoryIcon fontSize="small" />}
                       onClick={() => setTimelineFor(a)}>
                       ประวัติ
