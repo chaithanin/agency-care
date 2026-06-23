@@ -14,11 +14,34 @@ export class PosmController {
     return this.service.listItems();
   }
 
-  // Phase 7: คลังสื่อ + แจ้งเตือนสต็อกต่ำ
+  // คลังสื่อ + แจ้งเตือนสต็อกต่ำ
   @Roles('admin', 'closer')
   @Get('inventory')
   inventory() {
     return this.service.inventory();
+  }
+
+  // Distribution Log — รายการแจกทั้งหมด (ต้องอยู่ก่อน :id routes)
+  @Roles('admin', 'closer')
+  @Get('distribution-log')
+  distributionLog(
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+    @Query('agencyId') agencyId?: string,
+    @Query('itemId') itemId?: string,
+  ) {
+    return this.service.distributionLog({ from, to, agencyId, itemId });
+  }
+
+  // สรุปสื่อที่แจกต่อ Agency
+  @Roles('admin', 'closer')
+  @Get('agency-summary')
+  agencySummary(
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+    @Query('agencyId') agencyId?: string,
+  ) {
+    return this.service.agencySummary({ from, to, agencyId });
   }
 
   @Roles('admin', 'closer')

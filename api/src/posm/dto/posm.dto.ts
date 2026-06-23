@@ -9,6 +9,14 @@ export class CreatePosmItemDto {
 
   @IsOptional()
   @IsString()
+  category?: string;
+
+  @IsOptional()
+  @IsString()
+  description?: string;
+
+  @IsOptional()
+  @IsString()
   unit?: string;
 
   @IsOptional()
@@ -29,9 +37,16 @@ export class UpdatePosmItemDto {
 
   @IsOptional()
   @IsString()
+  category?: string;
+
+  @IsOptional()
+  @IsString()
+  description?: string;
+
+  @IsOptional()
+  @IsString()
   unit?: string;
 
-  // ปรับสต็อกเป็นค่าใหม่ (เติมของเข้าคลัง)
   @IsOptional()
   @IsInt()
   @Min(0)

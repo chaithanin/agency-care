@@ -434,15 +434,17 @@ model FollowUpTask {
 // 10) posm_items — คลังสื่อส่งเสริมการขาย (POSM master)
 // ============================================================
 model PosmItem {
-  id        String   @id @default(cuid())
-  code      String   @unique
-  name      String // เช่น โบรชัวร์ / Roll Up / Banner
-  unit      String   @default("ชิ้น")
-  stockQty  Int      @default(0) @map("stock_qty") // คงเหลือในคลัง
-  reorderPoint Int   @default(0) @map("reorder_point") // จุดสั่งซื้อ — ต่ำกว่านี้ = แจ้งเตือน
-  isActive  Boolean  @default(true) @map("is_active")
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  id           String   @id @default(cuid())
+  code         String   @unique
+  name         String
+  category     String   @default("general") // display | printed | gift | general
+  description  String?
+  unit         String   @default("ชิ้น")
+  stockQty     Int      @default(0) @map("stock_qty")
+  reorderPoint Int      @default(0) @map("reorder_point")
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
 
   transactions PosmTransaction[]
 

@@ -40,7 +40,7 @@ export class PosmService {
   async inventory() {
     const since = new Date(Date.now() - 30 * 86400000);
     const [items, used] = await Promise.all([
-      this.prisma.posmItem.findMany({ where: { isActive: true }, orderBy: { code: 'asc' } }),
+      this.prisma.posmItem.findMany({ where: { isActive: true }, orderBy: [{ category: 'asc' }, { code: 'asc' }] }),
       this.prisma.posmTransaction.groupBy({
         by: ['posmItemId'],
         where: { createdAt: { gte: since } },
@@ -49,12 +49,109 @@ export class PosmService {
     ]);
     const usedMap = new Map(used.map((u) => [u.posmItemId, u._sum.quantity ?? 0]));
     const rows = items.map((it) => ({
-      id: it.id, code: it.code, name: it.name, unit: it.unit,
+      id: it.id, code: it.code, name: it.name,
+      category: it.category, description: it.description,
+      unit: it.unit,
       stockQty: it.stockQty, reorderPoint: it.reorderPoint,
       used30: usedMap.get(it.id) ?? 0,
       low: it.reorderPoint > 0 && it.stockQty <= it.reorderPoint,
+      urgent: it.reorderPoint > 0 && it.stockQty <= Math.floor(it.reorderPoint * 0.5),
     }));
-    return { lowStockCount: rows.filter((r) => r.low).length, items: rows };
+    return {
+      lowStockCount: rows.filter((r) => r.low).length,
+      urgentCount: rows.filter((r) => r.urgent).length,
+      items: rows,
+    };
+  }
+
+  // ── Distribution Log — รายการแจกสื่อทั้งหมด ──────────────────────────────
+  async distributionLog(params: { from?: string; to?: string; agencyId?: string; itemId?: string }) {
+    const where: any = {};
+    if (params.from || params.to) {
+      where.createdAt = {};
+      if (params.from) where.createdAt.gte = new Date(params.from);
+      if (params.to) {
+        const d = new Date(params.to); d.setHours(23, 59, 59);
+        where.createdAt.lte = d;
+      }
+    }
+    if (params.itemId) where.posmItemId = params.itemId;
+    if (params.agencyId) where.visitPlan = { agencyId: params.agencyId };
+
+    const txns = await this.prisma.posmTransaction.findMany({
+      where,
+      include: {
+        posmItem: { select: { code: true, name: true, unit: true, category: true } },
+        visitPlan: {
+          include: {
+            agency: { select: { id: true, code: true, name: true } },
+            employee: { select: { name: true, code: true } },
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 500,
+    });
+
+    return txns.map((t) => ({
+      id: t.id,
+      date: t.createdAt,
+      quantity: t.quantity,
+      item: t.posmItem,
+      agency: t.visitPlan.agency,
+      employee: t.visitPlan.employee,
+      visitPlanId: t.visitPlanId,
+    }));
+  }
+
+  // ── Agency Distribution Summary — สรุปต่อ Agency ──────────────────────────
+  async agencySummary(params: { from?: string; to?: string; agencyId?: string }) {
+    const where: any = {};
+    if (params.from || params.to) {
+      where.createdAt = {};
+      if (params.from) where.createdAt.gte = new Date(params.from);
+      if (params.to) {
+        const d = new Date(params.to); d.setHours(23, 59, 59);
+        where.createdAt.lte = d;
+      }
+    }
+    if (params.agencyId) where.visitPlan = { agencyId: params.agencyId };
+
+    const txns = await this.prisma.posmTransaction.findMany({
+      where,
+      include: {
+        posmItem: { select: { id: true, code: true, name: true, unit: true, category: true } },
+        visitPlan: {
+          include: {
+            agency: { select: { id: true, code: true, name: true, zone: true } },
+            employee: { select: { name: true } },
+          },
+        },
+      },
+    });
+
+    type AgRow = {
+      id: string; code: string; name: string; zone?: string | null;
+      materials: Record<string, { qty: number; unit: string; category: string }>;
+      total: number; lastGiven: string | null;
+    };
+
+    const agMap = new Map<string, AgRow>();
+    for (const t of txns) {
+      const a = t.visitPlan.agency;
+      if (!agMap.has(a.id)) {
+        agMap.set(a.id, { id: a.id, code: a.code, name: a.name, zone: a.zone, materials: {}, total: 0, lastGiven: null });
+      }
+      const row = agMap.get(a.id)!;
+      const key = t.posmItem.name;
+      if (!row.materials[key]) row.materials[key] = { qty: 0, unit: t.posmItem.unit, category: t.posmItem.category };
+      row.materials[key].qty += t.quantity;
+      row.total += t.quantity;
+      const d = t.createdAt.toISOString().slice(0, 10);
+      if (!row.lastGiven || d > row.lastGiven) row.lastGiven = d;
+    }
+
+    return [...agMap.values()].sort((a, b) => b.total - a.total);
   }
 
   // ---- แจกสื่อในงานเยี่ยม (ตัดสต็อกแบบ atomic) ----
@@ -74,11 +171,7 @@ export class PosmService {
         data: { stockQty: { decrement: dto.quantity } },
       });
       return tx.posmTransaction.create({
-        data: {
-          visitPlanId: dto.visitPlanId,
-          posmItemId: dto.posmItemId,
-          quantity: dto.quantity,
-        },
+        data: { visitPlanId: dto.visitPlanId, posmItemId: dto.posmItemId, quantity: dto.quantity },
         include: { posmItem: { select: { code: true, name: true, unit: true } } },
       });
     });
