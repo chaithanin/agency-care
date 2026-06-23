@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Accordion,
@@ -14,6 +14,8 @@ import {
   DialogContent,
   DialogTitle,
   Divider,
+  IconButton,
+  InputAdornment,
   MenuItem,
   Paper,
   Stack,
@@ -25,6 +27,8 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
+import SearchIcon from '@mui/icons-material/Search';
+import ClearIcon from '@mui/icons-material/Clear';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import HistoryIcon from '@mui/icons-material/History';
@@ -252,6 +256,38 @@ export default function AgenciesPage() {
   const [geocoding, setGeocoding] = useState(false);
   const [geoResult, setGeoResult] = useState('');
 
+  // ── Search / Filter ───────────────────────────────────────────────────────
+  const [filterQ, setFilterQ] = useState('');
+  const [filterGrade, setFilterGrade] = useState('');
+  const [filterZone, setFilterZone] = useState('');
+  const [filterSeller, setFilterSeller] = useState('');
+
+  const clearFilters = () => { setFilterQ(''); setFilterGrade(''); setFilterZone(''); setFilterSeller(''); };
+  const hasFilter = !!(filterQ || filterGrade || filterZone || filterSeller);
+
+  // unique zones from loaded data
+  const zoneOptions = useMemo(
+    () => [...new Set(rows.map((r) => r.zone).filter(Boolean))].sort() as string[],
+    [rows],
+  );
+  // unique grade values
+  const gradeOptions = useMemo(
+    () => [...new Set(rows.map((r) => r.gradeRelationship).filter(Boolean))].sort() as string[],
+    [rows],
+  );
+
+  const filtered = useMemo(() => {
+    const q = filterQ.toLowerCase().trim();
+    return rows.filter((a) => {
+      if (q && !a.name.toLowerCase().includes(q) && !a.code.toLowerCase().includes(q) && !(a.tags ?? '').toLowerCase().includes(q)) return false;
+      if (filterGrade && a.gradeRelationship !== filterGrade) return false;
+      if (filterZone && a.zone !== filterZone) return false;
+      if (filterSeller && !a.assignments.some((x) => x.employee.id === filterSeller)) return false;
+      return true;
+    });
+  }, [rows, filterQ, filterGrade, filterZone, filterSeller]);
+  // ─────────────────────────────────────────────────────────────────────────
+
   const load = () => api.get('/agencies').then((r) => setRows(r.data));
   useEffect(() => {
     load();
@@ -419,6 +455,48 @@ export default function AgenciesPage() {
 
       {geoResult && <Alert severity="info" sx={{ mb: 2 }} onClose={() => setGeoResult('')}>{geoResult}</Alert>}
 
+      {/* ── Filter bar ── */}
+      <Paper sx={{ p: 1.5, mb: 1.5 }}>
+        <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap alignItems="center">
+          <TextField
+            size="small" placeholder={t('ag.searchPh')}
+            value={filterQ} onChange={(e) => setFilterQ(e.target.value)}
+            sx={{ minWidth: 220 }}
+            InputProps={{
+              startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment>,
+              endAdornment: filterQ ? (
+                <InputAdornment position="end">
+                  <IconButton size="small" onClick={() => setFilterQ('')}><ClearIcon fontSize="small" /></IconButton>
+                </InputAdornment>
+              ) : undefined,
+            }}
+          />
+          <TextField select size="small" label={t('ag.filterGrade')} value={filterGrade}
+            onChange={(e) => setFilterGrade(e.target.value)} sx={{ minWidth: 130 }}>
+            <MenuItem value="">{t('c.all')}</MenuItem>
+            {gradeOptions.map((g) => <MenuItem key={g} value={g}>{g}</MenuItem>)}
+          </TextField>
+          <TextField select size="small" label={t('c.zone')} value={filterZone}
+            onChange={(e) => setFilterZone(e.target.value)} sx={{ minWidth: 150 }}>
+            <MenuItem value="">{t('c.all')}</MenuItem>
+            {zoneOptions.map((z) => <MenuItem key={z} value={z}>{z}</MenuItem>)}
+          </TextField>
+          <TextField select size="small" label={t('c.seller')} value={filterSeller}
+            onChange={(e) => setFilterSeller(e.target.value)} sx={{ minWidth: 160 }}>
+            <MenuItem value="">{t('c.all')}</MenuItem>
+            {employees.map((e) => <MenuItem key={e.id} value={e.id}>{e.name}</MenuItem>)}
+          </TextField>
+          {hasFilter && (
+            <Button size="small" variant="outlined" color="inherit" startIcon={<ClearIcon />} onClick={clearFilters}>
+              {t('ag.clearFilter')}
+            </Button>
+          )}
+          <Typography variant="caption" color="text.secondary" sx={{ ml: 'auto' }}>
+            {filtered.length} / {rows.length} {t('c.agencies')}
+          </Typography>
+        </Stack>
+      </Paper>
+
       <Paper>
         <Table size="small">
           <TableHead>
@@ -433,7 +511,7 @@ export default function AgenciesPage() {
             </TableRow>
           </TableHead>
           <TableBody>
-            {rows.map((a) => (
+            {filtered.map((a) => (
               <TableRow key={a.id} hover>
                 <TableCell>
                   <Typography
