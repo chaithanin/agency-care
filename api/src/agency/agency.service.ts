@@ -85,7 +85,10 @@ export class AgencyService {
   async create(dto: CreateAgencyDto, userId?: string) {
     const dup = await this.prisma.agency.findUnique({ where: { code: dto.code } });
     if (dup) throw new BadRequestException(`รหัส Agency ${dto.code} ถูกใช้แล้ว`);
-    const agency = await this.prisma.agency.create({ data: dto });
+    const { profileData: pd, ...rest } = dto;
+    const agency = await this.prisma.agency.create({
+      data: { ...rest, ...(pd !== undefined ? { profileData: pd as Prisma.InputJsonValue } : {}) },
+    });
     await this.prisma.auditLog.create({
       data: { userId, action: 'create', entity: 'agency', entityId: agency.id,
         metadata: { after: { name: agency.name, code: agency.code } } },
@@ -95,7 +98,11 @@ export class AgencyService {
 
   async update(id: string, dto: UpdateAgencyDto, userId?: string) {
     const before = await this.get(id);
-    const data: Prisma.AgencyUpdateInput = { ...dto };
+    const { profileData: pd, ...rest } = dto;
+    const data: Prisma.AgencyUpdateInput = {
+      ...rest,
+      ...(pd !== undefined ? { profileData: pd as Prisma.InputJsonValue } : {}),
+    };
     if (dto.latitude != null && dto.longitude != null) data.geocodeSource = 'manual';
     const after = await this.prisma.agency.update({ where: { id }, data });
     // บันทึก fields ที่เปลี่ยน
