@@ -27,6 +27,7 @@ import { SchedulingModule } from './scheduling/scheduling.module';
 import { UserModule } from './user/user.module';
 import { TaskModule } from './task/task.module';
 import { AssignmentPlanModule } from './assignment-plan/assignment-plan.module';
+import { ReportModule } from './report/report.module';
 
 @Module({
   imports: [
@@ -65,6 +66,7 @@ import { AssignmentPlanModule } from './assignment-plan/assignment-plan.module';
     UserModule,
     TaskModule,
     AssignmentPlanModule,
+    ReportModule,
   ],
   controllers: [AppController],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],

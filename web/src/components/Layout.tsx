@@ -46,6 +46,7 @@ import HomeRoundedIcon from '@mui/icons-material/HomeRounded';
 import TodayRoundedIcon from '@mui/icons-material/TodayRounded';
 import NotificationsRoundedIcon from '@mui/icons-material/NotificationsRounded';
 import AssignmentRoundedIcon from '@mui/icons-material/AssignmentRounded';
+import SummarizeRoundedIcon from '@mui/icons-material/SummarizeRounded';
 import SwapHorizRoundedIcon from '@mui/icons-material/SwapHorizRounded';
 import VisibilityRoundedIcon from '@mui/icons-material/VisibilityRounded';
 import Hub from '@mui/icons-material/HubRounded';
@@ -146,6 +147,7 @@ export default function Layout({ children }: { children: ReactNode }) {
         { to: '/tasks', label: t('nav.tasks'), icon: <AssignmentRoundedIcon /> },
         { to: '/auto-assign', label: t('nav.autoassign'), icon: <AutoAwesomeRoundedIcon /> },
         { to: '/site-visit-report', label: t('nav.siteVisitReport'), icon: <AssignmentRoundedIcon /> },
+        { to: '/reports', label: t('nav.reports'), icon: <SummarizeRoundedIcon /> },
         { to: '/analytics', label: t('nav.ai'), icon: <PsychologyRoundedIcon /> },
         { to: '/users', label: t('nav.users'), icon: <ManageAccountsRoundedIcon /> },
       ]
@@ -154,6 +156,7 @@ export default function Layout({ children }: { children: ReactNode }) {
         ...baseManagerNav,
         { to: '/tasks', label: t('nav.tasks'), icon: <AssignmentRoundedIcon /> },
         { to: '/site-visit-report', label: t('nav.siteVisitReport'), icon: <AssignmentRoundedIcon /> },
+        { to: '/reports', label: t('nav.reports'), icon: <SummarizeRoundedIcon /> },
       ]
     : [
         { to: '/', label: t('nav.myWork'), icon: <HomeRoundedIcon /> },
