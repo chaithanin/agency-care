@@ -15,13 +15,13 @@ export class ProductController {
     return this.service.list();
   }
 
-  @Roles('admin', 'manager')
+  @Roles('admin', 'closer')
   @Post()
   create(@Body() dto: CreateProductDto) {
     return this.service.create(dto);
   }
 
-  @Roles('admin', 'manager')
+  @Roles('admin', 'closer')
   @Patch(':id')
   update(@Param('id') id: string, @Body() dto: UpdateProductDto) {
     return this.service.update(id, dto);

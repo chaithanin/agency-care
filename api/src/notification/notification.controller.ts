@@ -9,7 +9,7 @@ class RunDto {
   date?: string;
 }
 
-@Roles('admin', 'manager')
+@Roles('admin', 'closer')
 @Controller('notifications')
 export class NotificationController {
   constructor(private service: NotificationService) {}

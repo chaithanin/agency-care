@@ -18,7 +18,7 @@ export class AgencyController {
   }
 
   // Phase 7: สรุป pipeline (ต้องอยู่ก่อน :id)
-  @Roles('admin', 'manager')
+  @Roles('admin', 'closer')
   @Get('pipeline')
   pipeline() {
     return this.service.pipelineStats();
@@ -30,19 +30,19 @@ export class AgencyController {
   }
 
   // เติมพิกัดอัตโนมัติเป็นชุด (ทีละ limit ร้าน)
-  @Roles('admin', 'manager')
+  @Roles('admin', 'closer')
   @Post('geocode')
   geocode(@Query('limit') limit?: string) {
     return this.service.geocodeMissing(limit ? Number(limit) : 50);
   }
 
-  @Roles('admin', 'manager')
+  @Roles('admin', 'closer')
   @Post()
   create(@Body() dto: CreateAgencyDto) {
     return this.service.create(dto);
   }
 
-  @Roles('admin', 'manager')
+  @Roles('admin', 'closer')
   @Patch(':id')
   update(@Param('id') id: string, @Body() dto: UpdateAgencyDto) {
     return this.service.update(id, dto);

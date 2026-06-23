@@ -3,7 +3,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { RequestUser } from './current-user.decorator';
 
 // ตรวจว่า user มีสิทธิ์บันทึกข้อมูลในแผนเยี่ยมนี้:
-// admin/manager = ทุกแผน, sales = เฉพาะแผนของตัวเอง
+// admin/closer = ทุกแผน, sales = เฉพาะแผนของตัวเอง
 export async function assertVisitAccess(
   prisma: PrismaService,
   user: RequestUser,

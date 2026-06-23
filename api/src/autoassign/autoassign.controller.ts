@@ -2,7 +2,7 @@ import { Body, Controller, Get, Post, Query } from '@nestjs/common';
 import { AutoAssignService, ApplyAssignmentDto } from './autoassign.service';
 import { Roles } from '../auth/guards';
 
-@Roles('admin', 'manager')
+@Roles('admin', 'closer')
 @Controller('auto-assign')
 export class AutoAssignController {
   constructor(private service: AutoAssignService) {}

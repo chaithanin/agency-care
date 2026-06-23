@@ -32,7 +32,7 @@ export class VisitController {
   constructor(private service: VisitService) {}
 
   // ---- Plans ----
-  @Roles('admin', 'manager')
+  @Roles('admin', 'closer')
   @Post('plans')
   createPlan(@Body() dto: CreatePlanDto) {
     return this.service.createPlan(dto);

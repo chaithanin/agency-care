@@ -2,7 +2,7 @@ import { Controller, Post } from '@nestjs/common';
 import { AnalyticsService } from './analytics.service';
 import { Roles } from '../auth/guards';
 
-@Roles('admin', 'manager')
+@Roles('admin', 'closer')
 @Controller('analytics')
 export class AnalyticsController {
   constructor(private service: AnalyticsService) {}

@@ -17,7 +17,7 @@ export class ModelController {
     return this.service.list();
   }
 
-  @Roles('admin', 'manager')
+  @Roles('admin', 'closer')
   @Post()
   create(@Body() dto: CreateModelDto) {
     return this.service.create(dto);
@@ -34,7 +34,7 @@ export class ModelController {
     return this.service.returnToStock(user, dto);
   }
 
-  @Roles('admin', 'manager')
+  @Roles('admin', 'closer')
   @Patch(':id/status')
   setStatus(@Param('id') id: string, @Body() dto: UpdateModelStatusDto) {
     return this.service.setStatus(id, dto);

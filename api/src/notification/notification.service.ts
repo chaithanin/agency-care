@@ -66,7 +66,7 @@ export class NotificationService {
         this.prisma.visitPlan.groupBy({ by: ['employeeId'], where: { planDate: { gte: day, lt: nextDay }, status: 'done' }, _count: { _all: true } }),
         this.prisma.visitPlan.groupBy({ by: ['employeeId'], where: { planDate: { gte: day, lt: nextDay } }, _count: { _all: true } }),
         this.prisma.employee.findMany({ where: { position: { in: ['sales', 'closer'] }, isActive: true }, select: { id: true, name: true } }),
-        this.prisma.user.findMany({ where: { role: { in: ['admin', 'manager'] }, isActive: true }, select: { email: true, employee: { select: { lineUserId: true } } } }),
+        this.prisma.user.findMany({ where: { role: { in: ['admin', 'closer'] }, isActive: true }, select: { email: true, employee: { select: { lineUserId: true } } } }),
       ]);
     const lowStock = items.filter((i) => i.reorderPoint > 0 && i.stockQty <= i.reorderPoint);
     const dMap = new Map(doneByEmp.map((d) => [d.employeeId, d._count._all]));

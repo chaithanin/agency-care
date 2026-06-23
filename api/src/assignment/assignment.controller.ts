@@ -11,7 +11,7 @@ class AssignDto {
   employeeId!: string;
 }
 
-@Roles('admin', 'manager')
+@Roles('admin', 'closer')
 @Controller('assignments')
 export class AssignmentController {
   constructor(private service: AssignmentService) {}

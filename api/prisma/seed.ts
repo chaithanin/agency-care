@@ -10,7 +10,7 @@ function todayUtc(): Date {
 }
 
 // สร้าง user (login) แบบ idempotent
-async function upsertUser(email: string, password: string, name: string, role: 'admin' | 'manager' | 'sales') {
+async function upsertUser(email: string, password: string, name: string, role: 'admin' | 'closer' | 'sales') {
   const passwordHash = await argon2.hash(password);
   return prisma.user.upsert({
     where: { email },

@@ -15,25 +15,25 @@ export class PosmController {
   }
 
   // Phase 7: คลังสื่อ + แจ้งเตือนสต็อกต่ำ
-  @Roles('admin', 'manager')
+  @Roles('admin', 'closer')
   @Get('inventory')
   inventory() {
     return this.service.inventory();
   }
 
-  @Roles('admin', 'manager')
+  @Roles('admin', 'closer')
   @Post('items/:id/adjust')
   adjust(@Param('id') id: string, @Body() dto: AdjustStockDto) {
     return this.service.adjustStock(id, dto.delta);
   }
 
-  @Roles('admin', 'manager')
+  @Roles('admin', 'closer')
   @Post('items')
   createItem(@Body() dto: CreatePosmItemDto) {
     return this.service.createItem(dto);
   }
 
-  @Roles('admin', 'manager')
+  @Roles('admin', 'closer')
   @Patch('items/:id')
   updateItem(@Param('id') id: string, @Body() dto: UpdatePosmItemDto) {
     return this.service.updateItem(id, dto);

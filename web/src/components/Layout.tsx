@@ -58,7 +58,9 @@ export default function Layout({ children }: { children: ReactNode }) {
   const loc = useLocation();
   const theme = useTheme();
   const mdUp = useMediaQuery(theme.breakpoints.up('md'));
-  const isManager = user?.role === 'admin' || user?.role === 'manager';
+  const isAdmin = user?.role === 'admin';
+  const isCloser = user?.role === 'closer';
+  const isManager = isAdmin || isCloser;
   const [mobileOpen, setMobileOpen] = useState(false);
 
   // แจ้งเตือนงานเมื่อ sale/closer เข้าระบบ (ครั้งเดียวต่อ session)
@@ -81,25 +83,30 @@ export default function Layout({ children }: { children: ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
-  const navItems = isManager
+  const baseManagerNav = [
+    { to: '/', label: t('nav.dashboard'), icon: <DashboardRoundedIcon /> },
+    { to: '/agencies', label: t('nav.agency'), icon: <StorefrontRoundedIcon /> },
+    { to: '/employees', label: t('nav.employees'), icon: <GroupsRoundedIcon /> },
+    { to: '/plans', label: t('nav.plans'), icon: <EventNoteRoundedIcon /> },
+    { to: '/posm', label: t('nav.posm'), icon: <CampaignRoundedIcon /> },
+    { to: '/products', label: t('nav.products'), icon: <Inventory2RoundedIcon /> },
+    { to: '/models', label: t('nav.models'), icon: <DevicesOtherRoundedIcon /> },
+    { to: '/route', label: t('nav.route'), icon: <RouteRoundedIcon /> },
+    { to: '/scheduling', label: t('nav.scheduling'), icon: <ScheduleRoundedIcon /> },
+    { to: '/calendar', label: t('nav.calendar'), icon: <CalendarMonthRoundedIcon /> },
+    { to: '/seller-performance', label: t('nav.sellerPerf'), icon: <LeaderboardRoundedIcon /> },
+    { to: '/pipeline', label: t('nav.pipeline'), icon: <AccountTreeRoundedIcon /> },
+    { to: '/kpi', label: t('nav.kpi'), icon: <SpeedRoundedIcon /> },
+  ];
+  const navItems = isAdmin
     ? [
-        { to: '/', label: t('nav.dashboard'), icon: <DashboardRoundedIcon /> },
-        { to: '/agencies', label: t('nav.agency'), icon: <StorefrontRoundedIcon /> },
-        { to: '/employees', label: t('nav.employees'), icon: <GroupsRoundedIcon /> },
-        { to: '/plans', label: t('nav.plans'), icon: <EventNoteRoundedIcon /> },
-        { to: '/posm', label: t('nav.posm'), icon: <CampaignRoundedIcon /> },
-        { to: '/products', label: t('nav.products'), icon: <Inventory2RoundedIcon /> },
-        { to: '/models', label: t('nav.models'), icon: <DevicesOtherRoundedIcon /> },
-        { to: '/route', label: t('nav.route'), icon: <RouteRoundedIcon /> },
-        { to: '/scheduling', label: t('nav.scheduling'), icon: <ScheduleRoundedIcon /> },
-        { to: '/calendar', label: t('nav.calendar'), icon: <CalendarMonthRoundedIcon /> },
-        { to: '/seller-performance', label: t('nav.sellerPerf'), icon: <LeaderboardRoundedIcon /> },
-        { to: '/pipeline', label: t('nav.pipeline'), icon: <AccountTreeRoundedIcon /> },
-        { to: '/kpi', label: t('nav.kpi'), icon: <SpeedRoundedIcon /> },
+        ...baseManagerNav,
         { to: '/auto-assign', label: t('nav.autoassign'), icon: <AutoAwesomeRoundedIcon /> },
         { to: '/analytics', label: t('nav.ai'), icon: <PsychologyRoundedIcon /> },
-        ...(user?.role === 'admin' ? [{ to: '/users', label: t('nav.users'), icon: <ManageAccountsRoundedIcon /> }] : []),
+        { to: '/users', label: t('nav.users'), icon: <ManageAccountsRoundedIcon /> },
       ]
+    : isCloser
+    ? baseManagerNav
     : [
         { to: '/', label: t('nav.myWork'), icon: <HomeRoundedIcon /> },
         { to: '/my-day', label: t('nav.myDay'), icon: <TodayRoundedIcon /> },

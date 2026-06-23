@@ -2,7 +2,7 @@ import { Controller, Get, Query } from '@nestjs/common';
 import { DashboardService } from './dashboard.service';
 import { Roles } from '../auth/guards';
 
-@Roles('admin', 'manager')
+@Roles('admin', 'closer')
 @Controller('dashboard')
 export class DashboardController {
   constructor(private service: DashboardService) {}

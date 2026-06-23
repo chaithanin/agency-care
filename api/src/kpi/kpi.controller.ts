@@ -2,7 +2,7 @@ import { Controller, Get, Query } from '@nestjs/common';
 import { KpiService } from './kpi.service';
 import { Roles } from '../auth/guards';
 
-@Roles('admin', 'manager')
+@Roles('admin', 'closer')
 @Controller('kpi')
 export class KpiController {
   constructor(private service: KpiService) {}

@@ -17,8 +17,8 @@ interface User {
   isActive: boolean;
   employee?: { id: string; code: string; name: string } | null;
 }
-const ROLES = ['admin', 'manager', 'sales'];
-const roleColor = (r: string) => (r === 'admin' ? 'error' : r === 'manager' ? 'warning' : 'primary');
+const ROLES = ['admin', 'closer', 'sales'];
+const roleColor = (r: string) => (r === 'admin' ? 'error' : r === 'closer' ? 'warning' : 'primary');
 const emptyCreate = { email: '', name: '', password: '', role: 'sales' };
 
 export default function UsersPage() {

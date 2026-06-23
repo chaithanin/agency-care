@@ -43,7 +43,7 @@ export default function App() {
     );
   }
 
-  const isManager = user.role === 'admin' || user.role === 'manager';
+  const isManager = user.role === 'admin' || user.role === 'closer';
 
   return (
     <Layout>
