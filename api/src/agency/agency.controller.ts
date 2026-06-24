@@ -87,4 +87,30 @@ export class AgencyController {
   update(@CurrentUser() user: RequestUser, @Param('id') id: string, @Body() dto: UpdateAgencyDto) {
     return this.service.update(id, dto, user.id);
   }
+
+  // ─── Approval Workflow ─────────────────────────────────────────────────────
+
+  @Get('approval-queue')
+  @Roles('admin', 'super_admin', 'closer')
+  approvalQueue(@Query('status') status?: string) {
+    return this.service.listByApprovalStatus(status ?? 'pending_approval');
+  }
+
+  @Patch(':id/submit-approval')
+  @Roles('admin', 'closer', 'sales')
+  submitApproval(@Param('id') id: string, @CurrentUser() user: RequestUser) {
+    return this.service.submitForApproval(id, user.id);
+  }
+
+  @Patch(':id/approve')
+  @Roles('admin', 'super_admin')
+  approveAgency(@Param('id') id: string, @CurrentUser() user: RequestUser) {
+    return this.service.approveAgency(id, user.id);
+  }
+
+  @Patch(':id/reject-approval')
+  @Roles('admin', 'super_admin')
+  rejectAgency(@Param('id') id: string, @CurrentUser() user: RequestUser, @Body() body: { reason?: string }) {
+    return this.service.rejectAgency(id, user.id, body.reason);
+  }
 }

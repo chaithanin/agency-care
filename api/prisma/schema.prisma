@@ -142,6 +142,7 @@ model User {
   createdPlans   AssignmentPlan[]    @relation("PlanCreatedBy")
   approvedPlans  AssignmentPlan[]    @relation("PlanApprovedBy")
   planVersions   PlanVersion[]
+  leaveApprovals LeaveRequest[]      @relation("LeaveApprovedBy")
 
   @@map("users")
 }
@@ -176,6 +177,7 @@ model Employee {
   closerAgencies Agency[]        @relation("AgencyCloser")
   tasks          Task[]
   planVersionItems PlanVersionItem[]
+  leaveRequests  LeaveRequest[]
 
   @@index([zone])
   @@index([teamId])
@@ -866,4 +868,31 @@ model PlanVersionItem {
   @@index([agencyId])
   @@index([employeeId])
   @@map("plan_version_items")
+}
+
+// ============================================================
+// Leave Management — ใบลาพนักงาน
+// ============================================================
+model LeaveRequest {
+  id             String    @id @default(cuid())
+  employeeId     String    @map("employee_id")
+  leaveType      String    @map("leave_type") // sick/annual/personal/other
+  startDate      DateTime  @map("start_date") @db.Date
+  endDate        DateTime  @map("end_date") @db.Date
+  days           Int
+  reason         String?
+  status         String    @default("pending") // pending/approved/rejected/cancelled
+  approvedById   String?   @map("approved_by_id")
+  approvedAt     DateTime? @map("approved_at")
+  rejectedReason String?   @map("rejected_reason")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  approvedBy User?    @relation("LeaveApprovedBy", fields: [approvedById], references: [id], onDelete: SetNull)
+
+  @@index([employeeId])
+  @@index([status])
+  @@index([startDate])
+  @@map("leave_requests")
 }

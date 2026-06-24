@@ -29,6 +29,7 @@ import ReportsPage from './pages/ReportsPage';
 import AgencyInfoFormPage from './pages/AgencyInfoFormPage';
 import AutoAssignPage from './pages/AutoAssignPage';
 import SettingsPage from './pages/SettingsPage';
+import LeavePage from './pages/LeavePage';
 
 function Splash() {
   return (
@@ -76,6 +77,7 @@ export default function App() {
             <Route path="/analytics" element={<AnalyticsPage />} />
             <Route path="/site-visit-report" element={<SiteVisitReportPage />} />
             <Route path="/reports" element={<ReportsPage />} />
+            <Route path="/leave" element={<LeavePage />} />
             <Route path="/settings" element={<SettingsPage />} />
           </>
         ) : (
@@ -87,6 +89,7 @@ export default function App() {
         )}
         <Route path="/route" element={<RoutePage />} />
         <Route path="/tasks" element={<TasksPage />} />
+        <Route path="/leave" element={<LeavePage />} />
         <Route path="/notifications" element={<NotificationsPage />} />
         <Route path="/visits/:id" element={<VisitDetailPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />

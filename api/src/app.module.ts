@@ -30,6 +30,7 @@ import { AssignmentPlanModule } from './assignment-plan/assignment-plan.module';
 import { ReportModule } from './report/report.module';
 import { FollowupModule } from './followup/followup.module';
 import { NotificationsModule } from './notifications/notifications.module';
+import { LeaveModule } from './leave/leave.module';
 
 @Module({
   imports: [
@@ -71,6 +72,7 @@ import { NotificationsModule } from './notifications/notifications.module';
     ReportModule,
     FollowupModule,
     NotificationsModule,
+    LeaveModule,
   ],
   controllers: [AppController],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],

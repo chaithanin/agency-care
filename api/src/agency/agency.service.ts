@@ -370,4 +370,57 @@ export class AgencyService {
       note: 'พิกัด auto (google) ควรตรวจความถูกต้องก่อนใช้ check-in',
     };
   }
+
+  // ─── Agency Approval Workflow ──────────────────────────────────────────────
+
+  async submitForApproval(id: string, userId: string) {
+    const agency = await this.prisma.agency.findUnique({ where: { id } });
+    if (!agency) throw new Error('Agency not found');
+    const updated = await this.prisma.agency.update({
+      where: { id },
+      data: { approvalStatus: 'pending_approval' },
+    });
+    await this.prisma.auditLog.create({
+      data: { userId, action: 'update', entity: 'agency', entityId: id,
+        metadata: { changes: ['approvalStatus: draft → pending_approval'] } },
+    });
+    return updated;
+  }
+
+  async approveAgency(id: string, userId: string) {
+    const agency = await this.prisma.agency.findUnique({ where: { id } });
+    if (!agency) throw new Error('Agency not found');
+    const updated = await this.prisma.agency.update({
+      where: { id },
+      data: { approvalStatus: 'approved' },
+    });
+    await this.prisma.auditLog.create({
+      data: { userId, action: 'update', entity: 'agency', entityId: id,
+        metadata: { changes: [`approvalStatus: ${agency.approvalStatus} → approved`] } },
+    });
+    return updated;
+  }
+
+  async rejectAgency(id: string, userId: string, reason?: string) {
+    const agency = await this.prisma.agency.findUnique({ where: { id } });
+    if (!agency) throw new Error('Agency not found');
+    const updated = await this.prisma.agency.update({
+      where: { id },
+      data: { approvalStatus: 'draft' },
+    });
+    await this.prisma.auditLog.create({
+      data: { userId, action: 'update', entity: 'agency', entityId: id,
+        metadata: { changes: [`approvalStatus: ${agency.approvalStatus} → draft`], reason } },
+    });
+    return updated;
+  }
+
+  async listByApprovalStatus(status: string) {
+    return this.prisma.agency.findMany({
+      where: { approvalStatus: status },
+      select: { id: true, code: true, name: true, zone: true, approvalStatus: true,
+        createdAt: true, addedBy: { select: { name: true, code: true } } },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
 }

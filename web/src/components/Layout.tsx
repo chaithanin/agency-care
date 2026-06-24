@@ -42,6 +42,7 @@ import VisibilityRoundedIcon from '@mui/icons-material/VisibilityRounded';
 import SettingsRoundedIcon from '@mui/icons-material/SettingsRounded';
 import AssessmentRoundedIcon from '@mui/icons-material/AssessmentRounded';
 import DirectionsWalkRoundedIcon from '@mui/icons-material/DirectionsWalkRounded';
+import BeachAccessRoundedIcon from '@mui/icons-material/BeachAccessRounded';
 import Hub from '@mui/icons-material/HubRounded';
 import { useAuth, type Role } from '../auth/AuthContext';
 import { useT } from '../i18n';
@@ -136,6 +137,7 @@ export default function Layout({ children }: { children: ReactNode }) {
       ),
     },
     { to: '/reports', label: 'Reports', icon: <AssessmentRoundedIcon /> },
+    { to: '/leave', label: 'Leave', icon: <BeachAccessRoundedIcon /> },
     { to: '/settings', label: 'Settings', icon: <SettingsRoundedIcon /> },
   ];
   const navItems = isManager
@@ -145,6 +147,7 @@ export default function Layout({ children }: { children: ReactNode }) {
         { to: '/my-day', label: 'My Day', icon: <TodayRoundedIcon /> },
         { to: '/route', label: 'Route', icon: <RouteRoundedIcon /> },
         { to: '/tasks', label: 'Task', icon: <AssignmentRoundedIcon /> },
+        { to: '/leave', label: 'Leave', icon: <BeachAccessRoundedIcon /> },
         {
           to: '/notifications',
           label: 'Notification',
