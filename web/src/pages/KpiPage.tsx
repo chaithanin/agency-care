@@ -255,7 +255,7 @@ function OrgSummarySection({ org }: { org: OrgKpi }) {
   return (
     <Box>
       <Typography variant="subtitle1" fontWeight={600} mb={1}>
-        ภาพรวมองค์กร
+        {t('kpi.orgSummaryTitle')}
       </Typography>
       <Grid container spacing={2}>
         <Grid item xs={12} sm={6} md={4}>
@@ -268,7 +268,7 @@ function OrgSummarySection({ org }: { org: OrgKpi }) {
         </Grid>
         <Grid item xs={12} sm={6} md={4}>
           <MetricCard
-            label="Agency ที่ active"
+            label={t('kpi.activeAgenciesLabel')}
             actual={org.activeAgencies}
             target={org.totalAgencies}
             pct={org.coverageRate}
@@ -278,7 +278,7 @@ function OrgSummarySection({ org }: { org: OrgKpi }) {
           <MetricCard
             label={t('kpi.sales')}
             actual={isNaN(totalSalesNum) ? 0 : totalSalesNum}
-            suffix=" บาท"
+            suffix={t('kpi.bahtSuffix')}
           />
         </Grid>
       </Grid>
@@ -353,10 +353,10 @@ export default function KpiPage() {
         </Typography>
         <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
           <FormControl size="small" sx={{ minWidth: 140 }}>
-            <InputLabel>เดือน</InputLabel>
+            <InputLabel>{t('kpi.monthLabel')}</InputLabel>
             <Select
               value={period}
-              label="เดือน"
+              label={t('kpi.monthLabel')}
               onChange={(e) => setPeriod(e.target.value)}
             >
               {periods.map((p) => (
@@ -373,7 +373,7 @@ export default function KpiPage() {
             onClick={loadData}
             disabled={loading}
           >
-            รีเฟรช
+            {t('kpi.refresh')}
           </Button>
           <PdfExportButton targetRef={pdfRef} filename={`kpi-${period}.pdf`} />
         </Stack>
@@ -400,7 +400,7 @@ export default function KpiPage() {
           {myKpi && (
             <Box>
               <Typography variant="subtitle1" fontWeight={600} mb={1}>
-                สรุปทีม
+                {t('kpi.teamSummaryTitle')}
               </Typography>
               <Grid container spacing={2}>
                 <Grid item xs={12} sm={4}>
@@ -425,7 +425,7 @@ export default function KpiPage() {
                   <Card variant="outlined">
                     <CardContent>
                       <Typography variant="caption" color="text.secondary">
-                        {t('c.agency')} ใหม่
+                        {t('kpi.newAgencyLabel')}
                       </Typography>
                       <Typography variant="h5" fontWeight={700}>
                         {myKpi.newAgencies ?? 0}
@@ -437,7 +437,7 @@ export default function KpiPage() {
                   <Card variant="outlined">
                     <CardContent>
                       <Typography variant="caption" color="text.secondary">
-                        จำนวนเซลส์
+                        {t('kpi.teamSize')}
                       </Typography>
                       <Typography variant="h5" fontWeight={700}>
                         {myKpi.teamSize ?? 0}
@@ -467,7 +467,7 @@ export default function KpiPage() {
               <Divider />
               <Box>
                 <Typography variant="subtitle1" fontWeight={600} mb={1}>
-                  KPI รายบุคคล
+                  {t('kpi.individualTitle')}
                 </Typography>
                 <TeamKpiTable rows={teamKpi} />
               </Box>
@@ -479,7 +479,7 @@ export default function KpiPage() {
       {/* Empty state */}
       {!loading && !error && !myKpi && teamKpi.length === 0 && !orgKpi && (
         <Typography color="text.secondary" sx={{ mt: 2 }}>
-          ไม่มีข้อมูล
+          {t('kpi.noData')}
         </Typography>
       )}
     </Box>

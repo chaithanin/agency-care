@@ -10,6 +10,7 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import CancelIcon from '@mui/icons-material/Cancel';
 import { api, errMsg } from '../api/client';
 import { useAuth } from '../auth/AuthContext';
+import { useT } from '../i18n';
 
 interface LeaveRequest {
   id: string;
@@ -25,36 +26,39 @@ interface LeaveRequest {
   approvedBy?: { id: string; name: string };
 }
 
-const LEAVE_TYPES = [
-  { value: 'sick', label: 'ลาป่วย' },
-  { value: 'annual', label: 'ลาพักร้อน' },
-  { value: 'personal', label: 'ลากิจ' },
-  { value: 'other', label: 'อื่นๆ' },
-];
-
-function statusColor(s: string): 'default' | 'warning' | 'success' | 'error' | 'info' {
-  if (s === 'pending') return 'warning';
-  if (s === 'approved') return 'success';
-  if (s === 'rejected') return 'error';
-  if (s === 'cancelled') return 'default';
-  return 'info';
-}
-
-function statusLabel(s: string) {
-  const m: Record<string, string> = {
-    pending: 'รอการอนุมัติ', approved: 'อนุมัติแล้ว',
-    rejected: 'ปฏิเสธ', cancelled: 'ยกเลิก',
-  };
-  return m[s] ?? s;
-}
-
-function leaveTypeLabel(t: string) {
-  return LEAVE_TYPES.find((x) => x.value === t)?.label ?? t;
-}
-
 export default function LeavePage() {
+  const { t } = useT();
   const { user } = useAuth();
   const isManager = ['admin', 'super_admin', 'closer'].includes(user?.activeRole ?? '');
+
+  const LEAVE_TYPES = [
+    { value: 'sick', label: t('leave.typeSick') },
+    { value: 'annual', label: t('leave.typeAnnual') },
+    { value: 'personal', label: t('leave.typePersonal') },
+    { value: 'other', label: t('leave.typeOther') },
+  ];
+
+  function statusColor(s: string): 'default' | 'warning' | 'success' | 'error' | 'info' {
+    if (s === 'pending') return 'warning';
+    if (s === 'approved') return 'success';
+    if (s === 'rejected') return 'error';
+    if (s === 'cancelled') return 'default';
+    return 'info';
+  }
+
+  function statusLabel(s: string) {
+    const m: Record<string, string> = {
+      pending: t('leave.statusPending'),
+      approved: t('leave.statusApproved'),
+      rejected: t('leave.statusRejected'),
+      cancelled: t('leave.statusCancelled'),
+    };
+    return m[s] ?? s;
+  }
+
+  function leaveTypeLabel(lt: string) {
+    return LEAVE_TYPES.find((x) => x.value === lt)?.label ?? lt;
+  }
 
   const [rows, setRows] = useState<LeaveRequest[]>([]);
   const [tab, setTab] = useState<'all' | 'pending' | 'approved'>('all');
@@ -64,7 +68,6 @@ export default function LeavePage() {
   const [err, setErr] = useState('');
   const [saving, setSaving] = useState(false);
 
-  // new leave form
   const [leaveType, setLeaveType] = useState('sick');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -84,7 +87,7 @@ export default function LeavePage() {
   };
 
   const handleSubmit = async () => {
-    if (!startDate || !endDate) { setErr('กรุณาระบุวันที่'); return; }
+    if (!startDate || !endDate) { setErr(t('leave.dateRequired')); return; }
     setSaving(true); setErr('');
     try {
       await api.post('/leave', { leaveType, startDate, endDate, days: calcDays(), reason });
@@ -117,31 +120,31 @@ export default function LeavePage() {
     <Box>
       <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2}>
         <Typography variant="h5" fontWeight={700}>
-          ใบลาพนักงาน
+          {t('leave.title')}
         </Typography>
         <Button variant="contained" startIcon={<AddIcon />} onClick={() => { setOpenAdd(true); setErr(''); }}>
-          ยื่นใบลา
+          {t('leave.submit')}
         </Button>
       </Stack>
 
       <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ mb: 2 }}>
-        <Tab value="all" label="ทั้งหมด" />
-        <Tab value="pending" label="รอการอนุมัติ" />
-        <Tab value="approved" label="อนุมัติแล้ว" />
+        <Tab value="all" label={t('leave.tabAll')} />
+        <Tab value="pending" label={t('leave.tabPending')} />
+        <Tab value="approved" label={t('leave.tabApproved')} />
       </Tabs>
 
       <Paper variant="outlined">
         <Table size="small">
           <TableHead>
             <TableRow>
-              {isManager && <TableCell>พนักงาน</TableCell>}
-              <TableCell>ประเภทการลา</TableCell>
-              <TableCell>วันที่เริ่ม</TableCell>
-              <TableCell>วันที่สิ้นสุด</TableCell>
-              <TableCell align="center">จำนวนวัน</TableCell>
-              <TableCell>เหตุผล</TableCell>
-              <TableCell>สถานะ</TableCell>
-              <TableCell align="right">การดำเนินการ</TableCell>
+              {isManager && <TableCell>{t('leave.colEmployee')}</TableCell>}
+              <TableCell>{t('leave.colType')}</TableCell>
+              <TableCell>{t('leave.colStart')}</TableCell>
+              <TableCell>{t('leave.colEnd')}</TableCell>
+              <TableCell align="center">{t('leave.colDays')}</TableCell>
+              <TableCell>{t('leave.colReason')}</TableCell>
+              <TableCell>{t('leave.colStatus')}</TableCell>
+              <TableCell align="right">{t('leave.colAction')}</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -161,7 +164,7 @@ export default function LeavePage() {
                   <Typography variant="caption">{r.reason || '—'}</Typography>
                   {r.rejectedReason && (
                     <Typography variant="caption" color="error" display="block">
-                      เหตุผลปฏิเสธ: {r.rejectedReason}
+                      {t('leave.rejectedPrefix')}{r.rejectedReason}
                     </Typography>
                   )}
                 </TableCell>
@@ -174,22 +177,22 @@ export default function LeavePage() {
                       <>
                         <Button size="small" color="success" startIcon={<CheckCircleIcon />}
                           onClick={() => handleApprove(r.id)}>
-                          อนุมัติ
+                          {t('leave.approve')}
                         </Button>
                         <Button size="small" color="error" startIcon={<CancelIcon />}
                           onClick={() => { setRejectId(r.id); setRejectReason(''); }}>
-                          ปฏิเสธ
+                          {t('leave.reject')}
                         </Button>
                       </>
                     )}
                     {!isManager && r.status === 'pending' && (
                       <Button size="small" color="error" onClick={() => handleCancel(r.id)}>
-                        ยกเลิก
+                        {t('leave.cancel')}
                       </Button>
                     )}
                     {r.approvedBy && (
                       <Typography variant="caption" color="text.secondary" sx={{ alignSelf: 'center' }}>
-                        โดย {r.approvedBy.name}
+                        {t('leave.approvedBy')} {r.approvedBy.name}
                       </Typography>
                     )}
                   </Stack>
@@ -200,7 +203,7 @@ export default function LeavePage() {
               <TableRow>
                 <TableCell colSpan={isManager ? 8 : 7} align="center">
                   <Typography variant="body2" color="text.secondary" sx={{ py: 2 }}>
-                    ไม่มีรายการ
+                    {t('leave.noData')}
                   </Typography>
                 </TableCell>
               </TableRow>
@@ -211,51 +214,51 @@ export default function LeavePage() {
 
       {/* Add Leave Dialog */}
       <Dialog open={openAdd} onClose={() => setOpenAdd(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>ยื่นใบลา</DialogTitle>
+        <DialogTitle>{t('leave.submit')}</DialogTitle>
         <DialogContent>
           <Stack spacing={2} mt={1}>
             {err && <Alert severity="error">{err}</Alert>}
             <FormControl fullWidth size="small">
-              <InputLabel>ประเภทการลา</InputLabel>
-              <Select value={leaveType} label="ประเภทการลา" onChange={(e) => setLeaveType(e.target.value)}>
+              <InputLabel>{t('leave.colType')}</InputLabel>
+              <Select value={leaveType} label={t('leave.colType')} onChange={(e) => setLeaveType(e.target.value)}>
                 {LEAVE_TYPES.map((x) => (
                   <MenuItem key={x.value} value={x.value}>{x.label}</MenuItem>
                 ))}
               </Select>
             </FormControl>
             <Stack direction="row" spacing={2}>
-              <TextField fullWidth size="small" type="date" label="วันที่เริ่ม" InputLabelProps={{ shrink: true }}
+              <TextField fullWidth size="small" type="date" label={t('leave.colStart')} InputLabelProps={{ shrink: true }}
                 value={startDate} onChange={(e) => setStartDate(e.target.value)} />
-              <TextField fullWidth size="small" type="date" label="วันที่สิ้นสุด" InputLabelProps={{ shrink: true }}
+              <TextField fullWidth size="small" type="date" label={t('leave.colEnd')} InputLabelProps={{ shrink: true }}
                 value={endDate} onChange={(e) => setEndDate(e.target.value)} />
             </Stack>
             {startDate && endDate && (
               <Typography variant="body2" color="text.secondary">
-                รวม {calcDays()} วัน
+                {t('leave.totalDays')} {calcDays()} {t('leave.days')}
               </Typography>
             )}
-            <TextField fullWidth size="small" multiline rows={2} label="เหตุผล (ถ้ามี)"
+            <TextField fullWidth size="small" multiline rows={2} label={t('leave.reasonOpt')}
               value={reason} onChange={(e) => setReason(e.target.value)} />
           </Stack>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpenAdd(false)}>ยกเลิก</Button>
+          <Button onClick={() => setOpenAdd(false)}>{t('common.cancel')}</Button>
           <Button variant="contained" onClick={handleSubmit} disabled={saving}>
-            {saving ? 'กำลังส่ง...' : 'ยื่นใบลา'}
+            {saving ? t('leave.submitting') : t('leave.submit')}
           </Button>
         </DialogActions>
       </Dialog>
 
       {/* Reject Dialog */}
       <Dialog open={!!rejectId} onClose={() => setRejectId(null)} maxWidth="xs" fullWidth>
-        <DialogTitle>ปฏิเสธใบลา</DialogTitle>
+        <DialogTitle>{t('leave.rejectTitle')}</DialogTitle>
         <DialogContent>
-          <TextField fullWidth size="small" multiline rows={2} label="เหตุผล (ถ้ามี)" sx={{ mt: 1 }}
+          <TextField fullWidth size="small" multiline rows={2} label={t('leave.reasonOpt')} sx={{ mt: 1 }}
             value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} />
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setRejectId(null)}>ยกเลิก</Button>
-          <Button color="error" variant="contained" onClick={handleReject}>ปฏิเสธ</Button>
+          <Button onClick={() => setRejectId(null)}>{t('common.cancel')}</Button>
+          <Button color="error" variant="contained" onClick={handleReject}>{t('leave.reject')}</Button>
         </DialogActions>
       </Dialog>
     </Box>

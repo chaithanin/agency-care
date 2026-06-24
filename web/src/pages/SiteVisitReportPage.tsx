@@ -583,7 +583,7 @@ export default function SiteVisitReportPage() {
           <KpiCard icon={<CalendarToday />} label="Confirmed" value={summary?.confirmed ?? 0} color="info.main" />
           <KpiCard icon={<Warning />} label="Overdue" value={summary?.overdue ?? 0} color="warning.main" />
           <KpiCard icon={<Close sx={{ fontSize: 20 }} />} label="Cancelled" value={summary?.cancelled ?? 0} color="error.main" />
-          <KpiCard icon={<Place />} label="Check-in ✓" value={summary?.checkinSuccess ?? 0} color="success.dark" />
+          <KpiCard icon={<Place />} label={t('svr.checkinSuccess')} value={summary?.checkinSuccess ?? 0} color="success.dark" />
           <KpiCard icon={<PhotoCamera />} label="Photos" value={summary?.photosUploaded ?? 0} color="secondary.main" />
         </Stack>
       </Paper>

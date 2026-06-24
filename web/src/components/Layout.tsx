@@ -137,7 +137,7 @@ export default function Layout({ children }: { children: ReactNode }) {
       ),
     },
     { to: '/reports', label: 'Reports', icon: <AssessmentRoundedIcon /> },
-    { to: '/leave', label: 'Leave', icon: <BeachAccessRoundedIcon /> },
+    { to: '/leave', label: t('nav.leave'), icon: <BeachAccessRoundedIcon /> },
     { to: '/settings', label: 'Settings', icon: <SettingsRoundedIcon /> },
   ];
   const navItems = isManager
@@ -147,7 +147,7 @@ export default function Layout({ children }: { children: ReactNode }) {
         { to: '/my-day', label: 'My Day', icon: <TodayRoundedIcon /> },
         { to: '/route', label: 'Route', icon: <RouteRoundedIcon /> },
         { to: '/tasks', label: 'Task', icon: <AssignmentRoundedIcon /> },
-        { to: '/leave', label: 'Leave', icon: <BeachAccessRoundedIcon /> },
+        { to: '/leave', label: t('nav.leave'), icon: <BeachAccessRoundedIcon /> },
         {
           to: '/notifications',
           label: 'Notification',

@@ -325,7 +325,7 @@ function MonthlyTab() {
       {data && data.rows.length > 0 && (
         <Paper sx={{ borderRadius: 3 }}>
           <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ p: 2, borderBottom: '1px solid', borderColor: 'divider' }}>
-            <Typography fontWeight={700}>Monthly Report Submission Log — {monthName(year, month)}</Typography>
+            <Typography fontWeight={700}>{t('svr.monthlyLog')} — {monthName(year, month)}</Typography>
             <Tooltip title={t('rpt.exportTooltip')}>
               <span><Button size="small" startIcon={<Download />} disabled>Export Excel</Button></span>
             </Tooltip>
@@ -777,10 +777,10 @@ function DailyTrackerTab() {
       <Stack direction="row" spacing={2} mb={2} alignItems="center">
         <Typography variant="caption" color="text.secondary">{t('rpt.colorLegend')}</Typography>
         <Box sx={{ px: 1.5, py: 0.3, bgcolor: 'success.light', borderRadius: 1 }}>
-          <Typography variant="caption">≥3 visit</Typography>
+          <Typography variant="caption">{t('svr.visitGeq3')}</Typography>
         </Box>
         <Box sx={{ px: 1.5, py: 0.3, bgcolor: 'warning.light', borderRadius: 1 }}>
-          <Typography variant="caption">1–2 visit</Typography>
+          <Typography variant="caption">{t('svr.visit12')}</Typography>
         </Box>
         <Box sx={{ px: 1.5, py: 0.3, bgcolor: 'grey.200', borderRadius: 1 }}>
           <Typography variant="caption">{t('rpt.zeroWorkday')}</Typography>
@@ -792,7 +792,7 @@ function DailyTrackerTab() {
           <Stack direction="row" justifyContent="space-between" alignItems="center"
             sx={{ p: 2, borderBottom: '1px solid', borderColor: 'divider' }}>
             <Typography fontWeight={700}>
-              Daily Visit Tracker — {MONTHS.find(m => m.val === data.month)?.label} {data.year + 543}
+              {t('svr.dailyTracker')} — {MONTHS.find(m => m.val === data.month)?.label} {data.year + 543}
               {' '}({data.half === 1 ? t('rpt.halfFirst') : t('rpt.halfSecond')})
             </Typography>
             <Typography variant="caption" color="text.secondary">
@@ -906,6 +906,7 @@ function DailyTrackerTab() {
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function ReportsPage() {
+  const { t } = useT();
   const [tab, setTab] = useState(0);
 
   return (
@@ -918,7 +919,7 @@ export default function ReportsPage() {
           <Tab icon={<CalendarMonth fontSize="small" />} iconPosition="start" label="Monthly Log" />
           <Tab icon={<EmojiEvents fontSize="small" />} iconPosition="start" label="Agency Performance" />
           <Tab icon={<BusinessCenter fontSize="small" />} iconPosition="start" label="Agency Activity Report" />
-          <Tab icon={<TableChart fontSize="small" />} iconPosition="start" label="Daily Visit Tracker" />
+          <Tab icon={<TableChart fontSize="small" />} iconPosition="start" label={t('svr.dailyTracker')} />
         </Tabs>
       </Paper>
 
