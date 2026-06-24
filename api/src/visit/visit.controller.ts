@@ -148,8 +148,9 @@ export class VisitController {
     @Query('province') province?: string,
     @Query('agencyLevel') agencyLevel?: string,
     @Query('agencyType') agencyType?: string,
+    @Query('closerId') closerId?: string,
   ) {
-    return this.service.getReportList(user, { from, to, date, employeeId, agencyId, status, province, agencyLevel, agencyType });
+    return this.service.getReportList(user, { from, to, date, employeeId, agencyId, status, province, agencyLevel, agencyType, closerId });
   }
 
   // ---- AI Insight ----

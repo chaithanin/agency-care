@@ -32,6 +32,7 @@ import {
   CalendarToday,
   CheckCircle,
   Close,
+  Download,
   FilterList,
   OpenInNew,
   PendingActions,
@@ -59,6 +60,7 @@ interface ReportRow {
   callConfirmResult?: string | null;
   agency: { id: string; code: string; name: string; zone?: string; province?: string; level?: string; type?: string };
   employee: { id: string; code: string; name: string };
+  closer?: { id: string; name: string; code: string } | null;
   checkin?: {
     id: string; checkinAt: string; checkOutAt?: string; durationMinutes?: number;
     withinRadius: boolean; distanceMeters: number;
@@ -72,6 +74,7 @@ interface ReportRow {
   } | null;
   workPhotos: { id: string; url: string; caption?: string; takenAt: string }[];
   tasks: { id: string; title: string; dueDate?: string }[];
+  posmItems?: { name: string; quantity: number; unit: string }[];
 }
 
 interface AiInsight {
@@ -110,6 +113,64 @@ const VISIT_TYPE_KEYS: Record<string, string> = {
 const todayStr = () => new Date().toISOString().slice(0, 10);
 const fmtDate = (d?: string) => d ? new Date(d).toLocaleDateString('th-TH', { day: '2-digit', month: '2-digit', year: '2-digit' }) : '-';
 const fmtTime = (d?: string) => d ? new Date(d).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }) : '-';
+
+const thisMonthRange = () => {
+  const now = new Date();
+  const from = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
+  const to = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().slice(0, 10);
+  return { from, to };
+};
+
+const lastMonthRange = () => {
+  const now = new Date();
+  const from = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString().slice(0, 10);
+  const to = new Date(now.getFullYear(), now.getMonth(), 0).toISOString().slice(0, 10);
+  return { from, to };
+};
+
+// ─── CSV Export ───────────────────────────────────────────────────────────────
+function exportCsv(rows: ReportRow[]) {
+  const escape = (v: string | number | undefined | null) => {
+    if (v == null) return '';
+    const s = String(v);
+    return s.includes(',') || s.includes('"') || s.includes('\n') ? `"${s.replace(/"/g, '""')}"` : s;
+  };
+  const header = [
+    'Date', 'Agency Code', 'Agency Name', 'Zone', 'Province', 'Level', 'Sale', 'Closer',
+    'Status', 'Check-in Time', 'Check-out Time', 'Duration (min)', 'Within Radius',
+    'Photos Count', 'Leads', 'Interest Level', 'Summary',
+  ].join(',');
+  const dataRows = rows.map((r) => {
+    const photoCount = (r.checkin?.photos.length ?? 0) + r.workPhotos.length;
+    return [
+      escape(fmtDate(r.planDate)),
+      escape(r.agency.code),
+      escape(r.agency.name),
+      escape(r.agency.zone),
+      escape(r.agency.province),
+      escape(r.agency.level),
+      escape(r.employee.name),
+      escape(r.closer?.name),
+      escape(r.status),
+      escape(fmtTime(r.checkin?.checkinAt)),
+      escape(fmtTime(r.checkin?.checkOutAt)),
+      escape(r.checkin?.durationMinutes),
+      escape(r.checkin ? (r.checkin.withinRadius ? 'Yes' : 'No') : ''),
+      escape(photoCount > 0 ? photoCount : 0),
+      escape(r.report?.newLeads),
+      escape(r.report?.interestLevel),
+      escape(r.report?.summary),
+    ].join(',');
+  });
+  const csv = [header, ...dataRows].join('\n');
+  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'site-visit-report.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
 // ─── KPI Card ─────────────────────────────────────────────────────────────────
 function KpiCard({ icon, label, value, color }: { icon: React.ReactNode; label: string; value: number; color: string }) {
@@ -208,6 +269,22 @@ function VisitDetailDialog({ row, onClose }: { row: ReportRow | null; onClose: (
               </Box>
             </Section>
           )}
+
+          {/* ── POSM / Materials Given ── */}
+          <Section title={t('svr.materialsGiven') || 'สิ่งที่นำไป / Materials Given'}>
+            {row.posmItems && row.posmItems.length > 0 ? (
+              <Stack spacing={0.5}>
+                {row.posmItems.map((item, i) => (
+                  <Stack key={i} direction="row" alignItems="center" spacing={1}>
+                    <Typography variant="body2" sx={{ flex: 1 }}>{item.name}</Typography>
+                    <Chip size="small" label={`${item.quantity} ${item.unit}`} variant="outlined" />
+                  </Stack>
+                ))}
+              </Stack>
+            ) : (
+              <Typography color="text.secondary" variant="body2">-</Typography>
+            )}
+          </Section>
 
           {/* ── Visit Report ── */}
           {row.report && (
@@ -355,6 +432,8 @@ function InfoItem({ label, value }: { label: string; value: React.ReactNode }) {
 export default function SiteVisitReportPage() {
   const { t } = useT();
   const { user } = useAuth();
+  const isAdmin = user?.activeRole === 'super_admin' || user?.activeRole === 'admin';
+  const isCloser = user?.activeRole === 'closer';
   const isManager = user?.activeRole !== 'sales';
 
   // Dashboard summary
@@ -365,7 +444,7 @@ export default function SiteVisitReportPage() {
   const [showFilter, setShowFilter] = useState(false);
   const [filters, setFilters] = useState({
     from: todayStr(), to: todayStr(),
-    employeeId: '', agencyId: '', status: '', province: '', agencyLevel: '', agencyType: '',
+    employeeId: '', agencyId: '', status: '', province: '', agencyLevel: '', agencyType: '', closerId: '',
   });
   const [appliedFilters, setAppliedFilters] = useState({ ...filters });
 
@@ -378,8 +457,12 @@ export default function SiteVisitReportPage() {
   const [selected, setSelected] = useState<ReportRow | null>(null);
 
   // Dropdown options
-  const [employees, setEmployees] = useState<{ id: string; name: string; code: string }[]>([]);
+  const [employees, setEmployees] = useState<{ id: string; name: string; code: string; position?: string }[]>([]);
+  const [closers, setClosers] = useState<{ id: string; name: string; code: string }[]>([]);
   const [provinces, setProvinces] = useState<string[]>([]);
+
+  // Current user's employee id (from AuthContext — available for all roles with an employee record)
+  const myEmployeeId = user?.employee?.id ?? null;
 
   const loadDashboard = useCallback((d: string) => {
     api.get('/visits/report-dashboard', { params: { date: d } })
@@ -398,6 +481,7 @@ export default function SiteVisitReportPage() {
     if (f.province) params.province = f.province;
     if (f.agencyLevel) params.agencyLevel = f.agencyLevel;
     if (f.agencyType) params.agencyType = f.agencyType;
+    if (f.closerId) params.closerId = f.closerId;
     api.get('/visits/report', { params })
       .then((r) => {
         setRows(r.data);
@@ -413,8 +497,23 @@ export default function SiteVisitReportPage() {
   }, [dashDate, loadDashboard]);
 
   useEffect(() => {
-    if (isManager) api.get('/employees').then((r) => setEmployees(r.data));
+    if (isManager) {
+      api.get('/employees').then((r) => {
+        const all: { id: string; name: string; code: string; position?: string }[] = r.data;
+        setEmployees(all.filter((e) => e.position === 'sales' || !e.position));
+        setClosers(all.filter((e) => e.position === 'closer'));
+      });
+    }
   }, [isManager]);
+
+  // For closer role: pre-set closerId filter to own employee id (locked)
+  useEffect(() => {
+    if (isCloser && myEmployeeId) {
+      setFilters((f) => ({ ...f, closerId: myEmployeeId }));
+      setAppliedFilters((f) => ({ ...f, closerId: myEmployeeId }));
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isCloser, myEmployeeId]);
 
   useEffect(() => {
     loadReport(appliedFilters);
@@ -422,9 +521,21 @@ export default function SiteVisitReportPage() {
 
   const applyFilters = () => { setAppliedFilters({ ...filters }); setShowFilter(false); };
   const resetFilters = () => {
-    const def = { from: todayStr(), to: todayStr(), employeeId: '', agencyId: '', status: '', province: '', agencyLevel: '', agencyType: '' };
+    const def = {
+      from: todayStr(), to: todayStr(),
+      employeeId: '', agencyId: '', status: '', province: '', agencyLevel: '', agencyType: '',
+      closerId: isCloser && myEmployeeId ? myEmployeeId : '',
+    };
     setFilters(def); setAppliedFilters(def);
   };
+
+  // Sales role: no filter panel; closer: locked closerId
+  const canShowFilter = isManager;
+  const closerFilterLocked = isCloser && !!myEmployeeId;
+
+  // Sale dropdown: for closer, only show their team members (backend handles this via closerId filter,
+  // but for the dropdown we show all sales from the loaded list)
+  const saleOptions = employees;
 
   return (
     <Box>
@@ -432,14 +543,29 @@ export default function SiteVisitReportPage() {
       <Stack direction="row" justifyContent="space-between" alignItems="center" mb={3}>
         <Typography variant="h5" fontWeight={800}>Site Visit Report</Typography>
         <Stack direction="row" spacing={1}>
+          {(isAdmin || isCloser) && (
+            <Tooltip title="Export CSV">
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={<Download />}
+                onClick={() => exportCsv(rows)}
+                disabled={rows.length === 0}
+              >
+                Export CSV
+              </Button>
+            </Tooltip>
+          )}
           <Tooltip title={t('svr.refresh')}>
             <IconButton onClick={() => { loadDashboard(dashDate); loadReport(appliedFilters); }}>
               <Refresh />
             </IconButton>
           </Tooltip>
-          <Button variant="outlined" startIcon={<FilterList />} onClick={() => setShowFilter((v) => !v)}>
-            {t('svr.filter')}
-          </Button>
+          {canShowFilter && (
+            <Button variant="outlined" startIcon={<FilterList />} onClick={() => setShowFilter((v) => !v)}>
+              {t('svr.filter')}
+            </Button>
+          )}
         </Stack>
       </Stack>
 
@@ -463,69 +589,117 @@ export default function SiteVisitReportPage() {
       </Paper>
 
       {/* ── Section 2: Filter Panel ── */}
-      <Collapse in={showFilter}>
-        <Paper sx={{ p: 2.5, mb: 3, borderRadius: 3 }}>
-          <Typography variant="subtitle2" fontWeight={700} mb={2}>{t('svr.filterPanel')}</Typography>
-          <Grid container spacing={2}>
-            <Grid item xs={12} sm={6} md={3}>
-              <TextField fullWidth type="date" label={t('svr.from')} size="small" value={filters.from}
-                onChange={(e) => setFilters((f) => ({ ...f, from: e.target.value }))}
-                InputLabelProps={{ shrink: true }} />
-            </Grid>
-            <Grid item xs={12} sm={6} md={3}>
-              <TextField fullWidth type="date" label={t('svr.to')} size="small" value={filters.to}
-                onChange={(e) => setFilters((f) => ({ ...f, to: e.target.value }))}
-                InputLabelProps={{ shrink: true }} />
-            </Grid>
-            {isManager && (
+      {canShowFilter && (
+        <Collapse in={showFilter}>
+          <Paper sx={{ p: 2.5, mb: 3, borderRadius: 3 }}>
+            <Typography variant="subtitle2" fontWeight={700} mb={2}>{t('svr.filterPanel')}</Typography>
+
+            {/* Month quick-select buttons */}
+            <Stack direction="row" spacing={1} mb={2}>
+              <Button
+                size="small" variant="outlined"
+                onClick={() => setFilters((f) => ({ ...f, ...thisMonthRange() }))}
+              >
+                This Month
+              </Button>
+              <Button
+                size="small" variant="outlined"
+                onClick={() => setFilters((f) => ({ ...f, ...lastMonthRange() }))}
+              >
+                Last Month
+              </Button>
+            </Stack>
+
+            <Grid container spacing={2}>
+              <Grid item xs={12} sm={6} md={3}>
+                <TextField fullWidth type="date" label={t('svr.from')} size="small" value={filters.from}
+                  onChange={(e) => setFilters((f) => ({ ...f, from: e.target.value }))}
+                  InputLabelProps={{ shrink: true }} />
+              </Grid>
+              <Grid item xs={12} sm={6} md={3}>
+                <TextField fullWidth type="date" label={t('svr.to')} size="small" value={filters.to}
+                  onChange={(e) => setFilters((f) => ({ ...f, to: e.target.value }))}
+                  InputLabelProps={{ shrink: true }} />
+              </Grid>
+
+              {/* Sale dropdown */}
+              {(isAdmin || isCloser) && (
+                <Grid item xs={12} sm={6} md={3}>
+                  <FormControl fullWidth size="small">
+                    <InputLabel>Sale</InputLabel>
+                    <Select value={filters.employeeId} label="Sale"
+                      onChange={(e) => setFilters((f) => ({ ...f, employeeId: e.target.value }))}>
+                      <MenuItem value="">{t('svr.all')}</MenuItem>
+                      {saleOptions.map((e) => <MenuItem key={e.id} value={e.id}>{e.name} ({e.code})</MenuItem>)}
+                    </Select>
+                  </FormControl>
+                </Grid>
+              )}
+
+              {/* Closer dropdown — admins see all closers; closer role sees self (locked) */}
+              {(isAdmin || isCloser) && (
+                <Grid item xs={12} sm={6} md={3}>
+                  <FormControl fullWidth size="small" disabled={closerFilterLocked}>
+                    <InputLabel>Closer</InputLabel>
+                    <Select value={filters.closerId} label="Closer"
+                      onChange={(e) => setFilters((f) => ({ ...f, closerId: e.target.value }))}>
+                      <MenuItem value="">{t('svr.all')}</MenuItem>
+                      {closers.map((c) => <MenuItem key={c.id} value={c.id}>{c.name} ({c.code})</MenuItem>)}
+                    </Select>
+                  </FormControl>
+                </Grid>
+              )}
+
               <Grid item xs={12} sm={6} md={3}>
                 <FormControl fullWidth size="small">
-                  <InputLabel>Sale</InputLabel>
-                  <Select value={filters.employeeId} label="Sale"
-                    onChange={(e) => setFilters((f) => ({ ...f, employeeId: e.target.value }))}>
+                  <InputLabel>{t('c.status')}</InputLabel>
+                  <Select value={filters.status} label={t('c.status')}
+                    onChange={(e) => setFilters((f) => ({ ...f, status: e.target.value }))}>
                     <MenuItem value="">{t('svr.all')}</MenuItem>
-                    {employees.map((e) => <MenuItem key={e.id} value={e.id}>{e.name} ({e.code})</MenuItem>)}
+                    {Object.entries(STATUS_LABEL_KEY).map(([k, labelKey]) => <MenuItem key={k} value={k}>{t(labelKey)}</MenuItem>)}
                   </Select>
                 </FormControl>
               </Grid>
-            )}
-            <Grid item xs={12} sm={6} md={3}>
-              <FormControl fullWidth size="small">
-                <InputLabel>{t('c.status')}</InputLabel>
-                <Select value={filters.status} label={t('c.status')}
-                  onChange={(e) => setFilters((f) => ({ ...f, status: e.target.value }))}>
-                  <MenuItem value="">{t('svr.all')}</MenuItem>
-                  {Object.entries(STATUS_LABEL_KEY).map(([k, labelKey]) => <MenuItem key={k} value={k}>{t(labelKey)}</MenuItem>)}
-                </Select>
-              </FormControl>
+              <Grid item xs={12} sm={6} md={3}>
+                <FormControl fullWidth size="small">
+                  <InputLabel>{t('ag.province')}</InputLabel>
+                  <Select value={filters.province} label={t('ag.province')}
+                    onChange={(e) => setFilters((f) => ({ ...f, province: e.target.value }))}>
+                    <MenuItem value="">{t('svr.all')}</MenuItem>
+                    {provinces.map((p) => <MenuItem key={p} value={p}>{p}</MenuItem>)}
+                  </Select>
+                </FormControl>
+              </Grid>
+              <Grid item xs={12} sm={6} md={3}>
+                <FormControl fullWidth size="small">
+                  <InputLabel>Agency Level</InputLabel>
+                  <Select value={filters.agencyLevel} label="Agency Level"
+                    onChange={(e) => setFilters((f) => ({ ...f, agencyLevel: e.target.value }))}>
+                    <MenuItem value="">{t('svr.all')}</MenuItem>
+                    {['A', 'B', 'C', 'D'].map((l) => <MenuItem key={l} value={l}>Level {l}</MenuItem>)}
+                  </Select>
+                </FormControl>
+              </Grid>
+              <Grid item xs={12} sm={6} md={3}>
+                <FormControl fullWidth size="small">
+                  <InputLabel>Agency Type</InputLabel>
+                  <Select value={filters.agencyType} label="Agency Type"
+                    onChange={(e) => setFilters((f) => ({ ...f, agencyType: e.target.value }))}>
+                    <MenuItem value="">{t('svr.all')}</MenuItem>
+                    <MenuItem value="individual">Individual</MenuItem>
+                    <MenuItem value="corporate">Corporate</MenuItem>
+                    <MenuItem value="online">Online</MenuItem>
+                  </Select>
+                </FormControl>
+              </Grid>
             </Grid>
-            <Grid item xs={12} sm={6} md={3}>
-              <FormControl fullWidth size="small">
-                <InputLabel>{t('ag.province')}</InputLabel>
-                <Select value={filters.province} label={t('ag.province')}
-                  onChange={(e) => setFilters((f) => ({ ...f, province: e.target.value }))}>
-                  <MenuItem value="">{t('svr.all')}</MenuItem>
-                  {provinces.map((p) => <MenuItem key={p} value={p}>{p}</MenuItem>)}
-                </Select>
-              </FormControl>
-            </Grid>
-            <Grid item xs={12} sm={6} md={3}>
-              <FormControl fullWidth size="small">
-                <InputLabel>Agency Level</InputLabel>
-                <Select value={filters.agencyLevel} label="Agency Level"
-                  onChange={(e) => setFilters((f) => ({ ...f, agencyLevel: e.target.value }))}>
-                  <MenuItem value="">{t('svr.all')}</MenuItem>
-                  {['A', 'B', 'C', 'D'].map((l) => <MenuItem key={l} value={l}>Level {l}</MenuItem>)}
-                </Select>
-              </FormControl>
-            </Grid>
-          </Grid>
-          <Stack direction="row" spacing={1} mt={2}>
-            <Button variant="contained" onClick={applyFilters}>{t('svr.search')}</Button>
-            <Button variant="outlined" onClick={resetFilters}>{t('svr.reset')}</Button>
-          </Stack>
-        </Paper>
-      </Collapse>
+            <Stack direction="row" spacing={1} mt={2}>
+              <Button variant="contained" onClick={applyFilters}>{t('svr.search')}</Button>
+              <Button variant="outlined" onClick={resetFilters}>{t('svr.reset')}</Button>
+            </Stack>
+          </Paper>
+        </Collapse>
+      )}
 
       {/* ── Section 3: Report Table ── */}
       <Paper sx={{ borderRadius: 3 }}>
@@ -543,6 +717,7 @@ export default function SiteVisitReportPage() {
                 <TableCell>{t('pl2.date')}</TableCell>
                 <TableCell>Agency</TableCell>
                 <TableCell>Sale</TableCell>
+                {isManager && <TableCell>Closer</TableCell>}
                 <TableCell>{t('c.status')}</TableCell>
                 <TableCell align="center">{t('svr.time')}</TableCell>
                 <TableCell align="center">{t('svr.duration')}</TableCell>
@@ -555,7 +730,7 @@ export default function SiteVisitReportPage() {
             <TableBody>
               {!loading && rows.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={10} align="center" sx={{ py: 4, color: 'text.secondary' }}>
+                  <TableCell colSpan={isManager ? 11 : 10} align="center" sx={{ py: 4, color: 'text.secondary' }}>
                     {t('svr.noData')}
                   </TableCell>
                 </TableRow>
@@ -576,6 +751,11 @@ export default function SiteVisitReportPage() {
                     <TableCell>
                       <Typography variant="body2">{r.employee.name}</Typography>
                     </TableCell>
+                    {isManager && (
+                      <TableCell>
+                        <Typography variant="body2">{r.closer?.name ?? '-'}</Typography>
+                      </TableCell>
+                    )}
                     <TableCell>
                       <Chip size="small" label={t(STATUS_LABEL_KEY[r.status] ?? r.status)} color={STATUS_COLOR[r.status] ?? 'default'} />
                     </TableCell>
@@ -597,7 +777,7 @@ export default function SiteVisitReportPage() {
                     </TableCell>
                     <TableCell align="center">
                       {photoCount > 0
-                        ? <Chip size="small" icon={<PhotoCamera fontSize="small" />} label={photoCount} variant="outlined" />
+                        ? <Chip size="small" icon={<PhotoCamera fontSize="small" />} label={`${photoCount} ${t('svr.photoUnit') || 'รูป'}`} variant="outlined" />
                         : <Typography variant="caption" color="text.disabled">-</Typography>}
                     </TableCell>
                     <TableCell align="center">

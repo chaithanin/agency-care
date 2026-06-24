@@ -482,6 +482,7 @@ export class VisitService {
       from?: string; to?: string; date?: string;
       employeeId?: string; agencyId?: string; status?: string;
       province?: string; agencyLevel?: string; agencyType?: string;
+      closerId?: string;
     },
   ) {
     const roleFilter = await this.buildRoleFilter(user);
@@ -506,12 +507,33 @@ export class VisitService {
       if (params.agencyType) where.agency = { ...where.agency, type: params.agencyType } as any;
     }
 
-    return this.prisma.visitPlan.findMany({
+    // Filter by closer's team: find all sales employees in the same team as the closer
+    if (params.closerId) {
+      const closer = await this.prisma.employee.findUnique({
+        where: { id: params.closerId },
+        select: { teamId: true },
+      });
+      if (closer?.teamId) {
+        const teamMembers = await this.prisma.employee.findMany({
+          where: { teamId: closer.teamId, position: 'sales' },
+          select: { id: true },
+        });
+        const memberIds = teamMembers.map((m) => m.id);
+        // Intersect with any existing employeeId filter
+        if (params.employeeId) {
+          where.employeeId = memberIds.includes(params.employeeId) ? params.employeeId : '__no_match__';
+        } else {
+          where.employeeId = { in: memberIds };
+        }
+      }
+    }
+
+    const plans = await this.prisma.visitPlan.findMany({
       where,
       orderBy: [{ planDate: 'desc' }, { createdAt: 'desc' }],
       include: {
         agency: { select: { id: true, code: true, name: true, zone: true, province: true, level: true, type: true } },
-        employee: { select: { id: true, code: true, name: true } },
+        employee: { select: { id: true, code: true, name: true, teamId: true } },
         checkin: {
           select: {
             id: true, checkinAt: true, checkOutAt: true, durationMinutes: true,
@@ -523,7 +545,38 @@ export class VisitService {
         report: true,
         workPhotos: { select: { id: true, url: true, caption: true, takenAt: true } },
         tasks: { where: { status: { not: 'done' } }, select: { id: true, title: true, dueDate: true } },
+        posmTransactions: {
+          select: {
+            id: true, quantity: true,
+            posmItem: { select: { name: true, unit: true } },
+          },
+        },
       },
+    });
+
+    // Gather unique teamIds from plans to look up closers
+    const teamIds = [...new Set(plans.map((p) => (p.employee as any).teamId).filter(Boolean))];
+    let closersByTeam: Map<string, { id: string; name: string; code: string }> = new Map();
+    if (teamIds.length > 0) {
+      const closers = await this.prisma.employee.findMany({
+        where: { teamId: { in: teamIds }, position: 'closer' },
+        select: { id: true, code: true, name: true, teamId: true },
+      });
+      for (const c of closers) {
+        if (c.teamId) closersByTeam.set(c.teamId, { id: c.id, name: c.name, code: c.code });
+      }
+    }
+
+    return plans.map((plan) => {
+      const teamId = (plan.employee as any).teamId as string | null;
+      const closer = teamId ? (closersByTeam.get(teamId) ?? null) : null;
+      const posmItems = (plan.posmTransactions as any[]).map((tx) => ({
+        name: tx.posmItem.name,
+        quantity: tx.quantity,
+        unit: tx.posmItem.unit,
+      }));
+      const { posmTransactions, ...rest } = plan as any;
+      return { ...rest, closer, posmItems };
     });
   }
 

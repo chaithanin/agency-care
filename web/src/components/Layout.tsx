@@ -28,32 +28,24 @@ import LogoutRoundedIcon from '@mui/icons-material/LogoutRounded';
 import TranslateRoundedIcon from '@mui/icons-material/TranslateRounded';
 import DashboardRoundedIcon from '@mui/icons-material/DashboardRounded';
 import StorefrontRoundedIcon from '@mui/icons-material/StorefrontRounded';
-import GroupsRoundedIcon from '@mui/icons-material/GroupsRounded';
 import EventNoteRoundedIcon from '@mui/icons-material/EventNoteRounded';
-import CampaignRoundedIcon from '@mui/icons-material/CampaignRounded';
-import Inventory2RoundedIcon from '@mui/icons-material/Inventory2Rounded';
-import DevicesOtherRoundedIcon from '@mui/icons-material/DevicesOtherRounded';
 import RouteRoundedIcon from '@mui/icons-material/RouteRounded';
-import ScheduleRoundedIcon from '@mui/icons-material/ScheduleRounded';
-import CalendarMonthRoundedIcon from '@mui/icons-material/CalendarMonthRounded';
-import LeaderboardRoundedIcon from '@mui/icons-material/LeaderboardRounded';
-import AccountTreeRoundedIcon from '@mui/icons-material/AccountTreeRounded';
 import SpeedRoundedIcon from '@mui/icons-material/SpeedRounded';
 import AutoAwesomeRoundedIcon from '@mui/icons-material/AutoAwesomeRounded';
 import PsychologyRoundedIcon from '@mui/icons-material/PsychologyRounded';
-import ManageAccountsRoundedIcon from '@mui/icons-material/ManageAccountsRounded';
-import HomeRoundedIcon from '@mui/icons-material/HomeRounded';
 import TodayRoundedIcon from '@mui/icons-material/TodayRounded';
 import NotificationsRoundedIcon from '@mui/icons-material/NotificationsRounded';
 import AssignmentRoundedIcon from '@mui/icons-material/AssignmentRounded';
 import SummarizeRoundedIcon from '@mui/icons-material/SummarizeRounded';
 import SwapHorizRoundedIcon from '@mui/icons-material/SwapHorizRounded';
 import VisibilityRoundedIcon from '@mui/icons-material/VisibilityRounded';
+import SettingsRoundedIcon from '@mui/icons-material/SettingsRounded';
+import AssessmentRoundedIcon from '@mui/icons-material/AssessmentRounded';
+import DirectionsWalkRoundedIcon from '@mui/icons-material/DirectionsWalkRounded';
 import Hub from '@mui/icons-material/HubRounded';
 import { useAuth, type Role } from '../auth/AuthContext';
 import { useT } from '../i18n';
 import { api } from '../api/client';
-import { Link as RouterLink } from 'react-router-dom';
 
 const DRAWER_WIDTH = 252;
 
@@ -124,44 +116,44 @@ export default function Layout({ children }: { children: ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
-  const baseManagerNav = [
-    { to: '/', label: t('nav.dashboard'), icon: <DashboardRoundedIcon /> },
-    { to: '/agencies', label: t('nav.agency'), icon: <StorefrontRoundedIcon /> },
-    { to: '/employees', label: t('nav.employees'), icon: <GroupsRoundedIcon /> },
-    { to: '/plans', label: t('nav.plans'), icon: <EventNoteRoundedIcon /> },
-    { to: '/posm', label: t('nav.posm'), icon: <CampaignRoundedIcon /> },
-    { to: '/products', label: t('nav.products'), icon: <Inventory2RoundedIcon /> },
-    { to: '/models', label: t('nav.models'), icon: <DevicesOtherRoundedIcon /> },
-    { to: '/route', label: t('nav.route'), icon: <RouteRoundedIcon /> },
-    { to: '/scheduling', label: t('nav.scheduling'), icon: <ScheduleRoundedIcon /> },
-    { to: '/calendar', label: t('nav.calendar'), icon: <CalendarMonthRoundedIcon /> },
-    { to: '/seller-performance', label: t('nav.sellerPerf'), icon: <LeaderboardRoundedIcon /> },
-    { to: '/pipeline', label: t('nav.pipeline'), icon: <AccountTreeRoundedIcon /> },
-    { to: '/kpi', label: t('nav.kpi'), icon: <SpeedRoundedIcon /> },
+  const managerNav = [
+    { to: '/', label: 'Dashboard', icon: <DashboardRoundedIcon /> },
+    { to: '/agencies', label: 'Agency', icon: <StorefrontRoundedIcon /> },
+    { to: '/auto-assign', label: 'Monthly Planning', icon: <EventNoteRoundedIcon /> },
+    { to: '/quick-assign', label: 'Auto Assignment', icon: <AutoAwesomeRoundedIcon /> },
+    { to: '/plans', label: 'Site Visit', icon: <DirectionsWalkRoundedIcon /> },
+    { to: '/site-visit-report', label: 'Site Visit Report', icon: <SummarizeRoundedIcon /> },
+    { to: '/tasks', label: 'Task', icon: <AssignmentRoundedIcon /> },
+    { to: '/analytics', label: 'AI Insight', icon: <PsychologyRoundedIcon /> },
+    { to: '/kpi', label: 'KPI', icon: <SpeedRoundedIcon /> },
+    {
+      to: '/notifications',
+      label: 'Notification',
+      icon: (
+        <Badge badgeContent={unreadCount > 0 ? unreadCount : undefined} color="error" max={99}>
+          <NotificationsRoundedIcon />
+        </Badge>
+      ),
+    },
+    { to: '/reports', label: 'Reports', icon: <AssessmentRoundedIcon /> },
+    { to: '/settings', label: 'Settings', icon: <SettingsRoundedIcon /> },
   ];
-  const navItems = isAdmin
-    ? [
-        ...baseManagerNav,
-        { to: '/tasks', label: t('nav.tasks'), icon: <AssignmentRoundedIcon /> },
-        { to: '/auto-assign', label: t('nav.autoassign'), icon: <AutoAwesomeRoundedIcon /> },
-        { to: '/site-visit-report', label: t('nav.siteVisitReport'), icon: <AssignmentRoundedIcon /> },
-        { to: '/reports', label: t('nav.reports'), icon: <SummarizeRoundedIcon /> },
-        { to: '/analytics', label: t('nav.ai'), icon: <PsychologyRoundedIcon /> },
-        { to: '/users', label: t('nav.users'), icon: <ManageAccountsRoundedIcon /> },
-      ]
-    : isCloser
-    ? [
-        ...baseManagerNav,
-        { to: '/tasks', label: t('nav.tasks'), icon: <AssignmentRoundedIcon /> },
-        { to: '/site-visit-report', label: t('nav.siteVisitReport'), icon: <AssignmentRoundedIcon /> },
-        { to: '/reports', label: t('nav.reports'), icon: <SummarizeRoundedIcon /> },
-      ]
+  const navItems = isManager
+    ? managerNav
     : [
-        { to: '/', label: t('nav.myWork'), icon: <HomeRoundedIcon /> },
-        { to: '/my-day', label: t('nav.myDay'), icon: <TodayRoundedIcon /> },
-        { to: '/calendar', label: t('nav.calendar'), icon: <CalendarMonthRoundedIcon /> },
-        { to: '/route', label: t('nav.route'), icon: <RouteRoundedIcon /> },
-        { to: '/tasks', label: t('nav.tasks'), icon: <AssignmentRoundedIcon /> },
+        { to: '/', label: 'Site Visit', icon: <DirectionsWalkRoundedIcon /> },
+        { to: '/my-day', label: 'My Day', icon: <TodayRoundedIcon /> },
+        { to: '/route', label: 'Route', icon: <RouteRoundedIcon /> },
+        { to: '/tasks', label: 'Task', icon: <AssignmentRoundedIcon /> },
+        {
+          to: '/notifications',
+          label: 'Notification',
+          icon: (
+            <Badge badgeContent={unreadCount > 0 ? unreadCount : undefined} color="error" max={99}>
+              <NotificationsRoundedIcon />
+            </Badge>
+          ),
+        },
       ];
 
   const hour = new Date().getHours();
@@ -397,13 +389,6 @@ export default function Layout({ children }: { children: ReactNode }) {
                 >
                   <TranslateRoundedIcon fontSize="small" />
                   <Typography variant="caption" fontWeight={700}>{lang === 'th' ? 'TH' : 'EN'}</Typography>
-                </IconButton>
-              </Tooltip>
-              <Tooltip title={t('nav.notifications')}>
-                <IconButton component={RouterLink} to="/notifications" sx={{ color: 'text.secondary' }}>
-                  <Badge badgeContent={unreadCount > 0 ? unreadCount : undefined} color="error" max={99}>
-                    <NotificationsRoundedIcon />
-                  </Badge>
                 </IconButton>
               </Tooltip>
               <Avatar sx={{ width: 38, height: 38, bgcolor: 'primary.main', fontSize: 14, fontWeight: 700 }}>

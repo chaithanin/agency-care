@@ -27,6 +27,8 @@ import NotificationsPage from './pages/NotificationsPage';
 import SiteVisitReportPage from './pages/SiteVisitReportPage';
 import ReportsPage from './pages/ReportsPage';
 import AgencyInfoFormPage from './pages/AgencyInfoFormPage';
+import AutoAssignPage from './pages/AutoAssignPage';
+import SettingsPage from './pages/SettingsPage';
 
 function Splash() {
   return (
@@ -65,6 +67,7 @@ export default function App() {
             <Route path="/models" element={<ModelsPage />} />
             <Route path="/kpi" element={<KpiPage />} />
             <Route path="/auto-assign" element={<AssignmentPlannerPage />} />
+            <Route path="/quick-assign" element={<AutoAssignPage />} />
             <Route path="/scheduling" element={<SchedulingPage />} />
             <Route path="/calendar" element={<CalendarPage />} />
             <Route path="/seller-performance" element={<SellerPerformancePage />} />
@@ -73,6 +76,7 @@ export default function App() {
             <Route path="/analytics" element={<AnalyticsPage />} />
             <Route path="/site-visit-report" element={<SiteVisitReportPage />} />
             <Route path="/reports" element={<ReportsPage />} />
+            <Route path="/settings" element={<SettingsPage />} />
           </>
         ) : (
           <>
