@@ -39,6 +39,5 @@ COPY --from=build /app /app
 WORKDIR /app/api
 # Cloud Run ส่ง PORT=8080 มาให้ (แอปอ่าน process.env.PORT อยู่แล้ว)
 EXPOSE 8080
-# รันแอปอย่างเดียว — migration รันแยกตอน deploy (deploy.ps1) เพื่อกัน race
-# เมื่อหลาย instance สตาร์ทพร้อมกัน
-CMD ["node", "dist/main.js"]
+# รัน migration ก่อน start server (Prisma lock ป้องกัน race condition)
+CMD ["sh", "-c", "node_modules/.bin/prisma migrate deploy && node dist/main.js"]
