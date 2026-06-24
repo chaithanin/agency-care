@@ -1,12 +1,16 @@
 import { Body, Controller, Get, Param, Patch, Post, Query } from '@nestjs/common';
 import { AgencyService } from './agency.service';
+import { AgencyScoreService } from './agency-score.service';
 import { CreateAgencyDto, UpdateAgencyDto } from './dto/agency.dto';
 import { Roles } from '../auth/guards';
 import { CurrentUser, RequestUser } from '../common/current-user.decorator';
 
 @Controller('agencies')
 export class AgencyController {
-  constructor(private service: AgencyService) {}
+  constructor(
+    private service: AgencyService,
+    private agencyScoreService: AgencyScoreService,
+  ) {}
 
   // อ่านได้ทุก role (เซลส์ต้องเห็น agency ที่ตัวเองดูแล)
   @Get()
@@ -41,6 +45,12 @@ export class AgencyController {
   @Get('contract-expiry-alerts')
   getContractExpiryAlerts() {
     return this.service.getContractExpiryAlerts();
+  }
+
+  @Roles('admin', 'closer')
+  @Get('score/:id')
+  calcScore(@Param('id') id: string) {
+    return this.agencyScoreService.calcScore(id).then((score) => ({ score }));
   }
 
   @Get(':id')

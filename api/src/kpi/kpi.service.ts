@@ -1,109 +1,189 @@
-import { Injectable } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
-
-interface EmpKpi {
-  employeeId: string;
-  name: string;
-  code: string;
-  planned: number;
-  done: number;
-  completionPct: number;
-  reports: number;
-  reportPct: number;
-  withinRadius: number;
-  accuracyPct: number; // % check-in ที่อยู่ในรัศมี
-  posmGiven: number;
-  salesAmount: number;
-}
+import { Injectable } from '@nestjs/common'
+import { PrismaService } from '../prisma/prisma.service'
 
 @Injectable()
 export class KpiService {
   constructor(private prisma: PrismaService) {}
 
-  // ช่วงเริ่มต้น = เดือนปัจจุบัน
-  private monthRange(from?: string, to?: string) {
-    if (from && to) return { gte: new Date(from), lte: new Date(to) };
-    const n = new Date();
-    const gte = new Date(Date.UTC(n.getUTCFullYear(), n.getUTCMonth(), 1));
-    const lte = new Date(Date.UTC(n.getUTCFullYear(), n.getUTCMonth() + 1, 0));
-    return { gte, lte };
-  }
+  // Get or compute KPI for a single employee in a period
+  async getEmployeeKpi(employeeId: string, period: string) {
+    const [year, month] = period.split('-').map(Number)
+    const startDate = new Date(year, month - 1, 1)
+    const endDate = new Date(year, month, 0)  // last day of month
 
-  async summary(from?: string, to?: string) {
-    const range = this.monthRange(from, to);
+    // Get or create KpiTarget record
+    let kpi = await this.prisma.kpiTarget.findUnique({
+      where: { employeeId_period: { employeeId, period } },
+      include: { employee: { select: { name: true, code: true, position: true } } },
+    })
 
-    const [plans, sales, posm, employees] = await Promise.all([
-      this.prisma.visitPlan.findMany({
-        where: { planDate: range },
-        select: {
-          employeeId: true,
-          status: true,
-          report: { select: { id: true } },
-          checkin: { select: { withinRadius: true } },
+    // Calculate actuals from real data
+    const [visitActual, followupActual, salesActual] = await Promise.all([
+      // Completed visits this period
+      this.prisma.visitPlan.count({
+        where: { employeeId, status: 'done',
+          planDate: { gte: startDate, lte: endDate } },
+      }),
+      // Completed follow-up tasks this period
+      this.prisma.task.count({
+        where: { assignedToId: employeeId, status: 'done',
+          doneAt: { gte: startDate, lte: endDate } },
+      }),
+      // Sales amount this period (from SalesActivity)
+      this.prisma.salesActivity.aggregate({
+        where: {
+          visitPlan: { employeeId, planDate: { gte: startDate, lte: endDate } },
         },
-      }),
-      this.prisma.salesActivity.findMany({
-        where: { visitPlan: { planDate: range } },
-        select: { amount: true, visitPlan: { select: { employeeId: true } } },
-      }),
-      this.prisma.posmTransaction.findMany({
-        where: { visitPlan: { planDate: range } },
-        select: { quantity: true, visitPlan: { select: { employeeId: true } } },
-      }),
-      this.prisma.employee.findMany({
-        where: { isActive: true },
-        select: { id: true, name: true, code: true },
-      }),
-    ]);
+        _sum: { amount: true },
+      }).then(r => r._sum.amount ?? 0),
+    ])
 
-    const map = new Map<string, EmpKpi>();
-    for (const e of employees) {
-      map.set(e.id, {
-        employeeId: e.id,
-        name: e.name,
-        code: e.code,
-        planned: 0,
-        done: 0,
-        completionPct: 0,
-        reports: 0,
-        reportPct: 0,
-        withinRadius: 0,
-        accuracyPct: 0,
-        posmGiven: 0,
-        salesAmount: 0,
-      });
-    }
+    // New agencies added this period (by this employee)
+    const newAgencyActual = await this.prisma.agency.count({
+      where: { addedById: employeeId,
+        createdAt: { gte: startDate, lte: endDate } },
+    })
 
-    for (const p of plans) {
-      const k = map.get(p.employeeId);
-      if (!k) continue;
-      k.planned++;
-      if (p.status === 'done') k.done++;
-      if (p.report) k.reports++;
-      if (p.checkin?.withinRadius) k.withinRadius++;
-    }
-    for (const s of sales) {
-      const k = map.get(s.visitPlan.employeeId);
-      if (k) k.salesAmount += s.amount;
-    }
-    for (const t of posm) {
-      const k = map.get(t.visitPlan.employeeId);
-      if (k) k.posmGiven += t.quantity;
-    }
+    // Get monthly plan targets
+    const monthlyPlan = await this.prisma.monthlyPlan.findUnique({
+      where: { employeeId_year_month: { employeeId, year, month } },
+    })
 
-    const result = [...map.values()].map((k) => ({
-      ...k,
-      completionPct: k.planned ? Math.round((k.done / k.planned) * 100) : 0,
-      reportPct: k.done ? Math.round((k.reports / k.done) * 100) : 0,
-      accuracyPct: k.done ? Math.round((k.withinRadius / k.done) * 100) : 0,
-    }));
-    result.sort((a, b) => b.salesAmount - a.salesAmount || b.completionPct - a.completionPct);
+    // Upsert KpiTarget with actuals
+    kpi = await this.prisma.kpiTarget.upsert({
+      where: { employeeId_period: { employeeId, period } },
+      create: {
+        employeeId, period,
+        visitTarget: monthlyPlan?.visitTarget ?? 24,
+        newAgencyTarget: monthlyPlan?.newAgencyTarget ?? 2,
+        visitActual, newAgencyActual,
+        salesActual, followupActual,
+        lastCalcAt: new Date(),
+      },
+      update: {
+        visitActual, newAgencyActual,
+        salesActual, followupActual,
+        ...(monthlyPlan && {
+          visitTarget: monthlyPlan.visitTarget,
+          newAgencyTarget: monthlyPlan.newAgencyTarget,
+        }),
+        lastCalcAt: new Date(),
+      },
+      include: { employee: { select: { name: true, code: true, position: true } } },
+    })
+
+    const visitRate = kpi.visitTarget ? Math.round((visitActual / kpi.visitTarget) * 100) : 0
+    const newAgRate = kpi.newAgencyTarget ? Math.round((newAgencyActual / kpi.newAgencyTarget) * 100) : 0
 
     return {
-      from: range.gte.toISOString().slice(0, 10),
-      to: range.lte.toISOString().slice(0, 10),
-      targets: { completionPct: 100, reportPct: 100, accuracyPct: 95 },
-      rows: result,
-    };
+      ...kpi,
+      visitActual, newAgencyActual, salesActual, followupActual,
+      visitRate, newAgencyRate: newAgRate,
+      overallRate: Math.round((visitRate + newAgRate) / 2),
+    }
+  }
+
+  // Get KPI for all employees in a period (team summary)
+  async getTeamKpi(period: string, teamId?: string) {
+    const employees = await this.prisma.employee.findMany({
+      where: { isActive: true, position: 'sales', ...(teamId ? { teamId } : {}) },
+      select: { id: true, name: true, code: true, teamId: true },
+    })
+
+    const results = await Promise.all(
+      employees.map(e => this.getEmployeeKpi(e.id, period).catch(() => null))
+    )
+    return results.filter(Boolean)
+  }
+
+  // Closer KPI: team coverage + team completion rate
+  async getCloserKpi(closerId: string, period: string) {
+    const closer = await this.prisma.employee.findUnique({
+      where: { id: closerId },
+      include: { team: { include: { members: { where: { position: 'sales', isActive: true } } } } },
+    })
+    if (!closer?.team) return null
+
+    const teamIds = closer.team.members.map(m => m.id)
+    const [year, month] = period.split('-').map(Number)
+    const startDate = new Date(year, month - 1, 1)
+    const endDate = new Date(year, month, 0)
+
+    const [totalAssigned, completed, newAgencies] = await Promise.all([
+      this.prisma.visitPlan.count({
+        where: { employeeId: { in: teamIds }, planDate: { gte: startDate, lte: endDate } },
+      }),
+      this.prisma.visitPlan.count({
+        where: { employeeId: { in: teamIds }, status: 'done', planDate: { gte: startDate, lte: endDate } },
+      }),
+      this.prisma.agency.count({
+        where: { addedById: { in: teamIds }, createdAt: { gte: startDate, lte: endDate } },
+      }),
+    ])
+
+    return {
+      closerId, period, teamName: closer.team.name,
+      teamSize: teamIds.length,
+      totalAssigned, completed, newAgencies,
+      completionRate: totalAssigned ? Math.round((completed / totalAssigned) * 100) : 0,
+    }
+  }
+
+  // Agency KPI (engagement score)
+  async getAgencyKpi(agencyId: string) {
+    const [visits30, visits90, leads, tasks] = await Promise.all([
+      this.prisma.visitPlan.count({
+        where: { agencyId, status: 'done',
+          planDate: { gte: new Date(Date.now() - 30 * 86400000) } },
+      }),
+      this.prisma.visitPlan.count({
+        where: { agencyId, status: 'done',
+          planDate: { gte: new Date(Date.now() - 90 * 86400000) } },
+      }),
+      this.prisma.visitReport.aggregate({
+        where: { visitPlan: { agencyId } },
+        _sum: { newLeads: true },
+      }).then(r => r._sum.newLeads ?? 0),
+      this.prisma.task.count({
+        where: { agencyId, status: { in: ['done', 'in_progress'] } },
+      }),
+    ])
+
+    const agency = await this.prisma.agency.findUnique({
+      where: { id: agencyId }, select: { name: true, level: true, agencyScore: true, agencyScoreNum: true },
+    })
+
+    return {
+      agencyId, agencyName: agency?.name, level: agency?.level,
+      visits30d: visits30, visits90d: visits90, totalLeads: leads, totalTasks: tasks,
+      engagementScore: Math.min(100, visits30 * 20 + visits90 * 5 + leads * 3),
+    }
+  }
+
+  // Org KPI summary
+  async getOrgKpi(period: string) {
+    const [year, month] = period.split('-').map(Number)
+    const startDate = new Date(year, month - 1, 1)
+    const endDate = new Date(year, month, 0)
+
+    const [totalVisits, completedVisits, totalAgencies, activeAgencies, totalSales] = await Promise.all([
+      this.prisma.visitPlan.count({ where: { planDate: { gte: startDate, lte: endDate } } }),
+      this.prisma.visitPlan.count({ where: { status: 'done', planDate: { gte: startDate, lte: endDate } } }),
+      this.prisma.agency.count(),
+      this.prisma.agency.count({ where: { status: 'active' } }),
+      this.prisma.salesActivity.aggregate({
+        where: { visitPlan: { planDate: { gte: startDate, lte: endDate } } },
+        _sum: { amount: true },
+      }).then(r => r._sum.amount ?? 0),
+    ])
+
+    return {
+      period,
+      totalVisits, completedVisits,
+      completionRate: totalVisits ? Math.round((completedVisits / totalVisits) * 100) : 0,
+      totalAgencies, activeAgencies,
+      coverageRate: totalAgencies ? Math.round((activeAgencies / totalAgencies) * 100) : 0,
+      totalSales,
+    }
   }
 }

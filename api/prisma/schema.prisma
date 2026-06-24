@@ -170,6 +170,7 @@ model Employee {
   visitPlans  VisitPlan[]
   checkins    VisitCheckin[]
   monthlyPlans   MonthlyPlan[]
+  kpiTargets     KpiTarget[]
   dailySchedules DailySchedule[]
   addedAgencies  Agency[]        @relation("AgencyAddedBy")
   closerAgencies Agency[]        @relation("AgencyCloser")
@@ -240,6 +241,7 @@ model Agency {
   lastUnitsSold        Int?      @map("last_units_sold")
   totalUnitsSold       Int?      @map("total_units_sold")
   agencyScore          String?   @map("agency_score") // A/B/C/D computed from totalUnitsSold
+  agencyScoreNum       Int?      @default(0) @map("agency_score_num") // 0-100 numeric AI score
 
   // สำนักงาน
   physicalOffice       Boolean?  @map("physical_office")
@@ -734,6 +736,32 @@ model MonthlyPlan {
   @@unique([employeeId, year, month])
   @@index([year, month])
   @@map("monthly_plans")
+}
+
+// KPI targets and actuals per employee per period
+model KpiTarget {
+  id           String   @id @default(cuid())
+  employeeId   String   @map("employee_id")
+  period       String   // "2026-07" (YYYY-MM)
+  // Sale KPI targets
+  visitTarget    Int?   @map("visit_target")      // เป้าเยี่ยม/เดือน
+  newAgencyTarget Int?  @map("new_agency_target") // เป้า agency ใหม่/เดือน
+  salesTarget    Float? @map("sales_target")       // เป้ายอดขาย (บาท)
+  followupTarget Int?   @map("followup_target")    // เป้า follow-up tasks
+  // Actuals (computed/cached)
+  visitActual    Int?   @default(0) @map("visit_actual")
+  newAgencyActual Int?  @default(0) @map("new_agency_actual")
+  salesActual    Float? @default(0) @map("sales_actual")
+  followupActual Int?   @default(0) @map("followup_actual")
+  lastCalcAt     DateTime? @map("last_calc_at")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@unique([employeeId, period])
+  @@index([period])
+  @@map("kpi_targets")
 }
 
 // ตารางงานรายวัน ต่อพนักงาน

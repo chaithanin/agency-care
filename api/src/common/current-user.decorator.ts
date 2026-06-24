@@ -11,6 +11,8 @@ export interface RequestUser {
   isImpersonated: boolean;
   impersonatorId?: string;
   impersonatorName?: string;
+  /** Linked Employee record id (if the user has an employee profile) */
+  employeeId?: string;
 }
 
 export const CurrentUser = createParamDecorator(
