@@ -1,10 +1,16 @@
 import {
+  IsArray,
+  IsBoolean,
+  IsDateString,
   IsEmail,
   IsEnum,
+  IsInt,
   IsLatitude,
   IsLongitude,
+  IsNumber,
   IsOptional,
   IsString,
+  Min,
 } from 'class-validator';
 import { AgencyLevel, AgencyStatus } from '@prisma/client';
 
@@ -105,6 +111,104 @@ export class CreateAgencyDto {
   @IsOptional()
   @IsString()
   tags?: string;
+
+  // Agreement
+  @IsOptional()
+  @IsBoolean()
+  agreementActive?: boolean;
+
+  @IsOptional()
+  @IsDateString()
+  agreementStartDate?: string;
+
+  @IsOptional()
+  @IsDateString()
+  agreementExpiry?: string;
+
+  // Sales performance
+  @IsOptional()
+  @IsBoolean()
+  sellsOurProjects?: boolean;
+
+  @IsOptional()
+  @IsDateString()
+  lastSaleDate?: string;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  lastUnitsSold?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  totalUnitsSold?: number;
+
+  // Office & team
+  @IsOptional()
+  @IsBoolean()
+  physicalOffice?: boolean;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  numSalesAgents?: number;
+
+  // Marketing
+  @IsOptional()
+  @IsBoolean()
+  advertisesOurProjects?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  paidAds?: boolean;
+
+  // Social media
+  @IsOptional()
+  @IsString()
+  facebook?: string;
+
+  @IsOptional()
+  @IsString()
+  instagram?: string;
+
+  @IsOptional()
+  @IsString()
+  tiktok?: string;
+
+  @IsOptional()
+  @IsString()
+  linkedin?: string;
+
+  @IsOptional()
+  @IsString()
+  otherSocial?: string;
+
+  // Specialisation
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  propertyTypes?: string[];
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  mainProjects?: string[];
+
+  // Visit cadence
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  visitFrequency?: number;
+
+  // Assignment & workflow
+  @IsOptional()
+  @IsString()
+  assignedCloserId?: string;
+
+  @IsOptional()
+  @IsString()
+  approvalStatus?: string;
 }
 
 export class UpdateAgencyDto extends CreateAgencyDto {
@@ -119,4 +223,8 @@ export class UpdateAgencyDto extends CreateAgencyDto {
   @IsOptional()
   @IsEnum(AgencyStatus)
   status?: AgencyStatus;
+
+  @IsOptional()
+  @IsString()
+  agencyScore?: string;
 }

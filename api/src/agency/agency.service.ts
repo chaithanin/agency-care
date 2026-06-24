@@ -4,6 +4,13 @@ import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateAgencyDto, UpdateAgencyDto } from './dto/agency.dto';
 
+function calcAgencyScore(totalUnits: number): string {
+  if (totalUnits >= 50) return 'A';
+  if (totalUnits >= 20) return 'B';
+  if (totalUnits >= 1) return 'C';
+  return 'D';
+}
+
 @Injectable()
 export class AgencyService {
   constructor(
@@ -77,24 +84,24 @@ export class AgencyService {
   }
 
   // ตรวจ duplicate ก่อนสร้าง — คืน array ของรายการที่น่าสงสัย
-  async checkDuplicate(params: { name?: string; phone?: string; code?: string }) {
-    const conditions: any[] = [];
-    if (params.code) conditions.push({ code: { equals: params.code, mode: 'insensitive' } });
-    if (params.phone) conditions.push({ phone: params.phone });
-    if (params.name) {
-      // ตัดคำสั้นมาก (น้อยกว่า 4 ตัว) ออก
-      const trimmed = params.name.trim();
-      if (trimmed.length >= 4) {
-        conditions.push({ name: { contains: trimmed.slice(0, 20), mode: 'insensitive' } });
-      }
-    }
-    if (!conditions.length) return { duplicates: [] };
-    const hits = await this.prisma.agency.findMany({
-      where: { OR: conditions },
-      select: { id: true, code: true, name: true, phone: true, province: true, status: true },
+  async checkDuplicate(name: string, phone?: string, email?: string, excludeId?: string) {
+    const where: Prisma.AgencyWhereInput = {
+      AND: [
+        excludeId ? { id: { not: excludeId } } : {},
+        {
+          OR: [
+            { name: { contains: name.trim(), mode: 'insensitive' } },
+            ...(phone ? [{ phone: { equals: phone.trim() } }] : []),
+            ...(email ? [{ email: { equals: email.trim(), mode: 'insensitive' as Prisma.QueryMode } }] : []),
+          ],
+        },
+      ],
+    };
+    return this.prisma.agency.findMany({
+      where,
+      select: { id: true, code: true, name: true, phone: true, email: true, status: true, addedById: true },
       take: 5,
     });
-    return { duplicates: hits };
   }
 
   async create(dto: CreateAgencyDto, userId?: string) {
@@ -108,11 +115,18 @@ export class AgencyService {
       data: { userId, action: 'create', entity: 'agency', entityId: agency.id,
         metadata: { after: { name: agency.name, code: agency.code } } },
     });
+    const score = calcAgencyScore(dto.totalUnitsSold ?? 0);
+    if (score !== 'D') {
+      await this.prisma.agency.update({ where: { id: agency.id }, data: { agencyScore: score } });
+    }
     return agency;
   }
 
   async update(id: string, dto: UpdateAgencyDto, userId?: string) {
     const before = await this.get(id);
+    if (dto.totalUnitsSold !== undefined) {
+      dto.agencyScore = calcAgencyScore(dto.totalUnitsSold);
+    }
     const { profileData: pd, ...rest } = dto;
     const data: Prisma.AgencyUpdateInput = {
       ...rest,
@@ -133,6 +147,27 @@ export class AgencyService {
       });
     }
     return after;
+  }
+
+  async getContractExpiryAlerts(): Promise<{ agencyId: string; name: string; expiry: Date; daysLeft: number }[]> {
+    const today = new Date();
+    const in90 = new Date(today);
+    in90.setDate(today.getDate() + 90);
+    const results = await this.prisma.agency.findMany({
+      where: {
+        agreementActive: true,
+        agreementExpiry: { gte: today, lte: in90 },
+        status: 'active',
+      },
+      select: { id: true, name: true, agreementExpiry: true },
+      orderBy: { agreementExpiry: 'asc' },
+    });
+    return results
+      .filter((a) => a.agreementExpiry)
+      .map((a) => {
+        const daysLeft = Math.ceil((a.agreementExpiry!.getTime() - today.getTime()) / 86400000);
+        return { agencyId: a.id, name: a.name, expiry: a.agreementExpiry!, daysLeft };
+      });
   }
 
   // ── Agency Timeline ────────────────────────────────────────────────────────

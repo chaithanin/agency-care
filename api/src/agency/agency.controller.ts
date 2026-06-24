@@ -29,11 +29,18 @@ export class AgencyController {
   @Roles('admin', 'closer')
   @Get('check-duplicate')
   checkDuplicate(
-    @Query('name') name?: string,
+    @Query('name') name: string,
     @Query('phone') phone?: string,
-    @Query('code') code?: string,
+    @Query('email') email?: string,
+    @Query('excludeId') excludeId?: string,
   ) {
-    return this.service.checkDuplicate({ name, phone, code });
+    return this.service.checkDuplicate(name, phone, email, excludeId);
+  }
+
+  @Roles('admin', 'closer')
+  @Get('contract-expiry-alerts')
+  getContractExpiryAlerts() {
+    return this.service.getContractExpiryAlerts();
   }
 
   @Get(':id')

@@ -1,9 +1,6 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Accordion,
-  AccordionDetails,
-  AccordionSummary,
   Alert,
   Box,
   Button,
@@ -31,11 +28,10 @@ import {
   Tooltip,
   Typography,
 } from '@mui/material';
+import AddAgencyDialog from '../components/AddAgencyDialog';
 import SearchIcon from '@mui/icons-material/Search';
 import ClearIcon from '@mui/icons-material/Clear';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import HistoryIcon from '@mui/icons-material/History';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import EditNoteIcon from '@mui/icons-material/EditNote';
@@ -87,14 +83,6 @@ const gradeColor = (g?: string): 'success' | 'info' | 'warning' | 'error' | 'def
   return 'default';
 };
 
-interface DupHit {
-  id: string;
-  code: string;
-  name: string;
-  phone?: string;
-  province?: string;
-  status: string;
-}
 
 interface TimelineEvent {
   type: string; date: string; actor?: string; icon?: string;
@@ -220,38 +208,7 @@ const stageColor = (s?: string): 'default' | 'primary' | 'secondary' | 'error' |
   return 'default';
 };
 
-const emptyForm = {
-  // ส่วนที่ 1 — พื้นฐาน
-  code: '', name: '', type: '', level: 'C', tier: 'gold', pipelineStage: 'active', status: 'active',
-  // ส่วนที่ 2 — ที่อยู่
-  address: '', province: '', zone: '',
-  // ส่วนที่ 3 — ผู้ติดต่อ
-  ownerName: '', managerName: '', phone: '', email: '', lineId: '', website: '',
-  // ส่วนที่ 4 — ข้อมูลธุรกิจ
-  classification: '', gradeQuality: '', gradeRelationship: '', priority: '', source: '', tags: '',
-  // ส่วนที่ 5 — พิกัด GPS
-  latitude: '', longitude: '',
-  // ส่วนที่ 7 — หมายเหตุ
-  remark: '',
-};
-
 interface EmpOpt { id: string; code: string; name: string; }
-
-// ── Duplicate warning ─────────────────────────────────────────────────────────
-function DuplicateWarning({ hits }: { hits: DupHit[] }) {
-  const { t } = useT();
-  if (!hits.length) return null;
-  return (
-    <Alert severity="warning" icon={<WarningAmberIcon />}>
-      <Typography variant="body2" fontWeight={600}>{t('ag.dupWarning')} ({hits.length} {t('ag.dupItems')}):</Typography>
-      {hits.map((h) => (
-        <Typography key={h.id} variant="caption" display="block">
-          • {h.code} — {h.name} {h.phone ? `(${h.phone})` : ''} [{h.status}]
-        </Typography>
-      ))}
-    </Alert>
-  );
-}
 
 export default function AgenciesPage() {
   const { t } = useT();
@@ -260,11 +217,6 @@ export default function AgenciesPage() {
   const [employees, setEmployees] = useState<EmpOpt[]>([]);
   const [open, setOpen] = useState(false);
   const [editFor, setEditFor] = useState<Agency | null>(null); // null = สร้างใหม่
-  const [form, setForm] = useState({ ...emptyForm });
-  const [error, setError] = useState('');
-  const [dupHits, setDupHits] = useState<DupHit[]>([]);
-  const dupTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
   // assign dialog
   const [assignFor, setAssignFor] = useState<Agency | null>(null);
   const [assignEmp, setAssignEmp] = useState('');
@@ -363,69 +315,22 @@ export default function AgenciesPage() {
     api.get('/employees').then((r) => setEmployees(r.data));
   }, []);
 
-  // ─── Duplicate check (debounced) ─────────────────────────────────────────
-  const checkDup = useCallback((name: string, phone: string, code: string) => {
-    if (dupTimer.current) clearTimeout(dupTimer.current);
-    if (!name && !phone && !code) { setDupHits([]); return; }
-    dupTimer.current = setTimeout(async () => {
-      try {
-        const params: Record<string, string> = {};
-        if (name.length >= 4) params.name = name;
-        if (phone) params.phone = phone;
-        if (code) params.code = code;
-        const { data } = await api.get('/agencies/check-duplicate', { params });
-        // ถ้ากำลัง edit — ข้ามตัวเองออก
-        const filtered = editFor ? data.duplicates.filter((d: DupHit) => d.id !== editFor.id) : data.duplicates;
-        setDupHits(filtered);
-      } catch { /* ไม่แสดง error */ }
-    }, 600);
-  }, [editFor]);
-
-  // ─── Form helpers ─────────────────────────────────────────────────────────
-  const setF = (key: keyof typeof emptyForm, val: string) => {
-    const next = { ...form, [key]: val };
-    setForm(next);
-    if (key === 'name' || key === 'phone' || key === 'code') {
-      checkDup(next.name, next.phone, next.code);
-    }
-  };
-
   const openCreate = () => {
     setEditFor(null);
-    setForm({ ...emptyForm });
-    setError('');
-    setDupHits([]);
     setOpen(true);
   };
 
   const openEdit = (a: Agency) => {
     setEditFor(a);
-    setForm({
-      code: a.code ?? '', name: a.name ?? '', type: (a as any).type ?? '',
-      level: a.level ?? 'C', tier: a.tier ?? 'gold',
-      pipelineStage: a.pipelineStage ?? 'active', status: a.status ?? 'active',
-      address: a.address ?? '', province: a.province ?? '', zone: a.zone ?? '',
-      ownerName: a.ownerName ?? '', managerName: a.managerName ?? '',
-      phone: a.phone ?? '', email: a.email ?? '', lineId: a.lineId ?? '', website: a.website ?? '',
-      classification: a.classification ?? '', gradeQuality: a.gradeQuality ?? '',
-      gradeRelationship: a.gradeRelationship ?? '', priority: a.priority ?? '',
-      source: a.source ?? '', tags: a.tags ?? '',
-      latitude: a.latitude != null ? String(a.latitude) : '',
-      longitude: a.longitude != null ? String(a.longitude) : '',
-      remark: a.remark ?? '',
-    });
-    setError('');
-    setDupHits([]);
     setOpen(true);
   };
 
   const doAssign = async () => {
     if (!assignFor || !assignEmp) return;
-    setError('');
     try {
       await api.post('/assignments', { agencyId: assignFor.id, employeeId: assignEmp });
       setAssignFor(null); setAssignEmp(''); load();
-    } catch (e) { setError(errMsg(e)); }
+    } catch (e) { console.error(errMsg(e)); }
   };
 
   const doUnassign = async (agencyId: string, employeeId: string) => {
@@ -469,48 +374,6 @@ export default function AgenciesPage() {
     await api.patch(`/agencies/${tierFor.id}`, { tier: tierFor.tier, pipelineStage: tierFor.pipelineStage });
     setTierFor(null); load();
   };
-
-  const save = async () => {
-    setError('');
-    const payload: Record<string, any> = {
-      code: form.code, name: form.name,
-      type: form.type || undefined, level: form.level,
-      tier: form.tier, pipelineStage: form.pipelineStage,
-      province: form.province || undefined, zone: form.zone || undefined,
-      address: form.address || undefined,
-      ownerName: form.ownerName || undefined, managerName: form.managerName || undefined,
-      phone: form.phone || undefined, email: form.email || undefined,
-      lineId: form.lineId || undefined, website: form.website || undefined,
-      classification: form.classification || undefined,
-      gradeQuality: form.gradeQuality || undefined,
-      gradeRelationship: form.gradeRelationship || undefined,
-      priority: form.priority || undefined, source: form.source || undefined,
-      tags: form.tags || undefined, remark: form.remark || undefined,
-      latitude: form.latitude ? Number(form.latitude) : undefined,
-      longitude: form.longitude ? Number(form.longitude) : undefined,
-    };
-    if (editFor) payload.status = form.status;
-    try {
-      if (editFor) {
-        await api.patch(`/agencies/${editFor.id}`, payload);
-      } else {
-        await api.post('/agencies', payload);
-      }
-      setOpen(false); setForm({ ...emptyForm }); setEditFor(null); setDupHits([]); load();
-    } catch (e) { setError(errMsg(e)); }
-  };
-
-  // ─── Form sections ─────────────────────────────────────────────────────────
-  const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
-    <Accordion defaultExpanded disableGutters elevation={0} sx={{ '&:before': { display: 'none' }, border: '1px solid', borderColor: 'divider', borderRadius: 1, mb: 1 }}>
-      <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ bgcolor: 'action.hover', borderRadius: 1 }}>
-        <Typography variant="subtitle2" fontWeight={700}>{title}</Typography>
-      </AccordionSummary>
-      <AccordionDetails>
-        <Stack spacing={2}>{children}</Stack>
-      </AccordionDetails>
-    </Accordion>
-  );
 
   return (
     <Box>
@@ -741,141 +604,13 @@ export default function AgenciesPage() {
         </DialogActions>
       </Dialog>
 
-      {/* ─── Enhanced Agency Form Dialog ──────────────────────────────────── */}
-      <Dialog open={open} onClose={() => setOpen(false)} fullWidth maxWidth="md" scroll="paper">
-        <DialogTitle>{editFor ? `${t('common.edit')}: ${editFor.name}` : t('ag.addTitle')}</DialogTitle>
-        <DialogContent dividers>
-          <Stack spacing={1} mt={0.5}>
-            {error && <Alert severity="error">{error}</Alert>}
-            <DuplicateWarning hits={dupHits} />
-
-            {/* ส่วนที่ 1: ข้อมูลพื้นฐาน */}
-            <Section title={t('ag.sec1')}>
-              <Stack direction="row" spacing={2}>
-                <TextField label={t('ag.codeLabel')} value={form.code}
-                  onChange={(e) => setF('code', e.target.value)} required sx={{ flex: 1 }} size="small" />
-                <TextField select label={t('ag.level')} value={form.level}
-                  onChange={(e) => setF('level', e.target.value)} sx={{ width: 100 }} size="small">
-                  {['A', 'B', 'C', 'D'].map((l) => <MenuItem key={l} value={l}>{l}</MenuItem>)}
-                </TextField>
-                {editFor && (
-                  <TextField select label={t('c.status')} value={form.status}
-                    onChange={(e) => setF('status', e.target.value)} sx={{ width: 130 }} size="small">
-                    <MenuItem value="active">Active</MenuItem>
-                    <MenuItem value="inactive">Inactive</MenuItem>
-                  </TextField>
-                )}
-              </Stack>
-              <TextField label={t('ag.nameLabel')} value={form.name}
-                onChange={(e) => setF('name', e.target.value)} required size="small" />
-              <TextField label={t('ag.shopType')} value={form.type}
-                onChange={(e) => setF('type', e.target.value)} size="small"
-                placeholder={t('ag.shopTypePh')} />
-              <Stack direction="row" spacing={2}>
-                <TextField select label={t('ag.tierFreqLabel')} value={form.tier}
-                  onChange={(e) => setF('tier', e.target.value)} sx={{ flex: 1 }} size="small">
-                  {TIERS.map((tier) => <MenuItem key={tier} value={tier}>{tier}</MenuItem>)}
-                </TextField>
-                <TextField select label={t('ag.pipelineStage')} value={form.pipelineStage}
-                  onChange={(e) => setF('pipelineStage', e.target.value)} sx={{ flex: 1 }} size="small">
-                  {STAGES.map((s) => <MenuItem key={s} value={s}>{t('st.' + s)}</MenuItem>)}
-                </TextField>
-              </Stack>
-            </Section>
-
-            {/* ส่วนที่ 2: ที่อยู่ */}
-            <Section title={t('ag.sec2')}>
-              <TextField label={t('ag.address')} value={form.address}
-                onChange={(e) => setF('address', e.target.value)} multiline minRows={2} size="small" />
-              <Stack direction="row" spacing={2}>
-                <TextField label={t('ag.province')} value={form.province}
-                  onChange={(e) => setF('province', e.target.value)} sx={{ flex: 1 }} size="small" />
-                <TextField label={t('c.zone')} value={form.zone}
-                  onChange={(e) => setF('zone', e.target.value)} sx={{ flex: 1 }} size="small" />
-              </Stack>
-            </Section>
-
-            {/* ส่วนที่ 3: ผู้ติดต่อ */}
-            <Section title={t('ag.sec3')}>
-              <Stack direction="row" spacing={2}>
-                <TextField label={t('ag.owner')} value={form.ownerName}
-                  onChange={(e) => setF('ownerName', e.target.value)} sx={{ flex: 1 }} size="small" />
-                <TextField label={t('ag.manager')} value={form.managerName}
-                  onChange={(e) => setF('managerName', e.target.value)} sx={{ flex: 1 }} size="small" />
-              </Stack>
-              <Stack direction="row" spacing={2}>
-                <TextField label={t('c.phone')} value={form.phone}
-                  onChange={(e) => setF('phone', e.target.value)} sx={{ flex: 1 }} size="small" />
-                <TextField label={t('ag.fieldEmail')} value={form.email}
-                  onChange={(e) => setF('email', e.target.value)} sx={{ flex: 1 }} size="small" />
-              </Stack>
-              <Stack direction="row" spacing={2}>
-                <TextField label={t('ag.fieldLineId')} value={form.lineId}
-                  onChange={(e) => setF('lineId', e.target.value)} sx={{ flex: 1 }} size="small" />
-                <TextField label={t('ag.fieldWebsite')} value={form.website}
-                  onChange={(e) => setF('website', e.target.value)} sx={{ flex: 1 }} size="small"
-                  placeholder="https://" />
-              </Stack>
-            </Section>
-
-            {/* ส่วนที่ 4: ข้อมูลธุรกิจ */}
-            <Section title={t('ag.sec4')}>
-              <Stack direction="row" spacing={2}>
-                <TextField label={t('ag.fieldClassification')} value={form.classification}
-                  onChange={(e) => setF('classification', e.target.value)} sx={{ flex: 1 }} size="small" />
-                <TextField label={t('ag.fieldGradeQuality')} value={form.gradeQuality}
-                  onChange={(e) => setF('gradeQuality', e.target.value)} sx={{ flex: 1 }} size="small" />
-                <TextField label={t('ag.fieldGradeRelationship')} value={form.gradeRelationship}
-                  onChange={(e) => setF('gradeRelationship', e.target.value)} sx={{ flex: 1 }} size="small" />
-              </Stack>
-              <Stack direction="row" spacing={2}>
-                <TextField label={t('ag.fieldPriority')} value={form.priority}
-                  onChange={(e) => setF('priority', e.target.value)} sx={{ flex: 1 }} size="small" />
-                <TextField label={t('ag.fieldSource')} value={form.source}
-                  onChange={(e) => setF('source', e.target.value)} sx={{ flex: 1 }} size="small" />
-                <TextField label={t('ag.fieldTags')} value={form.tags}
-                  onChange={(e) => setF('tags', e.target.value)} sx={{ flex: 1 }} size="small" />
-              </Stack>
-            </Section>
-
-            {/* ส่วนที่ 5: พิกัด GPS */}
-            <Section title={t('ag.sec5')}>
-              <Stack direction="row" spacing={2}>
-                <TextField label={t('ag.fieldLatitude')} value={form.latitude}
-                  onChange={(e) => setF('latitude', e.target.value)} placeholder="13.7563"
-                  sx={{ flex: 1 }} size="small" />
-                <TextField label={t('ag.fieldLongitude')} value={form.longitude}
-                  onChange={(e) => setF('longitude', e.target.value)} placeholder="100.5018"
-                  sx={{ flex: 1 }} size="small" />
-              </Stack>
-              <Typography variant="caption" color="text.secondary">{t('ag.gpsHint')}</Typography>
-            </Section>
-
-            {/* ส่วนที่ 6: รูปภาพ — ยังใช้ GPS dialog เดิม (ดูด้านล่าง) */}
-            <Section title={t('ag.sec6')}>
-              <Typography variant="caption" color="text.secondary">
-                {t('ag.photoHint')}
-              </Typography>
-              {editFor && (editFor as any).photoFront && (
-                <Box component="img" src={(editFor as any).photoFront} sx={{ maxHeight: 120, objectFit: 'contain', borderRadius: 1 }} />
-              )}
-            </Section>
-
-            {/* ส่วนที่ 7: หมายเหตุ */}
-            <Section title={t('ag.sec7')}>
-              <TextField label={t('ag.remarkLabel')} value={form.remark}
-                onChange={(e) => setF('remark', e.target.value)} multiline minRows={3} size="small"
-                placeholder={t('ag.remarkPh')} />
-            </Section>
-          </Stack>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpen(false)}>{t('common.cancel')}</Button>
-          <Button variant="contained" onClick={save} disabled={!form.code || !form.name}>
-            {editFor ? t('common.save') : t('ag.add')}
-          </Button>
-        </DialogActions>
-      </Dialog>
+      {/* ─── Add / Edit Agency Dialog (comprehensive 7-section form) ───────── */}
+      <AddAgencyDialog
+        open={open}
+        editFor={editFor as any}
+        onClose={() => { setOpen(false); setEditFor(null); }}
+        onSaved={() => { load(); }}
+      />
 
       {/* ─── มอบหมายเซลส์ ─── */}
       <Dialog open={!!assignFor} onClose={() => setAssignFor(null)} fullWidth maxWidth="xs">

@@ -40,10 +40,11 @@ enum TaskType {
 }
 
 enum AgencyLevel {
-  A // เยี่ยม 4 ครั้ง/เดือน
-  B // เยี่ยม 2 ครั้ง/เดือน
-  C // เยี่ยม 1 ครั้ง/เดือน
-  D // เยี่ยม 1 ครั้ง/3 เดือน
+  VIP // เยี่ยม 8 ครั้ง/เดือน
+  A   // เยี่ยม 4 ครั้ง/เดือน
+  B   // เยี่ยม 2 ครั้ง/เดือน
+  C   // เยี่ยม 1 ครั้ง/เดือน
+  D   // เยี่ยม 1 ครั้ง/3 เดือน
 }
 
 enum AgencyStatus {
@@ -94,6 +95,10 @@ enum AuditAction {
   delete
   login
   impersonate
+  assign
+  unassign
+  restore
+  approve
 }
 
 // Phase 5: ตำแหน่งพนักงาน
@@ -167,6 +172,7 @@ model Employee {
   monthlyPlans   MonthlyPlan[]
   dailySchedules DailySchedule[]
   addedAgencies  Agency[]        @relation("AgencyAddedBy")
+  closerAgencies Agency[]        @relation("AgencyCloser")
   tasks          Task[]
   planVersionItems PlanVersionItem[]
 
@@ -222,6 +228,43 @@ model Agency {
 
   // หมายเหตุ
   remark      String? // บันทึกภายในเพิ่มเติม
+
+  // ข้อมูลสัญญา
+  agreementActive      Boolean?  @default(false) @map("agreement_active")
+  agreementStartDate   DateTime? @map("agreement_start_date") @db.Date
+  agreementExpiry      DateTime? @map("agreement_expiry") @db.Date
+
+  // ผลการขาย
+  sellsOurProjects     Boolean?  @map("sells_our_projects")
+  lastSaleDate         DateTime? @map("last_sale_date") @db.Date
+  lastUnitsSold        Int?      @map("last_units_sold")
+  totalUnitsSold       Int?      @map("total_units_sold")
+  agencyScore          String?   @map("agency_score") // A/B/C/D computed from totalUnitsSold
+
+  // สำนักงาน
+  physicalOffice       Boolean?  @map("physical_office")
+  numSalesAgents       Int?      @map("num_sales_agents")
+  advertisesOurProjects Boolean? @map("advertises_our_projects")
+  paidAds              Boolean?  @map("paid_ads")
+
+  // Social Media
+  facebook             String?
+  instagram            String?
+  tiktok               String?
+  linkedin             String?
+  otherSocial          String?   @map("other_social")
+
+  // Property Focus
+  propertyTypes        String[]  @default([]) @map("property_types")
+  mainProjects         String[]  @default([]) @map("main_projects")
+
+  // Agency Management
+  visitFrequency       Int?      @map("visit_frequency") // 1, 2, or 4 per month
+  assignedCloserId     String?   @map("assigned_closer_id")
+  approvalStatus       String    @default("active") @map("approval_status") // draft/pending_approval/approved/active
+
+  assignedCloser       Employee? @relation("AgencyCloser", fields: [assignedCloserId], references: [id], onDelete: SetNull)
+
   profileData Json?   @map("profile_data") // Agency Information Form (structured JSON)
 
   // รูป (เก็บ url/path)
@@ -245,6 +288,9 @@ model Agency {
   @@index([province])
   @@index([status])
   @@index([addedById])
+  @@index([assignedCloserId])
+  @@index([agreementExpiry])
+  @@index([approvalStatus])
   @@map("agencies")
 }
 
