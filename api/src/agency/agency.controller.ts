@@ -61,6 +61,12 @@ export class AgencyController {
   }
 
   @Roles('admin', 'closer')
+  @Post('bulk-import')
+  bulkImport(@Body() body: { rows: any[] }) {
+    return this.service.bulkImport(body.rows ?? []);
+  }
+
+  @Roles('admin', 'closer')
   @Post()
   create(@CurrentUser() user: RequestUser, @Body() dto: CreateAgencyDto) {
     return this.service.create(dto, user.id);

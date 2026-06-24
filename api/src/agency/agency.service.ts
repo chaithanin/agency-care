@@ -259,6 +259,68 @@ export class AgencyService {
     return { agencyId, agencyName: agency.name, events };
   }
 
+  // ── Bulk Import (Venio CRM / Excel) ──────────────────────────────────────
+  async bulkImport(rows: any[]): Promise<{ created: number; updated: number; skipped: number; errors: string[] }> {
+    let created = 0, updated = 0, skipped = 0;
+    const errors: string[] = [];
+
+    for (const row of rows) {
+      const code = String(row.code || '').trim();
+      if (!code) { skipped++; continue; }
+      const name = String(row.name || '').trim();
+      if (!name || name === '-' || name === '- -') { skipped++; continue; }
+
+      try {
+        const existing = await this.prisma.agency.findUnique({ where: { code } });
+        const agencyScore = row.totalUnitsSold != null ? calcAgencyScore(Number(row.totalUnitsSold)) : row.agencyScore;
+
+        const data: Prisma.AgencyCreateInput = {
+          code,
+          name,
+          ...(row.status && { status: row.status }),
+          ...(row.level && { level: row.level }),
+          ...(row.tier && { tier: row.tier }),
+          ...(row.pipelineStage && { pipelineStage: row.pipelineStage }),
+          ...(row.phone && { phone: String(row.phone) }),
+          ...(row.email && { email: String(row.email) }),
+          ...(row.website && { website: String(row.website) }),
+          ...(row.tiktok && { tiktok: String(row.tiktok) }),
+          ...(row.ownerName && { ownerName: String(row.ownerName) }),
+          ...(row.type && { type: String(row.type) }),
+          ...(row.classification && { classification: String(row.classification) }),
+          ...(row.gradeQuality && { gradeQuality: String(row.gradeQuality) }),
+          ...(row.gradeRelationship && { gradeRelationship: String(row.gradeRelationship) }),
+          ...(row.source && { source: String(row.source) }),
+          ...(row.tags && { tags: String(row.tags) }),
+          ...(row.remark && { remark: String(row.remark) }),
+          ...(row.province && { province: String(row.province) }),
+          ...(row.zone && { zone: String(row.zone) }),
+          ...(row.address && { address: String(row.address) }),
+          ...(row.latitude != null && { latitude: Number(row.latitude) }),
+          ...(row.longitude != null && { longitude: Number(row.longitude) }),
+          ...(row.geocodeSource && { geocodeSource: String(row.geocodeSource) }),
+          ...(agencyScore && { agencyScore }),
+          ...(row.advertisesOurProjects != null && { advertisesOurProjects: Boolean(row.advertisesOurProjects) }),
+          ...(row.sellsOurProjects != null && { sellsOurProjects: Boolean(row.sellsOurProjects) }),
+        };
+
+        if (existing) {
+          const { code: _c, ...updateData } = data as any;
+          await this.prisma.agency.update({ where: { code }, data: updateData });
+          updated++;
+        } else {
+          await this.prisma.agency.create({ data });
+          created++;
+        }
+      } catch (e: any) {
+        errors.push(`${code}: ${e.message}`);
+        if (errors.length >= 20) break;
+      }
+    }
+
+    return { created, updated, skipped, errors };
+  }
+
   // เติมพิกัดอัตโนมัติให้ agency ที่ยังไม่มี ผ่าน Google Geocoding API
   async geocodeMissing(limit = 50) {
     const key = this.config.get<string>('GOOGLE_MAPS_API_KEY');
