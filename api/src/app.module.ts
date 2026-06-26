@@ -31,6 +31,7 @@ import { ReportModule } from './report/report.module';
 import { FollowupModule } from './followup/followup.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { LeaveModule } from './leave/leave.module';
+import { PrModule } from './pr/pr.module';
 
 @Module({
   imports: [
@@ -73,6 +74,7 @@ import { LeaveModule } from './leave/leave.module';
     FollowupModule,
     NotificationsModule,
     LeaveModule,
+    PrModule,
   ],
   controllers: [AppController],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],

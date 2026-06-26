@@ -433,6 +433,114 @@ export class SmartNotificationService {
   }
 
   // ============================================================
+  // PR Notifications — รวมอยู่ใน Daily Brief 08:00
+  // + Escalation cron แยกต่างหาก (08:30)
+  // ============================================================
+
+  @Cron('30 8 * * 1-6', { timeZone: 'Asia/Bangkok' })
+  async runPrEscalation() {
+    this.logger.log('PR Escalation: 08:30');
+    await this.sendPrNotifications();
+  }
+
+  async sendPrNotifications() {
+    const prs = await this.prisma.purchaseRequest.findMany({
+      where: { status: { in: ['submitted', 'waiting_approval', 'approved', 'purchasing', 'ordered', 'received'] } },
+      include: {
+        responsible: { select: { id: true, name: true, lineUserId: true, userId: true, teamId: true } },
+        createdBy: { select: { id: true, name: true } },
+      },
+    });
+
+    const now = Date.now();
+    const byEmployee = new Map<string, { emp: typeof prs[0]['responsible']; prs: typeof prs }>();
+    for (const pr of prs) {
+      if (!pr.responsible) continue;
+      const key = pr.responsible.id;
+      const entry = byEmployee.get(key) ?? { emp: pr.responsible, prs: [] };
+      entry.prs.push(pr);
+      byEmployee.set(key, entry);
+    }
+
+    let sent = 0;
+    for (const { emp, prs: empPrs } of byEmployee.values()) {
+      if (!emp?.lineUserId || !this.line.enabled) continue;
+      const list = empPrs.slice(0, 5).map((p) => `• ${p.prNumber}`).join('\n');
+      const more = empPrs.length > 5 ? `\n…และอีก ${empPrs.length - 5} รายการ` : '';
+      const text = `📌 แจ้งเตือน PR\nคุณ${emp.name}\nคุณมี PR ที่ยังไม่ปิด จำนวน ${empPrs.length} รายการ\n${list}${more}\nกรุณาอัปเดตสถานะ\n👉 ${APP_URL}/pr`;
+      const ok = await this.line.pushText(emp.lineUserId, text);
+      if (emp.id) {
+        await this.log({ notifType: 'daily_brief', channel: 'line', recipientId: emp.id, role: 'sales', taskCount: empPrs.length, overdueCount: 0, messageBody: text, status: ok ? 'sent' : 'failed' });
+      }
+      if (ok) sent++;
+    }
+
+    // Escalation — 7 days: notify closer too
+    const sevenDaysAgo = new Date(now - 7 * 86400000);
+    const fourteenDaysAgo = new Date(now - 14 * 86400000);
+
+    const longOverduePrs = prs.filter((p) => p.createdAt < sevenDaysAgo);
+    if (!longOverduePrs.length) return { sent };
+
+    const closers = await this.prisma.employee.findMany({
+      where: { position: 'closer', isActive: true, lineUserId: { not: null } },
+      select: { id: true, name: true, lineUserId: true, teamId: true },
+    });
+
+    // Group by team for closer
+    const byTeam = new Map<string, { pr: typeof prs[0]; daysOpen: number }[]>();
+    for (const pr of longOverduePrs) {
+      if (!pr.responsible?.teamId) continue;
+      const entry = byTeam.get(pr.responsible.teamId) ?? [];
+      entry.push({ pr, daysOpen: Math.floor((now - pr.createdAt.getTime()) / 86400000) });
+      byTeam.set(pr.responsible.teamId, entry);
+    }
+
+    for (const closer of closers) {
+      if (!closer.teamId || !byTeam.has(closer.teamId)) continue;
+      const items = byTeam.get(closer.teamId)!;
+      const list = items.slice(0, 5).map((i) => `• ${i.pr.prNumber} (${i.daysOpen} วัน)`).join('\n');
+      const text = `⚠️ PR ค้างในทีม\nทีม — มี ${items.length} PR ค้างเกิน 7 วัน\n${list}\n👉 ${APP_URL}/pr`;
+      if (closer.lineUserId && this.line.enabled) await this.line.pushText(closer.lineUserId, text);
+    }
+
+    // 14-day escalation — notify executives
+    const veryLongOverdue = prs.filter((p) => p.createdAt < fourteenDaysAgo);
+    if (!veryLongOverdue.length) return { sent };
+
+    const executives = await this.prisma.user.findMany({
+      where: { role: { in: ['admin', 'super_admin'] }, isActive: true },
+      select: { employee: { select: { id: true, lineUserId: true, name: true } } },
+    });
+    for (const exec of executives) {
+      if (!exec.employee?.lineUserId || !this.line.enabled) continue;
+      const text = `🚨 PR เกินกำหนด 14 วัน\nองค์กรมี ${veryLongOverdue.length} PR ค้างเกิน 2 สัปดาห์\n👉 ${APP_URL}/pr`;
+      await this.line.pushText(exec.employee.lineUserId, text);
+    }
+
+    return { sent };
+  }
+
+  // Due date reminder — 3 days before (run at 08:15)
+  @Cron('15 8 * * 1-6', { timeZone: 'Asia/Bangkok' })
+  async runPrDueReminder() {
+    const in3days = new Date(Date.now() + 3 * 86400000);
+    const in3daysEnd = new Date(in3days.getTime() + 86400000);
+    const upcoming = await this.prisma.purchaseRequest.findMany({
+      where: {
+        status: { in: ['submitted', 'waiting_approval', 'approved', 'purchasing', 'ordered', 'received'] },
+        dueDate: { gte: in3days, lt: in3daysEnd },
+      },
+      include: { responsible: { select: { id: true, name: true, lineUserId: true } } },
+    });
+    for (const pr of upcoming) {
+      if (!pr.responsible?.lineUserId || !this.line.enabled) continue;
+      const text = `⏳ PR ใกล้ถึงกำหนด\n${pr.prNumber}: ${pr.title}\nกำหนดส่ง: ${pr.dueDate?.toISOString().slice(0, 10)}\n👉 ${APP_URL}/pr/${pr.id}`;
+      await this.line.pushText(pr.responsible.lineUserId, text);
+    }
+  }
+
+  // ============================================================
   // Utils
   // ============================================================
 

@@ -31,6 +31,9 @@ import AutoAssignPage from './pages/AutoAssignPage';
 import SettingsPage from './pages/SettingsPage';
 import LeavePage from './pages/LeavePage';
 import NotificationCenterPage from './pages/NotificationCenterPage';
+import PrPage from './pages/PrPage';
+import PrFormPage from './pages/PrFormPage';
+import PrDetailPage from './pages/PrDetailPage';
 
 function Splash() {
   return (
@@ -92,6 +95,10 @@ export default function App() {
         <Route path="/route" element={<RoutePage />} />
         <Route path="/tasks" element={<TasksPage />} />
         <Route path="/leave" element={<LeavePage />} />
+        <Route path="/pr" element={<PrPage />} />
+        <Route path="/pr/create" element={<PrFormPage />} />
+        <Route path="/pr/:id" element={<PrDetailPage />} />
+        <Route path="/pr/:id/edit" element={<PrFormPage />} />
         <Route path="/notifications" element={<NotificationsPage />} />
         <Route path="/visits/:id" element={<VisitDetailPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />

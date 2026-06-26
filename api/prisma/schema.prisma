@@ -143,6 +143,10 @@ model User {
   approvedPlans  AssignmentPlan[]    @relation("PlanApprovedBy")
   planVersions   PlanVersion[]
   leaveApprovals LeaveRequest[]      @relation("LeaveApprovedBy")
+  createdPRs     PurchaseRequest[]   @relation("PrCreatedBy")
+  approvedPRs    PurchaseRequest[]   @relation("PrApprover")
+  prComments     PrComment[]         @relation("PrComment")
+  prActivities   PrActivity[]        @relation("PrActivity")
 
   @@map("users")
 }
@@ -179,6 +183,7 @@ model Employee {
   planVersionItems PlanVersionItem[]
   leaveRequests  LeaveRequest[]
   notificationLogs NotificationLog[]
+  responsiblePRs PurchaseRequest[]   @relation("PrResponsible")
 
   @@index([zone])
   @@index([teamId])
@@ -956,4 +961,133 @@ model NotificationLog {
   @@index([recipientId])
   @@index([status])
   @@map("notification_logs")
+}
+
+// ============================================================
+// PR Tracking Module (Purchase Request)
+// ============================================================
+
+model PurchaseRequest {
+  id              String    @id @default(cuid())
+  prNumber        String    @unique @map("pr_number")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+  createdById     String    @map("created_by_id")
+  department      String
+  prType          String    @map("pr_type")
+  priority        String    @default("medium") // low|medium|high|urgent
+  status          String    @default("draft")  // draft|submitted|waiting_approval|approved|purchasing|ordered|received|completed|cancelled
+  title           String
+  description     String?   @db.Text
+  note            String?   @db.Text
+  budgetTotal     Decimal?  @map("budget_total") @db.Decimal(14, 2)
+  dueDate         DateTime? @map("due_date") @db.Date
+  responsibleId   String?   @map("responsible_id")   // employeeId
+  approverId      String?   @map("approver_id")       // userId
+  approvedAt      DateTime? @map("approved_at")
+  closedAt        DateTime? @map("closed_at")
+  cancelReason    String?   @map("cancel_reason")
+
+  createdBy       User            @relation("PrCreatedBy", fields: [createdById], references: [id])
+  responsible     Employee?       @relation("PrResponsible", fields: [responsibleId], references: [id], onDelete: SetNull)
+  approver        User?           @relation("PrApprover", fields: [approverId], references: [id], onDelete: SetNull)
+  items           PrItem[]
+  comments        PrComment[]
+  activities      PrActivity[]
+  checklists      PrChecklist[]
+  attachments     PrAttachment[]
+
+  @@index([status])
+  @@index([createdById])
+  @@index([responsibleId])
+  @@index([dueDate])
+  @@map("purchase_requests")
+}
+
+model PrItem {
+  id        String   @id @default(cuid())
+  prId      String   @map("pr_id")
+  name      String
+  detail    String?  @db.Text
+  qty       Decimal  @db.Decimal(10, 2)
+  unit      String?
+  budget    Decimal? @db.Decimal(14, 2)
+  neededBy  DateTime? @map("needed_by") @db.Date
+
+  pr        PurchaseRequest @relation(fields: [prId], references: [id], onDelete: Cascade)
+
+  @@index([prId])
+  @@map("pr_items")
+}
+
+model PrComment {
+  id        String   @id @default(cuid())
+  prId      String   @map("pr_id")
+  userId    String   @map("user_id")
+  message   String   @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+
+  pr        PurchaseRequest @relation(fields: [prId], references: [id], onDelete: Cascade)
+  user      User            @relation("PrComment", fields: [userId], references: [id])
+
+  @@index([prId])
+  @@map("pr_comments")
+}
+
+model PrActivity {
+  id        String   @id @default(cuid())
+  prId      String   @map("pr_id")
+  userId    String   @map("user_id")
+  action    String   // status_change|comment|edit|attachment|assign|approve|cancel
+  oldValue  String?  @map("old_value")
+  newValue  String?  @map("new_value")
+  note      String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  pr        PurchaseRequest @relation(fields: [prId], references: [id], onDelete: Cascade)
+  user      User            @relation("PrActivity", fields: [userId], references: [id])
+
+  @@index([prId])
+  @@index([createdAt])
+  @@map("pr_activities")
+}
+
+model PrChecklist {
+  id        String    @id @default(cuid())
+  prId      String    @map("pr_id")
+  label     String
+  isDone    Boolean   @default(false) @map("is_done")
+  doneAt    DateTime? @map("done_at")
+  doneById  String?   @map("done_by_id")
+  sortOrder Int       @default(0) @map("sort_order")
+
+  pr        PurchaseRequest @relation(fields: [prId], references: [id], onDelete: Cascade)
+
+  @@index([prId])
+  @@map("pr_checklists")
+}
+
+model PrAttachment {
+  id           String   @id @default(cuid())
+  prId         String   @map("pr_id")
+  fileName     String   @map("file_name")
+  fileUrl      String   @map("file_url")
+  fileSize     Int?     @map("file_size")
+  mimeType     String?  @map("mime_type")
+  uploadedById String   @map("uploaded_by_id")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  pr           PurchaseRequest @relation(fields: [prId], references: [id], onDelete: Cascade)
+
+  @@index([prId])
+  @@map("pr_attachments")
+}
+
+// Sequence counter for PR number
+model PrSequence {
+  id      String @id @default("singleton")
+  lastSeq Int    @default(0) @map("last_seq")
+  year    Int
+
+  @@map("pr_sequence")
 }
