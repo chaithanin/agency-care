@@ -9,8 +9,8 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const config = app.get(ConfigService);
 
-  // เพิ่ม body limit (default 100kb เล็กไป — auto-assign apply ส่ง ~300KB) -> 404
-  app.use(json({ limit: '10mb' }));
+  // เพิ่ม body limit + เก็บ rawBody ไว้ verify LINE webhook signature
+  app.use(json({ limit: '10mb', verify: (req: any, _res, buf) => { req.rawBody = buf; } }));
   app.use(urlencoded({ extended: true, limit: '10mb' }));
 
   // อยู่หลัง reverse proxy (Railway) -> ใช้ X-Forwarded-For เป็น client IP จริง
