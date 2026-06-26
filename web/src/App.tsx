@@ -38,6 +38,11 @@ import DocsPage from './pages/DocsPage';
 import DocCreatePage from './pages/DocCreatePage';
 import DocDetailPage from './pages/DocDetailPage';
 import DocPrintPage from './pages/DocPrintPage';
+import EmployeeFilePage from './pages/EmployeeFilePage';
+import ApprovalCenterPage from './pages/ApprovalCenterPage';
+import AuditPage from './pages/AuditPage';
+import MasterDataPage from './pages/MasterDataPage';
+import AiCenterPage from './pages/AiCenterPage';
 
 function Splash() {
   return (
@@ -88,6 +93,11 @@ export default function App() {
             <Route path="/leave" element={<LeavePage />} />
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="/notification-center" element={<NotificationCenterPage />} />
+            <Route path="/approvals" element={<ApprovalCenterPage />} />
+            <Route path="/ai-center" element={<AiCenterPage />} />
+            <Route path="/audit" element={<AuditPage />} />
+            <Route path="/master-data" element={<MasterDataPage />} />
+            <Route path="/employees/:id/file" element={<EmployeeFilePage />} />
           </>
         ) : (
           <>

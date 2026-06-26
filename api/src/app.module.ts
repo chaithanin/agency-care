@@ -33,6 +33,12 @@ import { NotificationsModule } from './notifications/notifications.module';
 import { LeaveModule } from './leave/leave.module';
 import { PrModule } from './pr/pr.module';
 import { DocsModule } from './docs/docs.module';
+import { MasterDataModule } from './master-data/master-data.module';
+import { ApprovalsModule } from './approvals/approvals.module';
+import { TrainingModule } from './training/training.module';
+import { EvaluationsModule } from './evaluations/evaluations.module';
+import { ExpensesModule } from './expenses/expenses.module';
+import { AgencyScoresModule } from './agency-scores/agency-scores.module';
 
 @Module({
   imports: [
@@ -77,6 +83,12 @@ import { DocsModule } from './docs/docs.module';
     LeaveModule,
     PrModule,
     DocsModule,
+    MasterDataModule,
+    ApprovalsModule,
+    TrainingModule,
+    EvaluationsModule,
+    ExpensesModule,
+    AgencyScoresModule,
   ],
   controllers: [AppController],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],

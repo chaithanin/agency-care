@@ -47,6 +47,9 @@ import CampaignRoundedIcon from '@mui/icons-material/CampaignRounded';
 import ReceiptLongRoundedIcon from '@mui/icons-material/ReceiptLongRounded';
 import FolderSpecialRoundedIcon from '@mui/icons-material/FolderSpecialRounded';
 import Hub from '@mui/icons-material/HubRounded';
+import HowToVoteRoundedIcon from '@mui/icons-material/HowToVoteRounded';
+import ManageSearchRoundedIcon from '@mui/icons-material/ManageSearchRounded';
+import StorageRoundedIcon from '@mui/icons-material/StorageRounded';
 import { useAuth, type Role } from '../auth/AuthContext';
 import { useT } from '../i18n';
 import { api } from '../api/client';
@@ -143,6 +146,10 @@ export default function Layout({ children }: { children: ReactNode }) {
     { to: '/leave', label: t('nav.leave'), icon: <BeachAccessRoundedIcon /> },
     { to: '/pr', label: 'PR Tracking', icon: <ReceiptLongRoundedIcon /> },
     { to: '/docs', label: 'Documents', icon: <FolderSpecialRoundedIcon /> },
+    { to: '/approvals', label: 'Approvals', icon: <HowToVoteRoundedIcon /> },
+    { to: '/ai-center', label: 'AI Center', icon: <ManageSearchRoundedIcon /> },
+    { to: '/audit', label: 'Audit', icon: <ManageSearchRoundedIcon /> },
+    { to: '/master-data', label: 'Master Data', icon: <StorageRoundedIcon /> },
     { to: '/notification-center', label: 'Notifications', icon: <CampaignRoundedIcon /> },
     { to: '/settings', label: 'Settings', icon: <SettingsRoundedIcon /> },
   ];
