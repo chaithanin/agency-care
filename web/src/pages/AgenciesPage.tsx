@@ -242,9 +242,10 @@ export default function AgenciesPage() {
   const [filterGrade, setFilterGrade] = useState('');
   const [filterZone, setFilterZone] = useState('');
   const [filterSeller, setFilterSeller] = useState('');
+  const [filterClassification, setFilterClassification] = useState('');
 
-  const clearFilters = () => { setFilterQ(''); setFilterGrade(''); setFilterZone(''); setFilterSeller(''); };
-  const hasFilter = !!(filterQ || filterGrade || filterZone || filterSeller);
+  const clearFilters = () => { setFilterQ(''); setFilterGrade(''); setFilterZone(''); setFilterSeller(''); setFilterClassification(''); };
+  const hasFilter = !!(filterQ || filterGrade || filterZone || filterSeller || filterClassification);
 
   // unique zones from loaded data
   const zoneOptions = useMemo(
@@ -256,6 +257,11 @@ export default function AgenciesPage() {
     () => [...new Set(rows.map((r) => r.gradeRelationship).filter(Boolean))].sort() as string[],
     [rows],
   );
+  // unique classification values
+  const classificationOptions = useMemo(
+    () => [...new Set(rows.map((r) => r.classification).filter(Boolean))].sort() as string[],
+    [rows],
+  );
 
   const filtered = useMemo(() => {
     const q = filterQ.toLowerCase().trim();
@@ -264,9 +270,10 @@ export default function AgenciesPage() {
       if (filterGrade && a.gradeRelationship !== filterGrade) return false;
       if (filterZone && a.zone !== filterZone) return false;
       if (filterSeller && !a.assignments.some((x) => x.employee.id === filterSeller)) return false;
+      if (filterClassification && a.classification !== filterClassification) return false;
       return true;
     });
-  }, [rows, filterQ, filterGrade, filterZone, filterSeller]);
+  }, [rows, filterQ, filterGrade, filterZone, filterSeller, filterClassification]);
   // ─────────────────────────────────────────────────────────────────────────
 
   // ── Multi-select & Bulk Plan ───────────────────────────────────────────────
@@ -421,6 +428,13 @@ export default function AgenciesPage() {
             <MenuItem value="">{t('c.all')}</MenuItem>
             {employees.map((e) => <MenuItem key={e.id} value={e.id}>{e.name}</MenuItem>)}
           </TextField>
+          {classificationOptions.length > 0 && (
+            <TextField select size="small" label={t('ag.classification')} value={filterClassification}
+              onChange={(e) => setFilterClassification(e.target.value)} sx={{ minWidth: 180 }}>
+              <MenuItem value="">{t('c.all')}</MenuItem>
+              {classificationOptions.map((c) => <MenuItem key={c} value={c}>{c}</MenuItem>)}
+            </TextField>
+          )}
           {hasFilter && (
             <Button size="small" variant="outlined" color="inherit" startIcon={<ClearIcon />} onClick={clearFilters}>
               {t('ag.clearFilter')}

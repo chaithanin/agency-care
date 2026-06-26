@@ -72,6 +72,7 @@ interface WeeklyRow {
   visit_agency: number; agency_brings_client: number;
   training: number; other: number;
   total: number; completed: number; withReport: number; leads: number;
+  call: number; orientation: number; customer: number; holding: number; followupCustomer: number; overdue: number;
 }
 interface WeeklyData {
   from: string; to: string;
@@ -124,6 +125,7 @@ function WeeklyTab() {
   const [data, setData] = useState<WeeklyData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [sellerQ, setSellerQ] = useState('');
 
   const load = useCallback(() => {
     setLoading(true); setError('');
@@ -140,21 +142,32 @@ function WeeklyTab() {
     { key: 'agency_brings_client', label: 'AG Bring Customer', color: 'success.main' },
     { key: 'training', label: 'Internal Training', color: 'secondary.main' },
     { key: 'other', label: 'Other', color: 'text.secondary' },
+    { key: 'call', label: t('kpi.callCount'), color: 'info.main' },
+    { key: 'orientation', label: t('kpi.orientationCount'), color: 'warning.main' },
+    { key: 'customer', label: t('kpi.customerCount'), color: 'success.main' },
+    { key: 'holding', label: t('kpi.holdingCount'), color: 'secondary.main' },
+    { key: 'followupCustomer', label: t('kpi.followupCustomer'), color: 'primary.main' },
+    { key: 'overdue', label: 'Overdue', color: 'error.main' },
   ];
 
   const grand = data?.grand;
-  const totalLeads = data?.rows.reduce((s, r) => s + r.leads, 0) ?? 0;
+  const filteredRows = sellerQ ? (data?.rows ?? []).filter((r) =>
+    r.name.toLowerCase().includes(sellerQ.toLowerCase()) || r.code.toLowerCase().includes(sellerQ.toLowerCase())
+  ) : (data?.rows ?? []);
+  const totalLeads = filteredRows.reduce((s, r) => s + r.leads, 0);
 
   return (
     <Box>
       {/* Controls */}
       <Paper sx={{ p: 2, mb: 3, borderRadius: 3 }}>
-        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems="center">
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems="center" flexWrap="wrap">
           <TextField size="small" type="date" label={t('rpt.from')} value={from}
             onChange={(e) => setFrom(e.target.value)} InputLabelProps={{ shrink: true }} />
           <TextField size="small" type="date" label={t('rpt.to')} value={to}
             onChange={(e) => setTo(e.target.value)} InputLabelProps={{ shrink: true }} />
           <Button variant="contained" onClick={load} startIcon={<Refresh />}>{t('rpt.viewReport')}</Button>
+          <TextField size="small" label={t('c.searchSeller')} value={sellerQ}
+            onChange={(e) => setSellerQ(e.target.value)} sx={{ width: 180 }} />
           <Typography variant="caption" color="text.secondary">
             {from && to ? `${fmtDate(from)} — ${fmtDate(to)}` : ''}
           </Typography>
@@ -176,7 +189,7 @@ function WeeklyTab() {
       )}
 
       {/* Activity Matrix Table */}
-      {data && data.rows.length > 0 && (
+      {data && filteredRows.length > 0 && (
         <Paper sx={{ borderRadius: 3 }}>
           <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ p: 2, borderBottom: '1px solid', borderColor: 'divider' }}>
             <Typography fontWeight={700}>Weekly Sale Activity Summary</Typography>
@@ -201,7 +214,7 @@ function WeeklyTab() {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {data.rows.map((r) => (
+                {filteredRows.map((r) => (
                   <TableRow key={r.id} hover>
                     <TableCell>
                       <Typography variant="body2" fontWeight={600}>{r.name}</Typography>
@@ -212,7 +225,7 @@ function WeeklyTab() {
                       return (
                         <TableCell key={c.key} align="center">
                           {val > 0
-                            ? <Chip size="small" label={val} color="default" sx={{ fontWeight: 700, minWidth: 32 }} />
+                            ? <Chip size="small" label={val} color={c.key === 'overdue' ? 'error' : 'default'} sx={{ fontWeight: 700, minWidth: 32 }} />
                             : <Typography variant="caption" color="text.disabled">-</Typography>}
                         </TableCell>
                       );

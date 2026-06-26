@@ -78,7 +78,44 @@ export class ReportService {
       }
     }
 
-    const rows = [...empMap.values()].sort((a, b) => b.total - a.total);
+    // Task activity breakdown for the period
+    const tasks = await this.prisma.task.findMany({
+      where: {
+        status: 'done',
+        doneAt: { gte: new Date(from), lte: new Date(to) },
+        ...(rf.employeeId ? { assignedToId: rf.employeeId } : {}),
+      },
+      select: { assignedToId: true, tag: true },
+    });
+    const overdueTasks = await this.prisma.task.findMany({
+      where: {
+        status: 'overdue',
+        dueDate: { gte: new Date(from), lte: new Date(to) },
+        ...(rf.employeeId ? { assignedToId: rf.employeeId } : {}),
+      },
+      select: { assignedToId: true },
+    });
+
+    const taskCounts = new Map<string, { call: number; orientation: number; customer: number; holding: number; followupCustomer: number; overdue: number }>();
+    const emptyTaskCounts = () => ({ call: 0, orientation: 0, customer: 0, holding: 0, followupCustomer: 0, overdue: 0 });
+    for (const tk of tasks) {
+      if (!taskCounts.has(tk.assignedToId)) taskCounts.set(tk.assignedToId, emptyTaskCounts());
+      const c = taskCounts.get(tk.assignedToId)!;
+      if (tk.tag === 'call') c.call++;
+      else if (tk.tag === 'orientation') c.orientation++;
+      else if (tk.tag === 'customer') c.customer++;
+      else if (tk.tag === 'followup_hold') c.holding++;
+      else if (tk.tag === 'followup') c.followupCustomer++;
+    }
+    for (const tk of overdueTasks) {
+      if (!taskCounts.has(tk.assignedToId)) taskCounts.set(tk.assignedToId, emptyTaskCounts());
+      taskCounts.get(tk.assignedToId)!.overdue++;
+    }
+
+    const rows = [...empMap.values()].map((r) => ({
+      ...r,
+      ...(taskCounts.get(r.id) ?? emptyTaskCounts()),
+    })).sort((a, b) => b.total - a.total);
 
     const grand = rows.reduce(
       (acc, r) => ({
@@ -90,8 +127,14 @@ export class ReportService {
         completed: acc.completed + r.completed,
         withReport: acc.withReport + r.withReport,
         leads: acc.leads + r.leads,
+        call: acc.call + r.call,
+        orientation: acc.orientation + r.orientation,
+        customer: acc.customer + r.customer,
+        holding: acc.holding + r.holding,
+        followupCustomer: acc.followupCustomer + r.followupCustomer,
+        overdue: acc.overdue + r.overdue,
       }),
-      { visit_agency: 0, agency_brings_client: 0, training: 0, other: 0, total: 0, completed: 0, withReport: 0, leads: 0 },
+      { visit_agency: 0, agency_brings_client: 0, training: 0, other: 0, total: 0, completed: 0, withReport: 0, leads: 0, call: 0, orientation: 0, customer: 0, holding: 0, followupCustomer: 0, overdue: 0 },
     );
 
     return { from, to, rows, grand, actLabels: ACT_LABEL };
