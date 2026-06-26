@@ -46,6 +46,7 @@ import AiCenterPage from './pages/AiCenterPage';
 import ExpensePage from './pages/ExpensePage';
 import TrainingPage from './pages/TrainingPage';
 import AgencyScorePage from './pages/AgencyScorePage';
+import EvaluationPage from './pages/EvaluationPage';
 
 function Splash() {
   return (
@@ -104,6 +105,7 @@ export default function App() {
             <Route path="/expenses" element={<ExpensePage />} />
             <Route path="/training" element={<TrainingPage />} />
             <Route path="/agency-scores" element={<AgencyScorePage />} />
+            <Route path="/evaluations" element={<EvaluationPage />} />
           </>
         ) : (
           <>

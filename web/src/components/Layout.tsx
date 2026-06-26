@@ -150,6 +150,7 @@ export default function Layout({ children }: { children: ReactNode }) {
     { to: '/expenses', label: 'Expenses', icon: <ReceiptLongRoundedIcon /> },
     { to: '/training', label: 'Training', icon: <StorageRoundedIcon /> },
     { to: '/agency-scores', label: 'Agency Score', icon: <ManageSearchRoundedIcon /> },
+    { to: '/evaluations', label: 'Evaluation', icon: <HowToVoteRoundedIcon /> },
     { to: '/ai-center', label: 'AI Center', icon: <ManageSearchRoundedIcon /> },
     { to: '/audit', label: 'Audit', icon: <ManageSearchRoundedIcon /> },
     { to: '/master-data', label: 'Master Data', icon: <StorageRoundedIcon /> },
