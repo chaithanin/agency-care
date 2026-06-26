@@ -190,8 +190,160 @@ export default function PlansPage() {
     URL.revokeObjectURL(url);
   };
 
-  // ─── Print ───────────────────────────────────────────────────────────────
-  const handlePrint = () => window.print();
+  // ─── Print Dialog ────────────────────────────────────────────────────────
+  const [printOpen, setPrintOpen] = useState(false);
+  const now = new Date();
+  const [printYear, setPrintYear] = useState(now.getFullYear());
+  const [printMonth, setPrintMonth] = useState(now.getMonth() + 1);
+  const [printEmployee, setPrintEmployee] = useState('');   // '' = all
+  const [printLoading, setPrintLoading] = useState(false);
+
+  const handlePrint = () => setPrintOpen(true);
+
+  const executePrint = async () => {
+    setPrintLoading(true);
+    try {
+      const from = `${printYear}-${String(printMonth).padStart(2, '0')}-01`;
+      const lastDay = new Date(printYear, printMonth, 0).getDate();
+      const to = `${printYear}-${String(printMonth).padStart(2, '0')}-${lastDay}`;
+      const params: Record<string, string> = { from, to };
+      if (printEmployee) params.employeeId = printEmployee;
+
+      const { data: rows } = await api.get<Plan[]>('/visits/plans', { params });
+
+      const THAI_MONTHS = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+      const monthLabel = `${THAI_MONTHS[printMonth - 1]} ${printYear + 543}`;
+      const empName = printEmployee
+        ? employees.find((e) => e.id === printEmployee)?.name ?? 'เซลส์'
+        : 'ทั้งหมด';
+
+      const fmtDate = (d: string) => {
+        const dt = new Date(d);
+        return `${String(dt.getDate()).padStart(2, '0')}/${String(dt.getMonth() + 1).padStart(2, '0')}/${dt.getFullYear() + 543}`;
+      };
+
+      const statusTH: Record<string, string> = {
+        pending: 'รอ', confirmed: 'ยืนยัน', done: 'เสร็จ',
+        rescheduled: 'เลื่อน', cancelled: 'ยกเลิก', postponed: 'เลื่อน',
+        on_route: 'กำลังไป', waiting_confirmation: 'รอยืนยัน',
+      };
+
+      const actionTH: Record<string, string> = {
+        visit: 'เยี่ยม', call: 'โทร', invite: 'เชิญ', orientation: 'ORT',
+        customer: 'ลูกค้า', followup_hold: 'F/U Hold', followup_customer: 'F/U',
+        delivery: 'ส่งของ', event: 'Event', launch: 'Launch', rental: 'เช่า',
+      };
+
+      // Group by employee when printing all
+      const grouped: Record<string, { name: string; plans: Plan[] }> = {};
+      for (const p of rows) {
+        const key = p.employee.id;
+        if (!grouped[key]) grouped[key] = { name: p.employee.name, plans: [] };
+        grouped[key].plans.push(p);
+      }
+
+      const colStyle = 'padding:6px 8px;border:1px solid #cbd5e1;font-size:11px;';
+      const hStyle = `${colStyle}background:#1e293b;color:#fff;font-weight:700;white-space:nowrap;`;
+
+      const buildRows = (list: Plan[], showEmp: boolean) =>
+        list.map((p, i) => `
+          <tr style="background:${i % 2 === 0 ? '#fff' : '#f8fafc'}">
+            <td style="${colStyle}white-space:nowrap">${fmtDate(p.planDate)}</td>
+            <td style="${colStyle}white-space:nowrap">${p.agency.code}</td>
+            <td style="${colStyle}">${p.agency.name}</td>
+            <td style="${colStyle}white-space:nowrap">${p.agency.phone ?? '—'}</td>
+            ${showEmp ? `<td style="${colStyle}">${p.employee.name}</td>` : ''}
+            <td style="${colStyle}text-align:center">${actionTH[p.actionType ?? ''] ?? p.actionType ?? '—'}</td>
+            <td style="${colStyle}text-align:center">${
+              p.priority === 'high' ? '🔴 สูง' : p.priority === 'medium' ? '🟡 กลาง' : '⚪ ต่ำ'
+            }</td>
+            <td style="${colStyle}">${p.requestDetails ?? '—'}</td>
+            <td style="${colStyle}text-align:center">${statusTH[p.status] ?? p.status}</td>
+            <td style="${colStyle}text-align:center">${
+              p.callConfirmResult === 'confirmed' ? '✅' : p.callConfirmResult === 'cancelled' ? '❌' : p.callConfirmResult ?? '—'
+            }</td>
+            <td style="${colStyle}text-align:center">${p.checkin ? `${p.checkin.distanceMeters}ม.` : '—'}</td>
+            <td style="${colStyle}text-align:center">${p.report ? '✓' : '—'}</td>
+          </tr>`).join('');
+
+      const buildHeader = (showEmp: boolean) => `
+        <tr>
+          <th style="${hStyle}">วันที่</th>
+          <th style="${hStyle}">รหัส</th>
+          <th style="${hStyle}">Agency</th>
+          <th style="${hStyle}">โทร</th>
+          ${showEmp ? `<th style="${hStyle}">เซลส์</th>` : ''}
+          <th style="${hStyle}">ประเภท</th>
+          <th style="${hStyle}">ลำดับ</th>
+          <th style="${hStyle}">รายละเอียด</th>
+          <th style="${hStyle}">สถานะ</th>
+          <th style="${hStyle}">โทรยืนยัน</th>
+          <th style="${hStyle}">Check-in</th>
+          <th style="${hStyle}">Report</th>
+        </tr>`;
+
+      let tableBody = '';
+      if (printEmployee) {
+        // Single employee — flat table
+        tableBody = `
+          <table style="width:100%;border-collapse:collapse;margin-top:8px">
+            ${buildHeader(false)}
+            ${buildRows(rows, false)}
+          </table>`;
+      } else {
+        // All employees — grouped
+        tableBody = Object.values(grouped).map(({ name, plans: empPlans }) => `
+          <div style="margin-bottom:24px;page-break-inside:avoid">
+            <div style="background:#3b82f6;color:#fff;padding:6px 12px;font-weight:700;font-size:13px;border-radius:4px 4px 0 0">
+              👤 ${name} &nbsp;(${empPlans.length} รายการ)
+            </div>
+            <table style="width:100%;border-collapse:collapse">
+              ${buildHeader(false)}
+              ${buildRows(empPlans, false)}
+            </table>
+          </div>`).join('');
+      }
+
+      const todayFmt = fmtDate(new Date().toISOString().slice(0, 10));
+      const html = `<!DOCTYPE html><html><head>
+        <meta charset="utf-8"/>
+        <title>แผนเยี่ยม ${monthLabel} — ${empName}</title>
+        <style>
+          * { font-family: 'Sarabun', Arial, sans-serif; box-sizing: border-box; }
+          body { margin: 0; padding: 16px 20px; color: #0f172a; }
+          @media print {
+            @page { size: A4 landscape; margin: 10mm 8mm; }
+            body { padding: 0; }
+            .no-print { display: none; }
+          }
+        </style>
+      </head><body>
+        <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:12px;border-bottom:3px solid #1d4ed8;padding-bottom:8px">
+          <div>
+            <div style="font-size:20px;font-weight:800;color:#1d4ed8">แผนเยี่ยม Agency Care</div>
+            <div style="font-size:14px;color:#475569;margin-top:2px">ประจำเดือน <strong>${monthLabel}</strong> &nbsp;|&nbsp; เซลส์: <strong>${empName}</strong></div>
+          </div>
+          <div style="text-align:right;font-size:11px;color:#94a3b8">
+            พิมพ์เมื่อ: ${todayFmt}<br/>รวม ${rows.length} รายการ
+          </div>
+        </div>
+        ${tableBody}
+        <div class="no-print" style="margin-top:20px;text-align:center">
+          <button onclick="window.print()" style="padding:10px 32px;background:#1d4ed8;color:#fff;border:none;border-radius:6px;font-size:14px;cursor:pointer">🖨️ พิมพ์</button>
+        </div>
+      </body></html>`;
+
+      const w = window.open('', '_blank', 'width=1100,height=800');
+      if (w) {
+        w.document.write(html);
+        w.document.close();
+        setTimeout(() => w.print(), 600);
+      }
+    } finally {
+      setPrintLoading(false);
+      setPrintOpen(false);
+    }
+  };
 
   // ─── Call Confirm ─────────────────────────────────────────────────────────
   const openCall = (p: Plan) => {
@@ -505,6 +657,55 @@ export default function PlansPage() {
           <Button variant="contained" onClick={submitCall} disabled={callLoading}
             startIcon={callLoading ? <CircularProgress size={16} /> : null}>
             {t('common.save')}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* ─── Print Dialog ─── */}
+      <Dialog open={printOpen} onClose={() => setPrintOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle>
+          <PrintIcon sx={{ mr: 1, verticalAlign: 'middle' }} fontSize="small" />
+          พิมพ์แผนเยี่ยมรายเดือน
+        </DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} mt={1}>
+            <Stack direction="row" spacing={2}>
+              <FormControl size="small" fullWidth>
+                <InputLabel>เดือน</InputLabel>
+                <Select value={printMonth} label="เดือน" onChange={(e) => setPrintMonth(Number(e.target.value))}>
+                  {['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'].map((m, i) => (
+                    <MenuItem key={i + 1} value={i + 1}>{m}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+              <TextField
+                size="small" label="ปี (พ.ศ.)" type="number" fullWidth
+                value={printYear + 543}
+                onChange={(e) => setPrintYear(Number(e.target.value) - 543)}
+                inputProps={{ min: 2560, max: 2580 }}
+              />
+            </Stack>
+            <FormControl size="small" fullWidth>
+              <InputLabel>เซลส์</InputLabel>
+              <Select value={printEmployee} label="เซลส์" onChange={(e) => setPrintEmployee(e.target.value)}>
+                <MenuItem value="">ทั้งหมด (แยกกลุ่มตามคน)</MenuItem>
+                {employees.map((e) => (
+                  <MenuItem key={e.id} value={e.id}>{e.name}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            <Alert severity="info" sx={{ py: 0.5, fontSize: 12 }}>
+              ไฟล์จะเปิดหน้าต่างใหม่รูปแบบ A4 แนวนอน พร้อมปุ่มพิมพ์
+            </Alert>
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setPrintOpen(false)}>{t('common.cancel')}</Button>
+          <Button
+            variant="contained" startIcon={printLoading ? <CircularProgress size={16} /> : <PrintIcon />}
+            onClick={executePrint} disabled={printLoading}
+          >
+            {printLoading ? 'กำลังโหลด...' : 'พิมพ์'}
           </Button>
         </DialogActions>
       </Dialog>
