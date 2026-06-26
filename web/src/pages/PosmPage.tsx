@@ -7,7 +7,7 @@ import {
   TableHead, TablePagination, TableRow, Tabs, TextField, Tooltip, Typography,
 } from '@mui/material';
 import {
-  Add, ErrorOutline, Inventory2, ListAlt,
+  Add, Download, ErrorOutline, Inventory2, ListAlt,
   People, Refresh, WarningAmber,
 } from '@mui/icons-material';
 import { api, errMsg } from '../api/client';
@@ -464,6 +464,27 @@ function LogTab() {
 
   const quantityTotal = rows.reduce((s, r) => s + r.quantity, 0);
 
+  const exportCsv = () => {
+    const header = ['Date', 'Agency Code', 'Agency Name', 'Item', 'Category', 'Qty', 'Unit', 'Seller'];
+    const csvRows = rows.map((r) => [
+      r.date.slice(0, 10),
+      r.agency.code,
+      r.agency.name,
+      r.item.name,
+      r.item.category,
+      r.quantity,
+      r.item.unit,
+      r.employee.name,
+    ]);
+    const content = '﻿' + [header, ...csvRows].map((row) => row.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const url = URL.createObjectURL(new Blob([content], { type: 'text/csv;charset=utf-8;' }));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `posm-log-${from}-to-${to}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <Box>
       {/* Controls */}
@@ -482,6 +503,9 @@ function LogTab() {
             </Select>
           </FormControl>
           <Button variant="contained" onClick={handleSearch} startIcon={<Refresh />}>{t('posm.viewData')}</Button>
+          {rows.length > 0 && (
+            <Button variant="outlined" startIcon={<Download />} onClick={exportCsv}>{t('pl.exportCsv')}</Button>
+          )}
           {total > 0 && (
             <Typography variant="caption" color="text.secondary">
               {total} {t('posm.items')} · {t('posm.total')} {quantityTotal} {t('posm.pieces')}

@@ -71,6 +71,7 @@ interface Agency {
   assignments: { employee: { id: string; name: string; code: string } }[];
   lastVisitDate?: string | null;
   completedVisits?: number;
+  callCount?: number;
 }
 
 const gradeColor = (g?: string): 'success' | 'info' | 'warning' | 'error' | 'default' => {
@@ -448,6 +449,8 @@ export default function AgenciesPage() {
               <TableCell sx={{ minWidth: 70 }}>{t('ag.colGrade')}</TableCell>
               <TableCell sx={{ minWidth: 130 }}>{t('ag.colTags')}</TableCell>
               <TableCell sx={{ minWidth: 100 }}>{t('ag.lastVisit')}</TableCell>
+              <TableCell align="center" sx={{ minWidth: 60 }}>{t('ag.visits')}</TableCell>
+              <TableCell align="center" sx={{ minWidth: 60 }}>{t('ag.calls')}</TableCell>
               <TableCell sx={{ minWidth: 150 }}>{t('ag.colTierStage')}</TableCell>
               <TableCell sx={{ minWidth: 100 }}>{t('c.zone')}</TableCell>
               <TableCell sx={{ minWidth: 140 }}>{t('ag.assignedSeller')}</TableCell>
@@ -490,13 +493,17 @@ export default function AgenciesPage() {
                   </TableCell>
                   <TableCell>
                     {a.lastVisitDate ? (
-                      <Tooltip title={`${a.completedVisits ?? 0} ${t('ag.visits')}`}>
-                        <Stack direction="row" alignItems="center" spacing={0.4}>
-                          <CalendarMonthIcon sx={{ fontSize: 13, color: 'text.secondary' }} />
-                          <Typography variant="caption">{a.lastVisitDate}</Typography>
-                        </Stack>
-                      </Tooltip>
+                      <Stack direction="row" alignItems="center" spacing={0.4}>
+                        <CalendarMonthIcon sx={{ fontSize: 13, color: 'text.secondary' }} />
+                        <Typography variant="caption">{a.lastVisitDate}</Typography>
+                      </Stack>
                     ) : <Typography variant="caption" color="text.disabled">—</Typography>}
+                  </TableCell>
+                  <TableCell align="center">
+                    <Typography variant="caption" fontWeight={600}>{a.completedVisits ?? 0}</Typography>
+                  </TableCell>
+                  <TableCell align="center">
+                    <Typography variant="caption" fontWeight={600}>{a.callCount ?? 0}</Typography>
                   </TableCell>
                   <TableCell>
                     <Stack direction="row" spacing={0.5}>

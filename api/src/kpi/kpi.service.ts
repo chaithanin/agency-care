@@ -18,24 +18,25 @@ export class KpiService {
     })
 
     // Calculate actuals from real data
-    const [visitActual, followupActual, salesActual] = await Promise.all([
+    const taskWhere = { assignedToId: employeeId, status: 'done' as const, doneAt: { gte: startDate, lte: endDate } };
+    const [visitActual, followupActual, salesActual, callCount, orientationCount, customerCount, holdingCount, followupCustomerCount] = await Promise.all([
       // Completed visits this period
       this.prisma.visitPlan.count({
-        where: { employeeId, status: 'done',
-          planDate: { gte: startDate, lte: endDate } },
+        where: { employeeId, status: 'done', planDate: { gte: startDate, lte: endDate } },
       }),
-      // Completed follow-up tasks this period
-      this.prisma.task.count({
-        where: { assignedToId: employeeId, status: 'done',
-          doneAt: { gte: startDate, lte: endDate } },
-      }),
+      // Completed tasks this period
+      this.prisma.task.count({ where: taskWhere }),
       // Sales amount this period (from SalesActivity)
       this.prisma.salesActivity.aggregate({
-        where: {
-          visitPlan: { employeeId, planDate: { gte: startDate, lte: endDate } },
-        },
+        where: { visitPlan: { employeeId, planDate: { gte: startDate, lte: endDate } } },
         _sum: { amount: true },
       }).then(r => r._sum.amount ?? 0),
+      // Activity breakdown by tag
+      this.prisma.task.count({ where: { ...taskWhere, tag: 'call' } }),
+      this.prisma.task.count({ where: { ...taskWhere, tag: 'orientation' } }),
+      this.prisma.task.count({ where: { ...taskWhere, tag: 'customer' } }),
+      this.prisma.task.count({ where: { ...taskWhere, tag: 'followup_hold' } }),
+      this.prisma.task.count({ where: { ...taskWhere, tag: 'followup' } }),
     ])
 
     // New agencies added this period (by this employee)
@@ -78,6 +79,7 @@ export class KpiService {
     return {
       ...kpi,
       visitActual, newAgencyActual, salesActual, followupActual,
+      callCount, orientationCount, customerCount, holdingCount, followupCustomerCount,
       visitRate, newAgencyRate: newAgRate,
       overallRate: Math.round((visitRate + newAgRate) / 2),
     }

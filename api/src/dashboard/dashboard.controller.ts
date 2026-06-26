@@ -11,4 +11,14 @@ export class DashboardController {
   summary(@Query('date') date?: string) {
     return this.service.summary(date);
   }
+
+  @Get('weekly')
+  weekly() {
+    return this.service.weekly();
+  }
+
+  @Get('today-plans')
+  todayPlans(@Query('date') date?: string) {
+    return this.service.todayPlans(date);
+  }
 }

@@ -21,6 +21,7 @@ import {
   Button,
   Chip,
   Alert,
+  TextField,
 } from '@mui/material';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import { api } from '../api/client';
@@ -50,6 +51,11 @@ interface EmployeeKpi {
   visitRate: number;
   newAgencyRate: number;
   overallRate: number;
+  callCount?: number;
+  orientationCount?: number;
+  customerCount?: number;
+  holdingCount?: number;
+  followupCustomerCount?: number;
   employee?: { name: string; code: string; position: string };
   // closer-specific fields
   completionRate?: number;
@@ -143,64 +149,77 @@ function SalesKpiView({ kpi }: { kpi: EmployeeKpi }) {
       : kpi.salesActual;
 
   return (
-    <Grid container spacing={2}>
-      <Grid item xs={12} sm={6} md={3}>
-        <MetricCard
-          label={t('kpi.visited')}
-          actual={kpi.visitActual}
-          target={kpi.visitTarget}
-          pct={kpi.visitRate}
-        />
+    <Stack spacing={2}>
+      <Grid container spacing={2}>
+        <Grid item xs={12} sm={6} md={3}>
+          <MetricCard label={t('kpi.visited')} actual={kpi.visitActual} target={kpi.visitTarget} pct={kpi.visitRate} />
+        </Grid>
+        <Grid item xs={12} sm={6} md={3}>
+          <MetricCard label={t('c.agency')} actual={kpi.newAgencyActual} target={kpi.newAgencyTarget} pct={kpi.newAgencyRate} />
+        </Grid>
+        <Grid item xs={12} sm={6} md={3}>
+          <MetricCard label={t('kpi.followup')} actual={kpi.followupActual} />
+        </Grid>
+        <Grid item xs={12} sm={6} md={3}>
+          <MetricCard label={t('kpi.sales')} actual={isNaN(salesNum) ? 0 : salesNum} suffix=" บาท" />
+        </Grid>
       </Grid>
-      <Grid item xs={12} sm={6} md={3}>
-        <MetricCard
-          label={t('c.agency')}
-          actual={kpi.newAgencyActual}
-          target={kpi.newAgencyTarget}
-          pct={kpi.newAgencyRate}
-        />
-      </Grid>
-      <Grid item xs={12} sm={6} md={3}>
-        <MetricCard
-          label="Follow-up"
-          actual={kpi.followupActual}
-        />
-      </Grid>
-      <Grid item xs={12} sm={6} md={3}>
-        <MetricCard
-          label={t('kpi.sales')}
-          actual={isNaN(salesNum) ? 0 : salesNum}
-          suffix=" บาท"
-        />
-      </Grid>
-    </Grid>
+      {/* Activity breakdown */}
+      <Paper variant="outlined" sx={{ p: 1.5 }}>
+        <Typography variant="caption" color="text.secondary" fontWeight={600} display="block" mb={1}>
+          {t('kpi.activityBreakdown')}
+        </Typography>
+        <Grid container spacing={1}>
+          {[
+            { label: t('kpi.callCount'), value: kpi.callCount ?? 0 },
+            { label: t('kpi.orientationCount'), value: kpi.orientationCount ?? 0 },
+            { label: t('kpi.customerCount'), value: kpi.customerCount ?? 0 },
+            { label: t('kpi.holdingCount'), value: kpi.holdingCount ?? 0 },
+            { label: t('kpi.followupCustomer'), value: kpi.followupCustomerCount ?? 0 },
+          ].map(({ label, value }) => (
+            <Grid item xs={6} sm={4} md={2} key={label}>
+              <Box sx={{ textAlign: 'center', p: 1, border: '1px solid', borderColor: 'divider', borderRadius: 1 }}>
+                <Typography variant="h6" fontWeight={700}>{value}</Typography>
+                <Typography variant="caption" color="text.secondary">{label}</Typography>
+              </Box>
+            </Grid>
+          ))}
+        </Grid>
+      </Paper>
+    </Stack>
   );
 }
 
 // ─── Admin / team table ───────────────────────────────────────────────────────
 
-function TeamKpiTable({ rows }: { rows: TeamKpiRow[] }) {
+function TeamKpiTable({ rows, searchQ }: { rows: TeamKpiRow[]; searchQ: string }) {
   const { t } = useT();
+  const filtered = searchQ
+    ? rows.filter((r) => (r.employee?.name ?? '').toLowerCase().includes(searchQ.toLowerCase()) ||
+        (r.employee?.code ?? '').toLowerCase().includes(searchQ.toLowerCase()))
+    : rows;
+
   return (
-    <Paper variant="outlined">
+    <Paper variant="outlined" sx={{ overflowX: 'auto' }}>
       <Table size="small">
         <TableHead>
           <TableRow>
             <TableCell>{t('c.seller')}</TableCell>
             <TableCell align="center">{t('kpi.visited')}</TableCell>
             <TableCell align="center">{t('c.agency')}</TableCell>
-            <TableCell align="center">Follow-up</TableCell>
+            <TableCell align="center">{t('kpi.callCount')}</TableCell>
+            <TableCell align="center">{t('kpi.orientationCount')}</TableCell>
+            <TableCell align="center">{t('kpi.customerCount')}</TableCell>
+            <TableCell align="center">{t('kpi.holdingCount')}</TableCell>
+            <TableCell align="center">{t('kpi.followup')}</TableCell>
             <TableCell align="right">{t('kpi.sales')}</TableCell>
           </TableRow>
         </TableHead>
         <TableBody>
-          {rows.map((r, idx) => {
+          {filtered.map((r, idx) => {
             const visitColor = progressColor(r.visitRate);
             const agColor = progressColor(r.newAgencyRate);
-            const salesNum =
-              typeof r.salesActual === 'string'
-                ? parseFloat(r.salesActual)
-                : r.salesActual;
+            const salesNum = typeof r.salesActual === 'string' ? parseFloat(r.salesActual) : r.salesActual;
             return (
               <TableRow key={r.employeeId ?? idx}>
                 <TableCell>
@@ -211,30 +230,28 @@ function TeamKpiTable({ rows }: { rows: TeamKpiRow[] }) {
                 </TableCell>
                 <TableCell align="center">
                   <Stack spacing={0.25} alignItems="center">
-                    <Typography variant="body2">
-                      {r.visitActual}/{r.visitTarget}
-                    </Typography>
+                    <Typography variant="body2">{r.visitActual}/{r.visitTarget}</Typography>
                     <Chip size="small" label={`${r.visitRate}%`} color={visitColor} />
                   </Stack>
                 </TableCell>
                 <TableCell align="center">
                   <Stack spacing={0.25} alignItems="center">
-                    <Typography variant="body2">
-                      {r.newAgencyActual}/{r.newAgencyTarget}
-                    </Typography>
+                    <Typography variant="body2">{r.newAgencyActual}/{r.newAgencyTarget}</Typography>
                     <Chip size="small" label={`${r.newAgencyRate}%`} color={agColor} />
                   </Stack>
                 </TableCell>
+                <TableCell align="center">{r.callCount ?? 0}</TableCell>
+                <TableCell align="center">{r.orientationCount ?? 0}</TableCell>
+                <TableCell align="center">{r.customerCount ?? 0}</TableCell>
+                <TableCell align="center">{r.holdingCount ?? 0}</TableCell>
                 <TableCell align="center">{r.followupActual}</TableCell>
-                <TableCell align="right">
-                  {isNaN(salesNum) ? 0 : salesNum.toLocaleString()}
-                </TableCell>
+                <TableCell align="right">{isNaN(salesNum) ? 0 : salesNum.toLocaleString()}</TableCell>
               </TableRow>
             );
           })}
-          {rows.length === 0 && (
+          {filtered.length === 0 && (
             <TableRow>
-              <TableCell colSpan={5} align="center">
+              <TableCell colSpan={9} align="center">
                 <Typography variant="body2" color="text.secondary">—</Typography>
               </TableCell>
             </TableRow>
@@ -297,6 +314,7 @@ export default function KpiPage() {
   const [period, setPeriod] = useState<string>(periods[0]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [sellerSearch, setSellerSearch] = useState('');
 
   // Data states
   const [myKpi, setMyKpi] = useState<EmployeeKpi | null>(null);
@@ -466,10 +484,14 @@ export default function KpiPage() {
             <>
               <Divider />
               <Box>
-                <Typography variant="subtitle1" fontWeight={600} mb={1}>
-                  {t('kpi.individualTitle')}
-                </Typography>
-                <TeamKpiTable rows={teamKpi} />
+                <Stack direction="row" justifyContent="space-between" alignItems="center" mb={1} flexWrap="wrap" gap={1}>
+                  <Typography variant="subtitle1" fontWeight={600}>
+                    {t('kpi.individualTitle')}
+                  </Typography>
+                  <TextField size="small" label={t('c.searchSeller')} value={sellerSearch}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSellerSearch(e.target.value)} sx={{ width: 200 }} />
+                </Stack>
+                <TeamKpiTable rows={teamKpi} searchQ={sellerSearch} />
               </Box>
             </>
           )}

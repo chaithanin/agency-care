@@ -43,7 +43,10 @@ export class AgencyService {
           select: { planDate: true },
         },
         _count: {
-          select: { visitPlans: { where: { status: 'done' } } },
+          select: {
+            visitPlans: { where: { status: 'done' } },
+            tasks: { where: { tag: 'call', status: 'done' } },
+          },
         },
       },
     });
@@ -51,6 +54,7 @@ export class AgencyService {
       ...a,
       lastVisitDate: a.visitPlans[0]?.planDate?.toISOString().slice(0, 10) ?? null,
       completedVisits: a._count.visitPlans,
+      callCount: a._count.tasks,
       visitPlans: undefined,
     }));
   }
