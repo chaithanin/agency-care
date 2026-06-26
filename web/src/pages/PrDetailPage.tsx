@@ -93,7 +93,7 @@ export default function PrDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const isManager = ['admin', 'super_admin', 'closer'].includes(user?.activeRole ?? user?.role ?? '');
+  const isManager = ['manager', 'super_admin', 'admin', 'closer'].includes(user?.activeRole ?? user?.role ?? '');
 
   const [pr, setPr] = useState<PrDetail | null>(null);
   const [loading, setLoading] = useState(true);

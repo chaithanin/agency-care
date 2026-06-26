@@ -126,7 +126,7 @@ export class PrService {
         { responsible: { userId } },
       ];
     }
-    // admin/closer/super_admin see all (with optional filters)
+    // manager/super_admin/admin/closer see all (with optional filters)
 
     if (status) where.status = status;
     if (priority) where.priority = priority;
@@ -211,7 +211,7 @@ export class PrService {
       if (userRole === 'sales' && pr.createdById !== userId) throw new ForbiddenException();
     }
     if (['approved', 'cancelled'].includes(newStatus)) {
-      if (!['admin', 'closer', 'super_admin'].includes(userRole)) throw new ForbiddenException('เฉพาะหัวหน้าหรือ Admin เท่านั้น');
+      if (!['manager', 'super_admin', 'admin', 'closer'].includes(userRole)) throw new ForbiddenException('เฉพาะหัวหน้าหรือ Admin เท่านั้น');
     }
 
     const isClosing = CLOSED_STATUSES.includes(newStatus);
@@ -278,7 +278,7 @@ export class PrService {
 
   async deleteAttachment(prId: string, attId: string, userId: string, userRole: string) {
     const att = await this.prisma.prAttachment.findFirstOrThrow({ where: { id: attId, prId } });
-    if (att.uploadedById !== userId && !['admin', 'super_admin'].includes(userRole)) throw new ForbiddenException();
+    if (att.uploadedById !== userId && !['manager', 'super_admin', 'admin'].includes(userRole)) throw new ForbiddenException();
     await this.prisma.prAttachment.delete({ where: { id: attId } });
     return { ok: true };
   }

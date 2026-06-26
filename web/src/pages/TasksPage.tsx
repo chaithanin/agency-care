@@ -52,7 +52,7 @@ const TASK_TAGS = ['call', 'visit', 'orientation', 'customer', 'followup', 'deli
 export default function TasksPage() {
   const { user } = useAuth();
   const { t } = useT();
-  const isAdmin = ['admin', 'super_admin'].includes(user?.activeRole ?? '');
+  const isAdmin = ['manager', 'super_admin', 'admin'].includes(user?.activeRole ?? '');
   const isCloser = user?.activeRole === 'closer';
   const isManager = isAdmin || isCloser;
 

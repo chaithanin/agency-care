@@ -99,7 +99,7 @@ export default function App() {
             <Route path="/calendar" element={<CalendarPage />} />
             <Route path="/seller-performance" element={<SellerPerformancePage />} />
             <Route path="/pipeline" element={<PipelinePage />} />
-            {['super_admin', 'admin'].includes(user.role) && <Route path="/users" element={<UsersPage />} />}
+            {['manager', 'super_admin', 'admin'].includes(user.role) && <Route path="/users" element={<UsersPage />} />}
             <Route path="/analytics" element={<AnalyticsPage />} />
             <Route path="/site-visit-report" element={<SiteVisitReportPage />} />
             <Route path="/reports" element={<ReportsPage />} />

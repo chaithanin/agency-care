@@ -1,12 +1,18 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
+import { LineService } from '../notification/line.service';
+import { PrService } from '../pr/pr.service';
 
 @Injectable()
 export class ReminderService {
   private readonly logger = new Logger(ReminderService.name);
 
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private line: LineService,
+    private prService: PrService,
+  ) {}
 
   // Run daily at 08:00 Bangkok time
   @Cron('0 8 * * *', { timeZone: 'Asia/Bangkok' })
@@ -27,7 +33,7 @@ export class ReminderService {
     const today = new Date();
     const milestones = [90, 60, 30, 7];
     const adminUsers = await this.prisma.user.findMany({
-      where: { role: { in: ['admin', 'super_admin'] }, isActive: true },
+      where: { role: { in: ['manager', 'super_admin', 'admin'] }, isActive: true },
       select: { id: true },
     });
 
@@ -169,6 +175,106 @@ export class ReminderService {
           link: `/visits/${v.id}`,
         },
       });
+    }
+  }
+
+  // ─── PR Tracking morning alert ─────────────────────────────────
+  // Run daily at 08:30 Bangkok time (after daily reminders at 08:00)
+  @Cron('30 8 * * *', { timeZone: 'Asia/Bangkok' })
+  async runPrMorningAlert() {
+    if (!this.line.enabled) return;
+    this.logger.log('Running PR morning alerts...');
+    try {
+      await Promise.allSettled([
+        this.prAlertForAdmins(),
+        this.prAlertForResponsibles(),
+      ]);
+    } catch (e) {
+      this.logger.error(`PR morning alert error: ${String(e)}`);
+    }
+    this.logger.log('PR morning alerts done');
+  }
+
+  /** ส่งสรุป PR ทั้งหมดให้ manager/super_admin/admin ทุกเช้า */
+  private async prAlertForAdmins() {
+    const [openPrs, overduePrs, managers] = await Promise.all([
+      this.prisma.purchaseRequest.count({ where: { status: { in: ['submitted', 'waiting_approval', 'approved', 'purchasing', 'ordered', 'received'] } } }),
+      this.prisma.purchaseRequest.count({ where: { status: { in: ['submitted', 'waiting_approval', 'approved', 'purchasing', 'ordered', 'received'] }, dueDate: { lt: new Date() } } }),
+      this.prisma.user.findMany({
+        where: { role: { in: ['manager', 'super_admin', 'admin'] }, isActive: true, employee: { lineUserId: { not: null } } },
+        include: { employee: { select: { lineUserId: true } } },
+      }),
+    ]);
+
+    if (openPrs === 0 && overduePrs === 0) return;
+
+    // Top 5 PRs ที่รอดำเนินการ
+    const pendingPrs = await this.prisma.purchaseRequest.findMany({
+      where: { status: { in: ['submitted', 'waiting_approval', 'approved'] } },
+      include: {
+        responsible: { select: { name: true } },
+        createdBy: { select: { name: true } },
+      },
+      orderBy: [{ priority: 'asc' }, { createdAt: 'asc' }],
+      take: 5,
+    });
+
+    const statusLabel: Record<string, string> = {
+      submitted: '📥 รอตรวจสอบ', waiting_approval: '⏳ รออนุมัติ', approved: '✅ อนุมัติแล้ว',
+      purchasing: '🛒 กำลังจัดซื้อ', ordered: '📦 สั่งซื้อแล้ว', received: '📬 รับสินค้าแล้ว',
+    };
+    const priorityEmoji: Record<string, string> = { urgent: '🔴', high: '🟠', medium: '🟡', low: '🔵' };
+
+    const now = new Date();
+    const prList = pendingPrs.map((pr) => {
+      const days = Math.floor((now.getTime() - pr.createdAt.getTime()) / 86400000);
+      const overdue = pr.dueDate && pr.dueDate < now ? ' ⚠️เลยกำหนด' : '';
+      return `• ${pr.prNumber} ${priorityEmoji[pr.priority] ?? ''}${overdue}\n  ${pr.title.slice(0, 40)}\n  ${statusLabel[pr.status] ?? pr.status} · ${days}d · ${pr.responsible?.name ?? pr.createdBy.name}`;
+    }).join('\n\n');
+
+    const text = [
+      `📋 สรุป PR Tracking — ${now.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' })}`,
+      ``,
+      `🔓 PR เปิดอยู่: ${openPrs} รายการ${overduePrs > 0 ? `\n⚠️ เลยกำหนด: ${overduePrs} รายการ` : ''}`,
+      ``,
+      pendingPrs.length > 0 ? `📌 รออนุมัติ/ตรวจสอบ:\n${prList}` : '✅ ไม่มี PR ที่รออนุมัติ',
+      ``,
+      `🔗 ดูทั้งหมด: /pr`,
+    ].join('\n');
+
+    for (const u of managers) {
+      const lineUserId = u.employee?.lineUserId;
+      if (lineUserId) await this.line.pushText(lineUserId, text).catch(() => {});
+    }
+  }
+
+  /** ส่งรายการ PR ของตัวเองให้พนักงานผู้รับผิดชอบทุกเช้า */
+  private async prAlertForResponsibles() {
+    const byEmployee = await this.prService.getOpenPrsByEmployee();
+    const now = new Date();
+
+    for (const emp of byEmployee) {
+      if (!emp.lineUserId) continue;
+      if (emp.prs.length === 0) continue;
+
+      const overduePrs = emp.prs.filter((p) => p.dueDate && p.dueDate < now);
+      const prList = emp.prs.slice(0, 5).map((p) => {
+        const overdue = p.dueDate && p.dueDate < now ? ' ⚠️เลยกำหนด' : '';
+        return `• ${p.prNumber}${overdue} (${p.daysOpen}d)`;
+      }).join('\n');
+
+      const text = [
+        `📋 PR ที่คุณรับผิดชอบ — ${now.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' })}`,
+        ``,
+        `🔓 ทั้งหมด: ${emp.prs.length} รายการ${overduePrs.length > 0 ? `\n⚠️ เลยกำหนด: ${overduePrs.length} รายการ` : ''}`,
+        ``,
+        prList,
+        emp.prs.length > 5 ? `...และอีก ${emp.prs.length - 5} รายการ` : '',
+        ``,
+        `🔗 ดูทั้งหมด: /pr`,
+      ].filter(Boolean).join('\n');
+
+      await this.line.pushText(emp.lineUserId, text).catch(() => {});
     }
   }
 

@@ -168,5 +168,9 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
     }
 
     this.logger.log('Broadcast tables ready');
+
+    // Add manager role to UserRole enum if not exists (PostgreSQL ALTER TYPE is idempotent via IF NOT EXISTS)
+    await this.$executeRawUnsafe(`ALTER TYPE "UserRole" ADD VALUE IF NOT EXISTS 'manager' BEFORE 'super_admin'`).catch(() => {});
+    this.logger.log('Manager role ready');
   }
 }

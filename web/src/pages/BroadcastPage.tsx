@@ -113,7 +113,7 @@ function LinePreview({ title, content, priority, buttons }: {
 export default function BroadcastPage() {
   const { user } = useAuth();
   const isManager = !['sales'].includes(user?.activeRole ?? '');
-  const isAdmin = ['admin', 'super_admin'].includes(user?.activeRole ?? '');
+  const isAdmin = ['manager', 'super_admin', 'admin'].includes(user?.activeRole ?? '');
 
   const [tab, setTab] = useState(0);
   const [stats, setStats] = useState<Stats | null>(null);

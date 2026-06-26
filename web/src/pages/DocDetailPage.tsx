@@ -84,8 +84,8 @@ export default function DocDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const isAdmin = ['admin', 'super_admin'].includes(user?.activeRole ?? user?.role ?? '');
-  const isManager = ['admin', 'super_admin', 'closer'].includes(user?.activeRole ?? user?.role ?? '');
+  const isAdmin = ['manager', 'super_admin', 'admin'].includes(user?.activeRole ?? user?.role ?? '');
+  const isManager = ['manager', 'super_admin', 'admin', 'closer'].includes(user?.activeRole ?? user?.role ?? '');
 
   const [doc, setDoc] = useState<DocDetail | null>(null);
   const [loading, setLoading] = useState(true);

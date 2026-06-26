@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { api, tokenStore } from '../api/client';
 
-export type Role = 'super_admin' | 'admin' | 'closer' | 'sales';
+export type Role = 'manager' | 'super_admin' | 'admin' | 'closer' | 'sales';
 
 export interface AuthUser {
   id: string;

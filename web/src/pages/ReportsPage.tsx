@@ -405,7 +405,7 @@ function MonthlyTab() {
 function AgencyPerfTab() {
   const { t } = useT();
   const { user } = useAuth();
-  const isAdmin = ['super_admin', 'admin', 'closer'].includes(user?.activeRole ?? '');
+  const isAdmin = ['manager', 'super_admin', 'admin', 'closer'].includes(user?.activeRole ?? '');
   const [from, setFrom] = useState(firstOfMonth());
   const [to, setTo] = useState(todayStr());
   const [data, setData] = useState<AgPerfData | null>(null);

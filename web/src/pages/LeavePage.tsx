@@ -29,7 +29,7 @@ interface LeaveRequest {
 export default function LeavePage() {
   const { t } = useT();
   const { user } = useAuth();
-  const isManager = ['admin', 'super_admin', 'closer'].includes(user?.activeRole ?? '');
+  const isManager = ['manager', 'super_admin', 'admin', 'closer'].includes(user?.activeRole ?? '');
 
   const LEAVE_TYPES = [
     { value: 'sick', label: t('leave.typeSick') },

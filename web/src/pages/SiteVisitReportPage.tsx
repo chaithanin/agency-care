@@ -432,7 +432,7 @@ function InfoItem({ label, value }: { label: string; value: React.ReactNode }) {
 export default function SiteVisitReportPage() {
   const { t } = useT();
   const { user } = useAuth();
-  const isAdmin = user?.activeRole === 'super_admin' || user?.activeRole === 'admin';
+  const isAdmin = ['manager', 'super_admin', 'admin'].includes(user?.activeRole ?? '');
   const isCloser = user?.activeRole === 'closer';
   const isManager = user?.activeRole !== 'sales';
 

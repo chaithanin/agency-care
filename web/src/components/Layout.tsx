@@ -64,6 +64,7 @@ function initials(name?: string) {
 }
 
 const roleLabel: Record<Role, string> = {
+  manager: 'Manager',
   super_admin: 'Super Admin',
   admin: 'Admin',
   closer: 'Closer',
@@ -79,7 +80,7 @@ export default function Layout({ children }: { children: ReactNode }) {
   const theme = useTheme();
   const mdUp = useMediaQuery(theme.breakpoints.up('md'));
 
-  const isAdmin = ['super_admin', 'admin'].includes(user?.activeRole ?? '');
+  const isAdmin = ['manager', 'super_admin', 'admin'].includes(user?.activeRole ?? '');
   const isCloser = user?.activeRole === 'closer';
   const isManager = isAdmin || isCloser;
 

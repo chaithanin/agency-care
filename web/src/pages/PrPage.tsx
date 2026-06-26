@@ -79,7 +79,7 @@ export default function PrPage() {
   const { t } = useT();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const isManager = ['admin', 'super_admin', 'closer'].includes(user?.activeRole ?? user?.role ?? '');
+  const isManager = ['manager', 'super_admin', 'admin', 'closer'].includes(user?.activeRole ?? user?.role ?? '');
 
   const [dashboard, setDashboard] = useState<Dashboard | null>(null);
   const [items, setItems] = useState<PrSummary[]>([]);

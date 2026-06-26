@@ -344,7 +344,7 @@ function PlanDetailPanel({
 export default function AssignmentPlannerPage() {
   const { user } = useAuth();
   const { t } = useT();
-  const isAdmin = ['super_admin', 'admin'].includes(user?.role ?? '');
+  const isAdmin = ['manager', 'super_admin', 'admin'].includes(user?.role ?? '');
 
   const [plans, setPlans] = useState<PlanSummary[]>([]);
   const [loading, setLoading] = useState(false);

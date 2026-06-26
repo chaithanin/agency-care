@@ -476,7 +476,7 @@ export default function KpiPage() {
       )}
 
       {/* Admin / super_admin view: org summary + full team table */}
-      {(activeRole === 'admin' || activeRole === 'super_admin') && !loading && (
+      {(['manager', 'super_admin', 'admin'].includes(activeRole ?? '')) && !loading && (
         <Stack spacing={3}>
           {orgKpi && <OrgSummarySection org={orgKpi} />}
 

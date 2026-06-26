@@ -77,7 +77,7 @@ function SettingCard({ icon, iconBg, title, desc, href }: SettingsCard) {
 
 export default function SettingsPage() {
   const { user } = useAuth();
-  const isAdmin = ['super_admin', 'admin'].includes(user?.activeRole ?? '');
+  const isAdmin = ['manager', 'super_admin', 'admin'].includes(user?.activeRole ?? '');
   const isCloser = user?.activeRole === 'closer';
 
   return (
@@ -108,7 +108,7 @@ export default function SettingsPage() {
                 href="/employees"
               />
             </Grid>
-            {(user?.activeRole === 'super_admin' || user?.activeRole === 'admin') && (
+            {(['manager', 'super_admin', 'admin'].includes(user?.activeRole ?? '')) && (
               <Grid item xs={12} sm={6} md={4}>
                 <SettingCard
                   icon={<ManageAccountsRoundedIcon />}

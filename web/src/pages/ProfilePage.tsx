@@ -70,7 +70,7 @@ export default function ProfilePage() {
   if (loading) return <Box p={6} textAlign="center"><CircularProgress /></Box>;
 
   const roleLabel: Record<string, string> = {
-    super_admin: 'Super Admin', admin: 'Admin', closer: 'Closer', sales: 'Sales',
+    manager: 'Manager', super_admin: 'Super Admin', admin: 'Admin', closer: 'Closer', sales: 'Sales',
   };
 
   const isLinked = !!me?.employee?.lineUserId;

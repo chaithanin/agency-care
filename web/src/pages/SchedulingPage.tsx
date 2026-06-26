@@ -113,7 +113,7 @@ function StatCard({ label, value, color }: { label: string; value: string | numb
 export default function SchedulingPage() {
   const { t } = useT();
   const { user } = useAuth();
-  const isAdmin = user?.activeRole === 'admin' || user?.activeRole === 'super_admin';
+  const isAdmin = ['manager', 'super_admin', 'admin'].includes(user?.activeRole ?? '');
   const [month, setMonth] = useState(thisMonth());
   const [teams, setTeams] = useState<TeamRow[]>([]);
   const [coverage, setCoverage] = useState<Coverage | null>(null);

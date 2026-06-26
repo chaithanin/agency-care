@@ -22,12 +22,12 @@ interface User {
   employee?: { id: string; code: string; name: string } | null;
 }
 
-const ROLES: Role[] = ['super_admin', 'admin', 'closer', 'sales'];
+const ROLES: Role[] = ['manager', 'super_admin', 'admin', 'closer', 'sales'];
 const roleColor = (r: string) =>
-  r === 'super_admin' ? 'secondary' : r === 'admin' ? 'error' : r === 'closer' ? 'warning' : 'primary';
+  r === 'manager' ? 'success' : r === 'super_admin' ? 'secondary' : r === 'admin' ? 'error' : r === 'closer' ? 'warning' : 'primary';
 
 const roleLabel: Record<string, string> = {
-  super_admin: 'Super Admin', admin: 'Admin', closer: 'Closer', sales: 'Sales',
+  manager: 'Manager', super_admin: 'Super Admin', admin: 'Admin', closer: 'Closer', sales: 'Sales',
 };
 
 const emptyCreate = { email: '', name: '', password: '', role: 'sales' };
@@ -44,7 +44,7 @@ export default function UsersPage() {
   const [error, setError] = useState('');
   const [msg, setMsg] = useState('');
 
-  const canImpersonate = me && ['admin', 'super_admin'].includes(me.role) && !me.isImpersonated;
+  const canImpersonate = me && ['manager', 'super_admin', 'admin'].includes(me.role) && !me.isImpersonated;
 
   const load = () => api.get('/users').then((r) => setRows(r.data));
   useEffect(() => { load(); }, []);
