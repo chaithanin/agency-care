@@ -158,6 +158,7 @@ export default function Layout({ children }: { children: ReactNode }) {
     { to: '/audit', label: 'Audit', icon: <ManageSearchRoundedIcon /> },
     { to: '/master-data', label: 'Master Data', icon: <StorageRoundedIcon /> },
     { to: '/notification-center', label: 'Notifications', icon: <CampaignRoundedIcon /> },
+    { to: '/broadcast', label: 'LINE Broadcast', icon: <CampaignRoundedIcon sx={{ color: '#06C755' }} /> },
     { to: '/settings', label: 'Settings', icon: <SettingsRoundedIcon /> },
   ];
   const navItems = isManager

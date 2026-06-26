@@ -49,6 +49,7 @@ import AgencyScorePage from './pages/AgencyScorePage';
 import EvaluationPage from './pages/EvaluationPage';
 import ProfilePage from './pages/ProfilePage';
 import LineLinkPage from './pages/LineLinkPage';
+import BroadcastPage from './pages/BroadcastPage';
 
 function Splash() {
   return (
@@ -137,6 +138,7 @@ export default function App() {
         <Route path="/notifications" element={<NotificationsPage />} />
         <Route path="/visits/:id" element={<VisitDetailPage />} />
         <Route path="/profile" element={<ProfilePage />} />
+        <Route path="/broadcast" element={<BroadcastPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Layout>

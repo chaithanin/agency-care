@@ -159,6 +159,10 @@ model User {
   trainingsCreated    TrainingRecord[] @relation("TrainingCreator")
   evaluationsGiven    EmployeeEvaluation[] @relation("EvaluationCreator")
   agencyScoresCreated AgencyScore[] @relation("AgencyScoreCreator")
+  broadcastsCreated    Broadcast[]         @relation("BroadcastCreator")
+  broadcastsApproved   Broadcast[]         @relation("BroadcastApprover")
+  broadcastTemplates   BroadcastTemplate[] @relation("TemplateCreator")
+  broadcastLogs        BroadcastLog[]      @relation("BroadcastLogUser")
 
   @@map("users")
 }
@@ -199,7 +203,8 @@ model Employee {
   documents DocumentRecord[]
   expenses      ExpenseReport[]
   trainings     TrainingRecord[]
-  evaluations   EmployeeEvaluation[]
+  evaluations          EmployeeEvaluation[]
+  broadcastRecipients  BroadcastRecipient[]
 
   @@index([zone])
   @@index([teamId])
@@ -1405,4 +1410,87 @@ model MasterData {
   @@unique([category, code])
   @@index([category])
   @@map("master_data")
+}
+
+// ============================================================
+// Broadcast Center
+// ============================================================
+model Broadcast {
+  id              String   @id @default(cuid())
+  title           String
+  type            String   @default("news")  // news/announcement/promotion/hr/it/training/emergency
+  priority        String   @default("normal") // low/normal/high/critical
+  content         String   @db.Text
+  imageUrl        String?  @map("image_url")
+  buttons         Json?    // [{label, url}]
+  recipientType   String   @default("all")   @map("recipient_type") // all/sale/closer/admin/executive/individual
+  recipientIds    String[] @map("recipient_ids")
+  recipientFilter Json?    @map("recipient_filter") // {zone?, teamId?}
+  scheduleType    String   @default("immediate") @map("schedule_type") // immediate/scheduled/recurring
+  scheduledAt     DateTime? @map("scheduled_at")
+  recurringFreq   String?  @map("recurring_freq")  // daily/weekly/monthly
+  recurringDay    Int?     @map("recurring_day")
+  recurringTime   String?  @map("recurring_time")  // "08:30"
+  recurringUntil  DateTime? @map("recurring_until")
+  status          String   @default("draft") // draft/pending_approval/approved/scheduled/sending/sent/failed/cancelled
+  sentCount       Int      @default(0) @map("sent_count")
+  deliveredCount  Int      @default(0) @map("delivered_count")
+  readCount       Int      @default(0) @map("read_count")
+  clickCount      Int      @default(0) @map("click_count")
+  failedCount     Int      @default(0) @map("failed_count")
+  approvalRequired Boolean @default(false) @map("approval_required")
+  approvedById    String?  @map("approved_by_id")
+  approvedBy      User?    @relation("BroadcastApprover", fields: [approvedById], references: [id])
+  approvedAt      DateTime? @map("approved_at")
+  rejectedReason  String?  @map("rejected_reason")
+  createdById     String   @map("created_by_id")
+  createdBy       User     @relation("BroadcastCreator", fields: [createdById], references: [id])
+  sentAt          DateTime? @map("sent_at")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+  recipients      BroadcastRecipient[]
+  logs            BroadcastLog[]
+  @@index([status])
+  @@index([createdById])
+  @@map("broadcasts")
+}
+
+model BroadcastRecipient {
+  id          String    @id @default(cuid())
+  broadcastId String    @map("broadcast_id")
+  broadcast   Broadcast @relation(fields: [broadcastId], references: [id], onDelete: Cascade)
+  employeeId  String    @map("employee_id")
+  employee    Employee  @relation(fields: [employeeId], references: [id])
+  lineUserId  String    @map("line_user_id")
+  status      String    @default("pending") // pending/sent/failed
+  sentAt      DateTime? @map("sent_at")
+  error       String?
+  @@unique([broadcastId, employeeId])
+  @@map("broadcast_recipients")
+}
+
+model BroadcastTemplate {
+  id          String   @id @default(cuid())
+  name        String
+  type        String   @default("news")
+  content     String   @db.Text
+  buttons     Json?
+  isActive    Boolean  @default(true) @map("is_active")
+  createdById String   @map("created_by_id")
+  createdBy   User     @relation("TemplateCreator", fields: [createdById], references: [id])
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  @@map("broadcast_templates")
+}
+
+model BroadcastLog {
+  id          String    @id @default(cuid())
+  broadcastId String    @map("broadcast_id")
+  broadcast   Broadcast @relation(fields: [broadcastId], references: [id], onDelete: Cascade)
+  action      String    // created/edited/approved/rejected/sent/cancelled/deleted
+  userId      String?   @map("user_id")
+  user        User?     @relation("BroadcastLogUser", fields: [userId], references: [id])
+  detail      String?
+  createdAt   DateTime  @default(now()) @map("created_at")
+  @@map("broadcast_logs")
 }

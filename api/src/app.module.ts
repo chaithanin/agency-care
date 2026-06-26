@@ -39,6 +39,7 @@ import { TrainingModule } from './training/training.module';
 import { EvaluationsModule } from './evaluations/evaluations.module';
 import { ExpensesModule } from './expenses/expenses.module';
 import { AgencyScoresModule } from './agency-scores/agency-scores.module';
+import { BroadcastModule } from './broadcast/broadcast.module';
 
 @Module({
   imports: [
@@ -89,6 +90,7 @@ import { AgencyScoresModule } from './agency-scores/agency-scores.module';
     EvaluationsModule,
     ExpensesModule,
     AgencyScoresModule,
+    BroadcastModule,
   ],
   controllers: [AppController],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
