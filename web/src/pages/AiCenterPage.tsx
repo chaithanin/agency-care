@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   Box, Typography, Paper, Grid, Card, CardContent, Chip, Tabs, Tab, Button,
   List, ListItem, ListItemIcon, ListItemText, CircularProgress, Alert, Divider,
-  TextField, Select, MenuItem, FormControl, InputLabel, LinearProgress,
+  TextField, Select, MenuItem, FormControl, InputLabel,
 } from '@mui/material';
 import {
   Psychology, AutoAwesome, Route, CalendarMonth, Assessment, Stars, Warning,

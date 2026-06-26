@@ -2,8 +2,8 @@ import { useEffect, useState, useCallback } from 'react';
 import {
   Box, Typography, Tabs, Tab, Card, CardContent, Stack, Table,
   TableHead, TableRow, TableCell, TableBody, TableContainer, Paper,
-  Chip, LinearProgress, CircularProgress, Alert, Grid, TextField,
-  InputAdornment, IconButton, Tooltip, Slider,
+  Chip, LinearProgress, CircularProgress, Alert, Grid,
+  IconButton, Tooltip, Slider,
 } from '@mui/material';
 import TrendingUpRoundedIcon from '@mui/icons-material/TrendingUpRounded';
 import TrendingDownRoundedIcon from '@mui/icons-material/TrendingDownRounded';
