@@ -75,7 +75,7 @@ export default function TasksPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [form, setForm] = useState({
     title: '', description: '', dueDate: '', priority: 'medium',
-    tag: '', customerName: '', agencyId: '',
+    tag: '', customerName: '', agencyId: '', assignedToId: '',
     isRecurring: false, recurringFreq: 'weekly', recurringUntil: '',
   });
   const [createError, setCreateError] = useState('');
@@ -83,7 +83,7 @@ export default function TasksPage() {
   // ─── Edit dialog ──────────────────────────────────────────────────────────
   const [editOpen, setEditOpen] = useState(false);
   const [editTask, setEditTask] = useState<Task | null>(null);
-  const [editForm, setEditForm] = useState({ title: '', description: '', dueDate: '', priority: 'medium', tag: '', customerName: '' });
+  const [editForm, setEditForm] = useState({ title: '', description: '', dueDate: '', priority: 'medium', tag: '', customerName: '', assignedToId: '' });
   const [editError, setEditError] = useState('');
 
   const [aiLoading, setAiLoading] = useState(false);
@@ -135,12 +135,13 @@ export default function TasksPage() {
         tag: form.tag || undefined,
         customerName: form.customerName || undefined,
         agencyId: form.agencyId || undefined,
+        assignedToId: form.assignedToId || undefined,
         isRecurring: form.isRecurring,
         recurringFreq: form.isRecurring ? form.recurringFreq : undefined,
         recurringUntil: form.isRecurring ? form.recurringUntil : undefined,
       });
       setCreateOpen(false);
-      setForm({ title: '', description: '', dueDate: '', priority: 'medium', tag: '', customerName: '', agencyId: '', isRecurring: false, recurringFreq: 'weekly', recurringUntil: '' });
+      setForm({ title: '', description: '', dueDate: '', priority: 'medium', tag: '', customerName: '', agencyId: '', assignedToId: '', isRecurring: false, recurringFreq: 'weekly', recurringUntil: '' });
       load();
     } catch (e) { setCreateError(errMsg(e)); }
   };
@@ -151,6 +152,7 @@ export default function TasksPage() {
       title: tk.title, description: tk.description ?? '',
       dueDate: tk.dueDate ? tk.dueDate.slice(0, 10) : '',
       priority: tk.priority, tag: tk.tag ?? '', customerName: tk.customerName ?? '',
+      assignedToId: tk.assignedTo?.id ?? '',
     });
     setEditError(''); setEditOpen(true);
   };
@@ -163,6 +165,7 @@ export default function TasksPage() {
         title: editForm.title, description: editForm.description || undefined,
         dueDate: editForm.dueDate || undefined, priority: editForm.priority,
         tag: editForm.tag || undefined, customerName: editForm.customerName || undefined,
+        assignedToId: editForm.assignedToId || undefined,
       });
       setEditOpen(false); setEditTask(null); load();
     } catch (e) { setEditError(errMsg(e)); }
@@ -429,6 +432,17 @@ export default function TasksPage() {
                 onChange={(e) => setForm({ ...form, customerName: e.target.value })} fullWidth />
             </Stack>
 
+            {isManager && employees.length > 0 && (
+              <FormControl size="small" fullWidth>
+                <InputLabel>Assign to</InputLabel>
+                <Select value={form.assignedToId} label="Assign to"
+                  onChange={(e) => setForm({ ...form, assignedToId: e.target.value })}>
+                  <MenuItem value="">— ไม่ระบุ (ตัวเอง) —</MenuItem>
+                  {employees.map((e) => <MenuItem key={e.id} value={e.id}>{e.name} ({e.code})</MenuItem>)}
+                </Select>
+              </FormControl>
+            )}
+
             <Divider />
             <FormControlLabel
               control={<Switch checked={form.isRecurring} onChange={(e) => setForm({ ...form, isRecurring: e.target.checked })} />}
@@ -487,6 +501,16 @@ export default function TasksPage() {
               <TextField size="small" label={t('task.customerName')} value={editForm.customerName}
                 onChange={(e) => setEditForm({ ...editForm, customerName: e.target.value })} fullWidth />
             </Stack>
+            {isManager && employees.length > 0 && (
+              <FormControl size="small" fullWidth>
+                <InputLabel>Assign to</InputLabel>
+                <Select value={editForm.assignedToId} label="Assign to"
+                  onChange={(e) => setEditForm({ ...editForm, assignedToId: e.target.value })}>
+                  <MenuItem value="">— ไม่เปลี่ยน —</MenuItem>
+                  {employees.map((e) => <MenuItem key={e.id} value={e.id}>{e.name} ({e.code})</MenuItem>)}
+                </Select>
+              </FormControl>
+            )}
           </Stack>
         </DialogContent>
         <DialogActions>

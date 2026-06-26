@@ -459,6 +459,8 @@ export default function AddAgencyDialog({ open, editFor, onClose, onSaved }: Pro
         maxWidth="md"
         fullScreen={isMobile}
         scroll="paper"
+        PaperProps={{ sx: { backgroundImage: 'none', bgcolor: 'background.paper' } }}
+        slotProps={{ backdrop: { sx: { bgcolor: 'rgba(0,0,0,0.75)' } } }}
       >
         <DialogTitle>
           {editFor
