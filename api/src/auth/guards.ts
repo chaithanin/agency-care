@@ -4,8 +4,16 @@ import {
   Injectable,
   SetMetadata,
   ForbiddenException,
+  createParamDecorator,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
+
+export const CurrentUser = createParamDecorator(
+  (field: string | undefined, ctx: ExecutionContext) => {
+    const { user } = ctx.switchToHttp().getRequest();
+    return field ? user?.[field] : user;
+  },
+);
 import { AuthGuard } from '@nestjs/passport';
 import { UserRole } from '@prisma/client';
 

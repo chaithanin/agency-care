@@ -127,9 +127,9 @@ export class AiForecastController {
 
       return {
         employeeId: empId,
-        name: emp.user.name,
-        role: emp.user.role,
-        zone: emp.zone, region: emp.region,
+        name: emp.user?.name ?? '',
+        role: emp.user?.role ?? '',
+        zone: emp.zone,
         currentPeriod: {
           period: curPeriod,
           visitTarget: curVisitTarget,
@@ -353,7 +353,7 @@ export class AiForecastController {
       const vals = history.map(h => h.overall_score);
       const trend = trendMultiplier(vals);
       const latest = vals[vals.length - 1];
-      const forecastScore = Math.min(100, Math.max(0, Math.round(latest * Math.max(0.5, Math.min(1.5, trend))))));
+      const forecastScore = Math.min(100, Math.max(0, Math.round(latest * Math.max(0.5, Math.min(1.5, trend)))));
 
       const currentTier = tierFromScore(latest);
       const forecastTier = tierFromScore(forecastScore);

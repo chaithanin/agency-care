@@ -21,10 +21,8 @@ function daysUntil(date: Date | null | undefined): number {
   return Math.floor((new Date(date).getTime() - Date.now()) / 86_400_000);
 }
 
-function expectedVisitsPerMonth(freq: string | null | undefined): number {
-  if (freq === 'weekly') return 4;
-  if (freq === 'biweekly' || freq === 'bi_weekly') return 2;
-  return 1;
+function expectedVisitsPerMonth(freq: number | null | undefined): number {
+  return freq ?? 1;
 }
 
 @UseGuards(JwtAuthGuard)
@@ -213,7 +211,7 @@ export class AiRiskController {
       select: {
         id: true,
         user: { select: { id: true, name: true, role: true } },
-        zone: true, region: true,
+        zone: true,
         kpiTargets: {
           where: { period: new Date().toISOString().slice(0, 7) },
           take: 1,
@@ -296,7 +294,7 @@ export class AiRiskController {
       // Call confirm rate
       const confirmRate = planned > 0 ? confirmed / planned : 0;
       // KPI achievement
-      const kpiVisitRate = kpi && kpi.visitTarget > 0 ? kpi.visitActual / kpi.visitTarget : null;
+      const kpiVisitRate = kpi && (kpi.visitTarget ?? 0) > 0 ? (kpi.visitActual ?? 0) / (kpi.visitTarget ?? 1) : null;
       // Checkin rate vs done
       const checkinRate = done > 0 ? checkins / done : 0;
 
@@ -329,10 +327,10 @@ export class AiRiskController {
 
       return {
         employeeId: emp.id,
-        userId: emp.user.id,
-        name: emp.user.name,
-        role: emp.user.role,
-        zone: emp.zone, region: emp.region,
+        userId: emp.user?.id ?? '',
+        name: emp.user?.name ?? '',
+        role: emp.user?.role ?? '',
+        zone: emp.zone,
         performanceScore, riskScore, riskLevel,
         factors: [
           { name: 'Task ค้าง', detail: `${overdueCount} งาน`, score: f1, weight: 30 },
@@ -383,7 +381,7 @@ export class AiRiskController {
     if (heavyTask.length) {
       recommendations.push(`Sale ${heavyTask.length} คน มีงานค้างเกิน 20 งาน ควรปรับตารางงานใหม่`);
     }
-    const lowKpi = saleResult.items.filter(s => s.kpi && s.kpi.visitActual / s.kpi.visitTarget < 0.6);
+    const lowKpi = saleResult.items.filter(s => s.kpi && (s.kpi.visitTarget ?? 0) > 0 && (s.kpi.visitActual ?? 0) / (s.kpi.visitTarget ?? 1) < 0.6);
     if (lowKpi.length) {
       recommendations.push(`Sale ${lowKpi.length} คน KPI Site Visit ต่ำกว่า 60% ควรเร่งวางแผน`);
     }

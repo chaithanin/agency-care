@@ -20,10 +20,8 @@ function daysUntil(date: Date | null | undefined): number {
   return Math.floor((new Date(date).getTime() - Date.now()) / 86_400_000);
 }
 
-function expectedVisitsPerMonth(freq: string | null | undefined): number {
-  if (freq === 'weekly') return 4;
-  if (freq === 'biweekly' || freq === 'bi_weekly') return 2;
-  return 1;
+function expectedVisitsPerMonth(freq: number | null | undefined): number {
+  return freq ?? 1;
 }
 
 @UseGuards(JwtAuthGuard)
@@ -140,7 +138,7 @@ export class AiHealthController {
     const employees = await this.db.employee.findMany({
       where: { user: { isActive: true, role: { in: ['sales', 'closer', 'admin'] } } },
       select: {
-        id: true, zone: true, region: true,
+        id: true, zone: true,
         user: { select: { id: true, name: true, role: true } },
         kpiTargets: {
           where: { period: new Date().toISOString().slice(0, 7) },
@@ -193,7 +191,7 @@ export class AiHealthController {
       const visitRate = planned > 0 ? done / planned : 0;
       const confirmRate = planned > 0 ? confirmed / planned : 0;
       const checkinRate = done > 0 ? checkins / done : 0;
-      const kpiRate = kpi && kpi.visitTarget > 0 ? kpi.visitActual / kpi.visitTarget : null;
+      const kpiRate = kpi && (kpi.visitTarget ?? 0) > 0 ? (kpi.visitActual ?? 0) / (kpi.visitTarget ?? 1) : null;
 
       // Penalties
       const pOverdue = overdue > 20 ? 30 : overdue > 10 ? 20 : overdue > 5 ? 10 : 0;
@@ -207,8 +205,8 @@ export class AiHealthController {
 
       return {
         employeeId: emp.id,
-        name: emp.user.name, role: emp.user.role,
-        zone: emp.zone, region: emp.region,
+        name: emp.user?.name ?? '', role: emp.user?.role ?? '',
+        zone: emp.zone,
         healthScore, healthLabel: healthLabel(healthScore),
         stats: { planned, done, overdue, checkins, visitRate: Math.round(visitRate * 100), kpiRate: kpiRate !== null ? Math.round(kpiRate * 100) : null },
       };
