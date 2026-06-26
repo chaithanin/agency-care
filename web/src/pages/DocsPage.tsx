@@ -98,9 +98,9 @@ export default function DocsPage() {
           <Typography variant="body2" color="text.secondary">SVA · SVR · MPA — {total} เอกสาร</Typography>
         </Box>
         <Box display="flex" gap={1}>
-          <Button variant="outlined" size="small" onClick={() => navigate('/docs/new?type=sva')} startIcon={<Add />}>SVA</Button>
-          <Button variant="outlined" size="small" onClick={() => navigate('/docs/new?type=svr')} startIcon={<Add />}>SVR</Button>
-          <Button variant="contained" size="small" onClick={() => navigate('/docs/new?type=mpa')} startIcon={<Add />}>MPA</Button>
+          <Button variant="outlined" size="small" onClick={() => navigate('/docs/new?type=sva')} startIcon={<Add />}>Site Visit Assignment</Button>
+          <Button variant="outlined" size="small" onClick={() => navigate('/docs/new?type=svr')} startIcon={<Add />}>Site Visit Report</Button>
+          <Button variant="contained" size="small" onClick={() => navigate('/docs/new?type=mpa')} startIcon={<Add />}>Monthly Performance</Button>
         </Box>
       </Box>
 
