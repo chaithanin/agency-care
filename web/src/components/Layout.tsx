@@ -29,6 +29,7 @@ import TranslateRoundedIcon from '@mui/icons-material/TranslateRounded';
 import DashboardRoundedIcon from '@mui/icons-material/DashboardRounded';
 import StorefrontRoundedIcon from '@mui/icons-material/StorefrontRounded';
 import EventNoteRoundedIcon from '@mui/icons-material/EventNoteRounded';
+import CalendarMonthRoundedIcon from '@mui/icons-material/CalendarMonthRounded';
 import RouteRoundedIcon from '@mui/icons-material/RouteRounded';
 import SpeedRoundedIcon from '@mui/icons-material/SpeedRounded';
 import AutoAwesomeRoundedIcon from '@mui/icons-material/AutoAwesomeRounded';
@@ -133,6 +134,7 @@ export default function Layout({ children }: { children: ReactNode }) {
     { to: '/auto-assign', label: 'Monthly Planning', icon: <EventNoteRoundedIcon /> },
     { to: '/quick-assign', label: 'Auto Assignment', icon: <AutoAwesomeRoundedIcon /> },
     { to: '/plans', label: 'Site Visit', icon: <DirectionsWalkRoundedIcon /> },
+    { to: '/appointments', label: 'Activity Calendar', icon: <CalendarMonthRoundedIcon /> },
     { to: '/site-visit-report', label: 'Site Visit Report', icon: <SummarizeRoundedIcon /> },
     { to: '/tasks', label: 'Task', icon: <AssignmentRoundedIcon /> },
     { to: '/analytics', label: 'AI Insight', icon: <PsychologyRoundedIcon /> },

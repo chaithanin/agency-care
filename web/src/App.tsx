@@ -50,6 +50,7 @@ import EvaluationPage from './pages/EvaluationPage';
 import ProfilePage from './pages/ProfilePage';
 import LineLinkPage from './pages/LineLinkPage';
 import BroadcastPage from './pages/BroadcastPage';
+import AppointmentPage from './pages/AppointmentPage';
 
 function Splash() {
   return (
@@ -115,6 +116,7 @@ export default function App() {
             <Route path="/training" element={<TrainingPage />} />
             <Route path="/agency-scores" element={<AgencyScorePage />} />
             <Route path="/evaluations" element={<EvaluationPage />} />
+            <Route path="/appointments" element={<AppointmentPage />} />
           </>
         ) : (
           <>

@@ -164,6 +164,10 @@ model User {
   broadcastsApproved   Broadcast[]         @relation("BroadcastApprover")
   broadcastTemplates   BroadcastTemplate[] @relation("TemplateCreator")
   broadcastLogs        BroadcastLog[]      @relation("BroadcastLogUser")
+  apptsAsSale          Appointment[]       @relation("ApptSale")
+  apptsAsCloser        Appointment[]       @relation("ApptCloser")
+  apptsCreated         Appointment[]       @relation("ApptCreator")
+  meetingReports       MeetingReport[]
 
   @@map("users")
 }
@@ -316,6 +320,7 @@ model Agency {
   tasks         Task[]
   planVersionItems PlanVersionItem[]
   scores        AgencyScore[]
+  appointments  Appointment[]
 
   @@index([zone])
   @@index([province])
@@ -1494,4 +1499,82 @@ model BroadcastLog {
   detail      String?
   createdAt   DateTime  @default(now()) @map("created_at")
   @@map("broadcast_logs")
+}
+
+// ── Showroom Appointment ───────────────────────────────────────────────────
+
+model Appointment {
+  id              String   @id @default(cuid())
+  apptNo          String   @unique @map("appt_no")
+  agencyId        String   @map("agency_id")
+  agency          Agency   @relation(fields: [agencyId], references: [id])
+  contactPerson   String?  @map("contact_person")
+  contactPhone    String?  @map("contact_phone")
+  saleId          String?  @map("sale_id")
+  sale            User?    @relation("ApptSale", fields: [saleId], references: [id], onDelete: SetNull)
+  closerId        String?  @map("closer_id")
+  closer          User?    @relation("ApptCloser", fields: [closerId], references: [id], onDelete: SetNull)
+  createdById     String   @map("created_by_id")
+  createdBy       User     @relation("ApptCreator", fields: [createdById], references: [id])
+  apptType        String   @default("showroom") @map("appt_type")
+  meetingType     String   @default("project_presentation") @map("meeting_type")
+  meetingRoom     String?  @map("meeting_room")
+  apptDate        DateTime @map("appt_date") @db.Date
+  startTime       DateTime @map("start_time")
+  endTime         DateTime @map("end_time")
+  purpose         String?
+  status          String   @default("pending")
+  participantIds  String[] @default([]) @map("participant_ids")
+  checkInAt       DateTime? @map("check_in_at")
+  checkOutAt      DateTime? @map("check_out_at")
+  receptionName   String?  @map("reception_name")
+  meetingRoomActual String? @map("meeting_room_actual")
+  notes           String?
+  cancelReason    String?  @map("cancel_reason")
+  confirmedById   String?  @map("confirmed_by_id")
+  confirmedAt     DateTime? @map("confirmed_at")
+  reminder1dSent  Boolean  @default(false) @map("reminder_1d_sent")
+  reminder2hSent  Boolean  @default(false) @map("reminder_2h_sent")
+  reminder30mSent Boolean  @default(false) @map("reminder_30m_sent")
+  report          MeetingReport?
+  attachments     ApptAttachment[]
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@index([agencyId])
+  @@index([saleId])
+  @@index([apptDate])
+  @@index([status])
+  @@map("appointments")
+}
+
+model MeetingReport {
+  id              String      @id @default(cuid())
+  appointmentId   String      @unique @map("appointment_id")
+  appointment     Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  topics          String?
+  promotions      String?
+  projects        String?
+  newLeads        Int         @default(0) @map("new_leads")
+  salesOpportunity String?   @map("sales_opportunity")
+  interestScore   Int?       @map("interest_score")
+  nextApptDate    DateTime?  @map("next_appt_date")
+  remarks         String?
+  createdById     String     @map("created_by_id")
+  createdBy       User       @relation(fields: [createdById], references: [id])
+  createdAt       DateTime   @default(now()) @map("created_at")
+  updatedAt       DateTime   @updatedAt @map("updated_at")
+  @@map("meeting_reports")
+}
+
+model ApptAttachment {
+  id            String      @id @default(cuid())
+  appointmentId String      @map("appointment_id")
+  appointment   Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  fileName      String      @map("file_name")
+  fileUrl       String      @map("file_url")
+  fileType      String?     @map("file_type")
+  uploadedById  String?     @map("uploaded_by_id")
+  createdAt     DateTime    @default(now()) @map("created_at")
+  @@map("appt_attachments")
 }

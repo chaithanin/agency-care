@@ -278,6 +278,54 @@ export class ReminderService {
     }
   }
 
+  // 5b. Appointment reminders: 1 day / 2 hours / 30 minutes before
+  @Cron('*/15 * * * *', { timeZone: 'Asia/Bangkok' })
+  async appointmentReminders() {
+    const now = new Date();
+    const windows = [
+      { field: 'reminder1dSent' as const, sentFlag: 'reminder_1d_sent', minMs: 23 * 60 * 60 * 1000, maxMs: 25 * 60 * 60 * 1000, label: '1 วัน' },
+      { field: 'reminder2hSent' as const, sentFlag: 'reminder_2h_sent', minMs: 1.75 * 60 * 60 * 1000, maxMs: 2.25 * 60 * 60 * 1000, label: '2 ชั่วโมง' },
+      { field: 'reminder30mSent' as const, sentFlag: 'reminder_30m_sent', minMs: 20 * 60 * 1000, maxMs: 45 * 60 * 1000, label: '30 นาที' },
+    ];
+
+    for (const w of windows) {
+      const earliest = new Date(now.getTime() + w.minMs);
+      const latest = new Date(now.getTime() + w.maxMs);
+
+      const appts = await this.prisma.appointment.findMany({
+        where: {
+          startTime: { gte: earliest, lte: latest },
+          status: { in: ['pending', 'confirmed'] },
+          [w.field]: false,
+        },
+        include: {
+          agency: { select: { name: true } },
+          sale: { include: { employee: { select: { lineUserId: true } } } },
+          closer: { include: { employee: { select: { lineUserId: true } } } },
+        },
+      });
+
+      for (const a of appts) {
+        const startStr = a.startTime.toLocaleTimeString('th-TH', { timeZone: 'Asia/Bangkok', hour: '2-digit', minute: '2-digit', hour12: false });
+        const dateStr = a.apptDate.toLocaleDateString('th-TH', { timeZone: 'Asia/Bangkok', day: 'numeric', month: 'short' });
+        const msg = `📅 แจ้งเตือนนัดหมาย (อีก ${w.label})\n${dateStr} ${startStr}\n🏢 ${a.agency.name}\n${a.meetingRoom ? `📍 ${a.meetingRoom}\n` : ''}🔗 ดูรายละเอียด: /appointments`;
+
+        const lineIds: string[] = [];
+        if (a.sale?.employee?.lineUserId) lineIds.push(a.sale.employee.lineUserId);
+        if (a.closer?.employee?.lineUserId) lineIds.push(a.closer.employee.lineUserId);
+
+        for (const lid of lineIds) {
+          await this.line.pushText(lid, msg).catch(() => {});
+        }
+
+        await this.prisma.appointment.update({
+          where: { id: a.id },
+          data: { [w.field]: true },
+        });
+      }
+    }
+  }
+
   // 5. Unconfirmed visits where plan_date = tomorrow
   private async unconfirmedVisitAlerts() {
     const tomorrow = new Date();
