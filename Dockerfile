@@ -39,6 +39,7 @@ COPY --from=build /app /app
 WORKDIR /app/api
 # Cloud Run ส่ง PORT=8080 มาให้ (แอปอ่าน process.env.PORT อยู่แล้ว)
 EXPOSE 8080
-# จำกัด connection pool ให้ Neon free tier (max ~5 connections รวม superuser reserved)
-# เพิ่ม connection_limit=1 ใน URL ก่อนรัน migrate และ server
-CMD ["sh", "-c", "SEP=$(echo $DATABASE_URL | grep -q '?' && echo '&' || echo '?'); export DATABASE_URL=\"${DATABASE_URL}${SEP}connection_limit=1\"; node_modules/.bin/prisma migrate deploy && node dist/main.js"]
+# startup.sh เพิ่ม connection_limit=1 ให้ DATABASE_URL ก่อนรัน migrate + server
+COPY startup.sh ./startup.sh
+RUN chmod +x startup.sh
+CMD ["./startup.sh"]
