@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -164,6 +165,59 @@ export class AuthService {
       targetName: target.name,
       targetRole: target.role,
     };
+  }
+
+  async generateLineLinkToken(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: { employee: { select: { id: true, lineUserId: true } } },
+    });
+    if (!user) throw new UnauthorizedException();
+    if (!user.employee) throw new BadRequestException('ผู้ใช้ไม่มีข้อมูลพนักงาน กรุณาติดต่อ Admin');
+
+    const token = await this.jwt.signAsync(
+      { sub: userId, employeeId: user.employee.id, purpose: 'line-link' },
+      { secret: this.config.get<string>('JWT_ACCESS_SECRET'), expiresIn: '15m' },
+    );
+
+    const liffId = this.config.get<string>('LINE_LIFF_ID', '2010519960-8863VFIr');
+    const liffUrl = `https://liff.line.me/${liffId}?liff.state=${encodeURIComponent(token)}`;
+    return { token, liffUrl, alreadyLinked: !!user.employee.lineUserId };
+  }
+
+  async linkLine(token: string, lineUserId: string) {
+    let payload: { sub: string; employeeId: string; purpose: string };
+    try {
+      payload = await this.jwt.verifyAsync(token, {
+        secret: this.config.get<string>('JWT_ACCESS_SECRET'),
+      });
+    } catch {
+      throw new UnauthorizedException('token หมดอายุหรือไม่ถูกต้อง กรุณาลองใหม่จากแอป');
+    }
+    if (payload.purpose !== 'line-link') throw new UnauthorizedException('token ไม่ถูกต้อง');
+
+    // ถ้า lineUserId นี้ถูก link กับ employee คนอื่นอยู่ → unlink ก่อน
+    const existing = await this.prisma.employee.findFirst({ where: { lineUserId } });
+    if (existing && existing.id !== payload.employeeId) {
+      await this.prisma.employee.update({ where: { id: existing.id }, data: { lineUserId: null } });
+    }
+
+    await this.prisma.employee.update({
+      where: { id: payload.employeeId },
+      data: { lineUserId },
+    });
+
+    return { ok: true, message: 'ผูกบัญชี LINE สำเร็จ' };
+  }
+
+  async unlinkLine(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: { employee: { select: { id: true } } },
+    });
+    if (!user?.employee) throw new BadRequestException('ไม่พบข้อมูลพนักงาน');
+    await this.prisma.employee.update({ where: { id: user.employee.id }, data: { lineUserId: null } });
+    return { ok: true };
   }
 
   private async issueTokens(payload: JwtPayload) {

@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Ip, Param, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Ip, Param, Patch, Post } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import { LoginDto, RefreshDto } from './dto/login.dto';
@@ -31,6 +31,22 @@ export class AuthController {
   @Patch('switch-role')
   switchRole(@CurrentUser('id') userId: string, @Body('role') role: string) {
     return this.auth.switchRole(userId, role);
+  }
+
+  @Get('line-link-token')
+  getLineLinkToken(@CurrentUser('id') userId: string) {
+    return this.auth.generateLineLinkToken(userId);
+  }
+
+  @Public()
+  @Post('link-line')
+  linkLine(@Body() body: { token: string; lineUserId: string }) {
+    return this.auth.linkLine(body.token, body.lineUserId);
+  }
+
+  @Delete('unlink-line')
+  unlinkLine(@CurrentUser('id') userId: string) {
+    return this.auth.unlinkLine(userId);
   }
 
   @Post('impersonate/:targetId')

@@ -47,6 +47,8 @@ import ExpensePage from './pages/ExpensePage';
 import TrainingPage from './pages/TrainingPage';
 import AgencyScorePage from './pages/AgencyScorePage';
 import EvaluationPage from './pages/EvaluationPage';
+import ProfilePage from './pages/ProfilePage';
+import LineLinkPage from './pages/LineLinkPage';
 
 function Splash() {
   return (
@@ -59,6 +61,12 @@ function Splash() {
 export default function App() {
   const { user, loading } = useAuth();
   if (loading) return <Splash />;
+
+  // /line-link เป็น public page สำหรับ LIFF — ไม่ต้อง auth
+  if (window.location.pathname === '/line-link') {
+    return <Routes><Route path="/line-link" element={<LineLinkPage />} /></Routes>;
+  }
+
   if (!user) {
     return (
       <Routes>
@@ -128,6 +136,7 @@ export default function App() {
         <Route path="/docs/:id/print" element={<DocPrintPage />} />
         <Route path="/notifications" element={<NotificationsPage />} />
         <Route path="/visits/:id" element={<VisitDetailPage />} />
+        <Route path="/profile" element={<ProfilePage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Layout>

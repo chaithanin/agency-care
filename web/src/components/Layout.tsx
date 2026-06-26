@@ -22,7 +22,7 @@ import {
   Chip,
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import MenuRoundedIcon from '@mui/icons-material/MenuRounded';
 import LogoutRoundedIcon from '@mui/icons-material/LogoutRounded';
 import TranslateRoundedIcon from '@mui/icons-material/TranslateRounded';
@@ -50,6 +50,7 @@ import Hub from '@mui/icons-material/HubRounded';
 import HowToVoteRoundedIcon from '@mui/icons-material/HowToVoteRounded';
 import ManageSearchRoundedIcon from '@mui/icons-material/ManageSearchRounded';
 import StorageRoundedIcon from '@mui/icons-material/StorageRounded';
+import AccountCircleRoundedIcon from '@mui/icons-material/AccountCircleRounded';
 import { useAuth, type Role } from '../auth/AuthContext';
 import { useT } from '../i18n';
 import { api } from '../api/client';
@@ -71,6 +72,8 @@ const roleLabel: Record<Role, string> = {
 
 export default function Layout({ children }: { children: ReactNode }) {
   const { user, logout, switchRole, stopImpersonation } = useAuth();
+  const navigate = useNavigate();
+  const [profileMenuAnchor, setProfileMenuAnchor] = useState<null | HTMLElement>(null);
   const { t, lang, setLang } = useT();
   const loc = useLocation();
   const theme = useTheme();
@@ -411,9 +414,23 @@ export default function Layout({ children }: { children: ReactNode }) {
                   <Typography variant="caption" fontWeight={700}>{lang === 'th' ? 'TH' : 'EN'}</Typography>
                 </IconButton>
               </Tooltip>
-              <Avatar sx={{ width: 38, height: 38, bgcolor: 'primary.main', fontSize: 14, fontWeight: 700 }}>
-                {initials(user?.name)}
-              </Avatar>
+              <Tooltip title="Profile">
+                <Avatar
+                  sx={{ width: 38, height: 38, bgcolor: 'primary.main', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}
+                  onClick={(e) => setProfileMenuAnchor(e.currentTarget)}
+                >
+                  {initials(user?.name)}
+                </Avatar>
+              </Tooltip>
+              <Menu anchorEl={profileMenuAnchor} open={Boolean(profileMenuAnchor)} onClose={() => setProfileMenuAnchor(null)}>
+                <MenuItem onClick={() => { setProfileMenuAnchor(null); navigate('/profile'); }} sx={{ gap: 1 }}>
+                  <AccountCircleRoundedIcon fontSize="small" /> Profile & LINE Link
+                </MenuItem>
+                <Divider />
+                <MenuItem onClick={() => { setProfileMenuAnchor(null); logout(); }} sx={{ gap: 1, color: 'error.main' }}>
+                  <LogoutRoundedIcon fontSize="small" /> {t('common.logout')}
+                </MenuItem>
+              </Menu>
             </Stack>
           </Stack>
 
