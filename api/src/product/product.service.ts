@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { IsBoolean, IsNumber, IsOptional, IsString, Min } from 'class-validator';
+import { IsBoolean, IsNumber, IsOptional, IsString, IsUrl, Min } from 'class-validator';
 import { PrismaService } from '../prisma/prisma.service';
 
 export class CreateProductDto {
@@ -13,6 +13,27 @@ export class CreateProductDto {
   @IsNumber()
   @Min(0)
   price?: number;
+
+  @IsOptional()
+  @IsString()
+  description?: string;
+
+  @IsOptional()
+  @IsString()
+  projectType?: string;
+
+  @IsOptional()
+  @IsString()
+  unit?: string;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  quota?: number;
+
+  @IsOptional()
+  @IsString()
+  marketingLink?: string;
 }
 
 export class UpdateProductDto {
@@ -28,6 +49,27 @@ export class UpdateProductDto {
   @IsOptional()
   @IsBoolean()
   isActive?: boolean;
+
+  @IsOptional()
+  @IsString()
+  description?: string;
+
+  @IsOptional()
+  @IsString()
+  projectType?: string;
+
+  @IsOptional()
+  @IsString()
+  unit?: string;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  quota?: number;
+
+  @IsOptional()
+  @IsString()
+  marketingLink?: string;
 }
 
 @Injectable()
