@@ -17,9 +17,10 @@ const AI_MODULES = [
   { key: 'route', label: 'AI Route', icon: <Route />, desc: 'เส้นทางเยี่ยมที่เหมาะสมที่สุด', color: '#2563EB', route: '/route' },
   { key: 'performance', label: 'AI Performance', icon: <Assessment />, desc: 'วิเคราะห์ผลงานทีมและบุคคล', color: '#16A34A', route: '/analytics' },
   { key: 'score', label: 'AI Agency Score', icon: <Stars />, desc: 'คำนวณคะแนน Agency อัตโนมัติ', color: '#D97706', route: '/agencies' },
-  { key: 'risk', label: 'AI Risk Analysis', icon: <Warning />, desc: 'วิเคราะห์ความเสี่ยง Agency และพนักงาน', color: '#DC2626', route: null },
-  { key: 'forecast', label: 'AI Forecast', icon: <TrendingUp />, desc: 'พยากรณ์ยอดขายและ KPI ล่วงหน้า', color: '#0891B2', route: null },
-  { key: 'recommendation', label: 'AI Recommendation', icon: <Lightbulb />, desc: 'คำแนะนำการปรับปรุงผลงาน', color: '#059669', route: null },
+  { key: 'risk', label: 'AI Risk Analysis', icon: <Warning />, desc: 'วิเคราะห์ความเสี่ยง Agency และพนักงาน', color: '#DC2626', route: '/ai-risk' },
+  { key: 'forecast', label: 'AI Forecast', icon: <TrendingUp />, desc: 'พยากรณ์ KPI, Workload และ Scenario', color: '#0891B2', route: '/ai-forecast' },
+  { key: 'health', label: 'AI Health Score', icon: <Stars />, desc: 'Health Score 0-100 องค์กร/ทีม/Agency/พนักงาน', color: '#059669', route: '/ai-health' },
+  { key: 'recommendation', label: 'AI Recommendation', icon: <Lightbulb />, desc: 'คำแนะนำการปรับปรุงผลงานแบบ Real-time', color: '#7C3AED', route: '/ai-risk' },
 ];
 
 interface AnalyticsSummary {

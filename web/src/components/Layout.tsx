@@ -162,6 +162,7 @@ export default function Layout({ children }: { children: ReactNode }) {
     { to: '/ai-center', label: 'AI Center', icon: <ManageSearchRoundedIcon /> },
     { to: '/ai-risk', label: 'AI Risk', icon: <WarningAmberRoundedIcon /> },
     { to: '/ai-forecast', label: 'AI Forecast', icon: <TrendingUpRoundedIcon /> },
+    { to: '/ai-health', label: 'AI Health', icon: <AutoAwesomeRoundedIcon sx={{ color: '#059669' }} /> },
     { to: '/audit', label: 'Audit', icon: <ManageSearchRoundedIcon /> },
     { to: '/master-data', label: 'Master Data', icon: <StorageRoundedIcon /> },
     { to: '/notification-center', label: 'Notifications', icon: <CampaignRoundedIcon /> },

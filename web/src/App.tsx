@@ -53,6 +53,7 @@ import BroadcastPage from './pages/BroadcastPage';
 import AppointmentPage from './pages/AppointmentPage';
 import AiRiskPage from './pages/AiRiskPage';
 import AiForecastPage from './pages/AiForecastPage';
+import AiHealthPage from './pages/AiHealthPage';
 
 function Splash() {
   return (
@@ -121,6 +122,7 @@ export default function App() {
             <Route path="/appointments" element={<AppointmentPage />} />
             <Route path="/ai-risk" element={<AiRiskPage />} />
             <Route path="/ai-forecast" element={<AiForecastPage />} />
+            <Route path="/ai-health" element={<AiHealthPage />} />
           </>
         ) : (
           <>

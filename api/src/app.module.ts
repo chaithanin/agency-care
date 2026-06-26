@@ -44,6 +44,7 @@ import { AuditLogsModule } from './audit-logs/audit-logs.module';
 import { AppointmentModule } from './appointment/appointment.module';
 import { AiRiskModule } from './ai-risk/ai-risk.module';
 import { AiForecastModule } from './ai-forecast/ai-forecast.module';
+import { AiHealthModule } from './ai-health/ai-health.module';
 
 @Module({
   imports: [
@@ -99,6 +100,7 @@ import { AiForecastModule } from './ai-forecast/ai-forecast.module';
     AppointmentModule,
     AiRiskModule,
     AiForecastModule,
+    AiHealthModule,
   ],
   controllers: [AppController],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
