@@ -32,6 +32,7 @@ import { FollowupModule } from './followup/followup.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { LeaveModule } from './leave/leave.module';
 import { PrModule } from './pr/pr.module';
+import { DocsModule } from './docs/docs.module';
 
 @Module({
   imports: [
@@ -75,6 +76,7 @@ import { PrModule } from './pr/pr.module';
     NotificationsModule,
     LeaveModule,
     PrModule,
+    DocsModule,
   ],
   controllers: [AppController],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],

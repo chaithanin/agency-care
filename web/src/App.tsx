@@ -34,6 +34,10 @@ import NotificationCenterPage from './pages/NotificationCenterPage';
 import PrPage from './pages/PrPage';
 import PrFormPage from './pages/PrFormPage';
 import PrDetailPage from './pages/PrDetailPage';
+import DocsPage from './pages/DocsPage';
+import DocCreatePage from './pages/DocCreatePage';
+import DocDetailPage from './pages/DocDetailPage';
+import DocPrintPage from './pages/DocPrintPage';
 
 function Splash() {
   return (
@@ -99,6 +103,11 @@ export default function App() {
         <Route path="/pr/create" element={<PrFormPage />} />
         <Route path="/pr/:id" element={<PrDetailPage />} />
         <Route path="/pr/:id/edit" element={<PrFormPage />} />
+        <Route path="/docs" element={<DocsPage />} />
+        <Route path="/docs/new" element={<DocCreatePage />} />
+        <Route path="/docs/:id" element={<DocDetailPage />} />
+        <Route path="/docs/:id/edit" element={<DocCreatePage />} />
+        <Route path="/docs/:id/print" element={<DocPrintPage />} />
         <Route path="/notifications" element={<NotificationsPage />} />
         <Route path="/visits/:id" element={<VisitDetailPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />

@@ -147,6 +147,14 @@ model User {
   approvedPRs    PurchaseRequest[]   @relation("PrApprover")
   prComments     PrComment[]         @relation("PrComment")
   prActivities   PrActivity[]        @relation("PrActivity")
+  docCreated     DocumentRecord[] @relation("DocCreator")
+  docApproved    DocumentRecord[] @relation("DocApprover")
+  docCloser      DocumentRecord[] @relation("DocCloser")
+  docSupervisor  DocumentRecord[] @relation("DocSupervisor")
+  docSignatures  DocSignature[]   @relation("DocSignatureUser")
+  docAuditLogs   DocAuditLog[]    @relation("DocAuditActor")
+  docVersionsCreated  DocVersion[] @relation("DocVersionCreator")
+  docVersionsApproved DocVersion[] @relation("DocVersionApprover")
 
   @@map("users")
 }
@@ -184,6 +192,7 @@ model Employee {
   leaveRequests  LeaveRequest[]
   notificationLogs NotificationLog[]
   responsiblePRs PurchaseRequest[]   @relation("PrResponsible")
+  documents DocumentRecord[]
 
   @@index([zone])
   @@index([teamId])
@@ -1090,4 +1099,150 @@ model PrSequence {
   year    Int
 
   @@map("pr_sequence")
+}
+
+// ============================================================
+// Document Center — SVA | SVR | MPA (unified)
+// ============================================================
+model DocumentRecord {
+  id             String   @id @default(cuid())
+  docType        String   @map("doc_type")   // sva | svr | mpa
+  docNumber      String?  @unique @map("doc_number") // DOC-2026-07-SVA-001
+  month          Int
+  year           Int
+  version        Int      @default(1)
+  status         String   @default("draft")  // draft|pending_review|pending_approval|approved|signing|completed|cancelled
+  requiredSigners String[] @default(["employee","supervisor"]) @map("required_signers")
+  companyName    String   @default("บริษัท ทีทีจี โฮลดิ้ง จำกัด") @map("company_name")
+  declaration    String?
+  notes          String?
+  // KPI targets
+  kpiSiteVisit   Int?     @map("kpi_site_visit")
+  kpiFollowup    Int?     @map("kpi_followup")
+  kpiNewAgency   Int?     @map("kpi_new_agency")
+  kpiTraining    Int?     @map("kpi_training")
+  kpiSales       Int?     @map("kpi_sales")
+  // Actual results (SVR/MPA)
+  actualSiteVisit  Int?   @map("actual_site_visit")
+  actualFollowup   Int?   @map("actual_followup")
+  actualNewAgency  Int?   @map("actual_new_agency")
+  actualTraining   Int?   @map("actual_training")
+  actualSales      Int?   @map("actual_sales")
+  // Stats (SVR/MPA)
+  workingDays    Int?     @map("working_days")
+  leaveDays      Int?     @map("leave_days")
+  gpsCompliancePct Int?   @map("gps_compliance_pct")
+  photoCompliancePct Int? @map("photo_compliance_pct")
+  // Evaluations
+  supervisorScore   Int?  @map("supervisor_score")
+  supervisorComment String? @map("supervisor_comment")
+  supervisorPlan    String? @map("supervisor_plan")
+  employeeComment   String? @map("employee_comment")
+  aiAnalysis        Json?   @map("ai_analysis")
+  // Relations
+  employeeId     String   @map("employee_id")
+  employee       Employee @relation(fields: [employeeId], references: [id])
+  supervisorId   String?  @map("supervisor_id")
+  supervisor     User?    @relation("DocSupervisor", fields: [supervisorId], references: [id])
+  closerId       String?  @map("closer_id")
+  closer         User?    @relation("DocCloser", fields: [closerId], references: [id])
+  approvedById   String?  @map("approved_by_id")
+  approvedBy     User?    @relation("DocApprover", fields: [approvedById], references: [id])
+  createdById    String   @map("created_by_id")
+  createdBy      User     @relation("DocCreator", fields: [createdById], references: [id])
+  approvedAt     DateTime? @map("approved_at")
+  effectiveAt    DateTime? @map("effective_at")
+  rows       DocRow[]
+  signatures DocSignature[]
+  auditLogs  DocAuditLog[]
+  versions   DocVersion[]
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  @@index([docType, year, month])
+  @@index([employeeId])
+  @@index([status])
+  @@map("document_records")
+}
+
+model DocRow {
+  id           String   @id @default(cuid())
+  documentId   String   @map("document_id")
+  document     DocumentRecord @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  rowType      String   @default("schedule") @map("row_type") // schedule | kpi | activity
+  sortOrder    Int      @default(0) @map("sort_order")
+  // Schedule fields (SVA/SVR)
+  visitDate    DateTime? @map("visit_date")
+  visitTime    String?   @map("visit_time")
+  agencyId     String?   @map("agency_id")
+  agencyName   String?   @map("agency_name")
+  contactPerson String?  @map("contact_person")
+  province     String?
+  visitType    String?   @default("site_visit") @map("visit_type")
+  priority     String?   @default("medium")
+  status       String?   @default("scheduled")
+  plannedTime  String?   @map("planned_time")
+  actualTime   String?   @map("actual_time")
+  result       String?
+  // KPI row (MPA)
+  kpiName      String?   @map("kpi_name")
+  kpiTarget    Int?      @map("kpi_target")
+  kpiActual    Int?      @map("kpi_actual")
+  // Activity row (SVR)
+  activityName String?   @map("activity_name")
+  activityDone Boolean?  @default(false) @map("activity_done")
+  note         String?
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  @@index([documentId])
+  @@map("doc_rows")
+}
+
+model DocSignature {
+  id            String   @id @default(cuid())
+  documentId    String   @map("document_id")
+  document      DocumentRecord @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  signerType    String   @map("signer_type") // employee | supervisor | manager | executive
+  signedById    String   @map("signed_by_id")
+  signedBy      User     @relation("DocSignatureUser", fields: [signedById], references: [id])
+  signedAt      DateTime @default(now()) @map("signed_at")
+  signatureData String   @db.Text @map("signature_data")
+  revokedAt     DateTime? @map("revoked_at")
+  revokeReason  String?   @map("revoke_reason")
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  @@index([documentId])
+  @@map("doc_signatures")
+}
+
+model DocAuditLog {
+  id           String   @id @default(cuid())
+  documentId   String   @map("document_id")
+  document     DocumentRecord @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  action       String
+  actorId      String   @map("actor_id")
+  actor        User     @relation("DocAuditActor", fields: [actorId], references: [id])
+  detail       Json?
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@index([documentId])
+  @@map("doc_audit_logs")
+}
+
+model DocVersion {
+  id           String   @id @default(cuid())
+  documentId   String   @map("document_id")
+  document     DocumentRecord @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  version      Int
+  snapshot     Json
+  reason       String?
+  createdById  String   @map("created_by_id")
+  createdBy    User     @relation("DocVersionCreator", fields: [createdById], references: [id])
+  approvedById String?  @map("approved_by_id")
+  approvedBy   User?    @relation("DocVersionApprover", fields: [approvedById], references: [id])
+  approvedAt   DateTime? @map("approved_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  @@index([documentId])
+  @@map("doc_versions")
 }

@@ -45,6 +45,7 @@ import DirectionsWalkRoundedIcon from '@mui/icons-material/DirectionsWalkRounded
 import BeachAccessRoundedIcon from '@mui/icons-material/BeachAccessRounded';
 import CampaignRoundedIcon from '@mui/icons-material/CampaignRounded';
 import ReceiptLongRoundedIcon from '@mui/icons-material/ReceiptLongRounded';
+import FolderSpecialRoundedIcon from '@mui/icons-material/FolderSpecialRounded';
 import Hub from '@mui/icons-material/HubRounded';
 import { useAuth, type Role } from '../auth/AuthContext';
 import { useT } from '../i18n';
@@ -141,6 +142,7 @@ export default function Layout({ children }: { children: ReactNode }) {
     { to: '/reports', label: 'Reports', icon: <AssessmentRoundedIcon /> },
     { to: '/leave', label: t('nav.leave'), icon: <BeachAccessRoundedIcon /> },
     { to: '/pr', label: 'PR Tracking', icon: <ReceiptLongRoundedIcon /> },
+    { to: '/docs', label: 'Documents', icon: <FolderSpecialRoundedIcon /> },
     { to: '/notification-center', label: 'Notifications', icon: <CampaignRoundedIcon /> },
     { to: '/settings', label: 'Settings', icon: <SettingsRoundedIcon /> },
   ];
