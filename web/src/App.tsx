@@ -30,6 +30,7 @@ import AgencyInfoFormPage from './pages/AgencyInfoFormPage';
 import AutoAssignPage from './pages/AutoAssignPage';
 import SettingsPage from './pages/SettingsPage';
 import LeavePage from './pages/LeavePage';
+import NotificationCenterPage from './pages/NotificationCenterPage';
 
 function Splash() {
   return (
@@ -79,6 +80,7 @@ export default function App() {
             <Route path="/reports" element={<ReportsPage />} />
             <Route path="/leave" element={<LeavePage />} />
             <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/notification-center" element={<NotificationCenterPage />} />
           </>
         ) : (
           <>
