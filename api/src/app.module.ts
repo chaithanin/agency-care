@@ -42,6 +42,8 @@ import { AgencyScoresModule } from './agency-scores/agency-scores.module';
 import { BroadcastModule } from './broadcast/broadcast.module';
 import { AuditLogsModule } from './audit-logs/audit-logs.module';
 import { AppointmentModule } from './appointment/appointment.module';
+import { AiRiskModule } from './ai-risk/ai-risk.module';
+import { AiForecastModule } from './ai-forecast/ai-forecast.module';
 
 @Module({
   imports: [
@@ -95,6 +97,8 @@ import { AppointmentModule } from './appointment/appointment.module';
     BroadcastModule,
     AuditLogsModule,
     AppointmentModule,
+    AiRiskModule,
+    AiForecastModule,
   ],
   controllers: [AppController],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],

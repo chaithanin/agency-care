@@ -51,6 +51,8 @@ import ProfilePage from './pages/ProfilePage';
 import LineLinkPage from './pages/LineLinkPage';
 import BroadcastPage from './pages/BroadcastPage';
 import AppointmentPage from './pages/AppointmentPage';
+import AiRiskPage from './pages/AiRiskPage';
+import AiForecastPage from './pages/AiForecastPage';
 
 function Splash() {
   return (
@@ -117,6 +119,8 @@ export default function App() {
             <Route path="/agency-scores" element={<AgencyScorePage />} />
             <Route path="/evaluations" element={<EvaluationPage />} />
             <Route path="/appointments" element={<AppointmentPage />} />
+            <Route path="/ai-risk" element={<AiRiskPage />} />
+            <Route path="/ai-forecast" element={<AiForecastPage />} />
           </>
         ) : (
           <>

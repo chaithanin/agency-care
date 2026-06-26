@@ -51,6 +51,8 @@ import Hub from '@mui/icons-material/HubRounded';
 import HowToVoteRoundedIcon from '@mui/icons-material/HowToVoteRounded';
 import ManageSearchRoundedIcon from '@mui/icons-material/ManageSearchRounded';
 import StorageRoundedIcon from '@mui/icons-material/StorageRounded';
+import WarningAmberRoundedIcon from '@mui/icons-material/WarningAmberRounded';
+import TrendingUpRoundedIcon from '@mui/icons-material/TrendingUpRounded';
 import AccountCircleRoundedIcon from '@mui/icons-material/AccountCircleRounded';
 import { useAuth, type Role } from '../auth/AuthContext';
 import { useT } from '../i18n';
@@ -158,6 +160,8 @@ export default function Layout({ children }: { children: ReactNode }) {
     { to: '/agency-scores', label: 'Agency Score', icon: <ManageSearchRoundedIcon /> },
     { to: '/evaluations', label: 'Evaluation', icon: <HowToVoteRoundedIcon /> },
     { to: '/ai-center', label: 'AI Center', icon: <ManageSearchRoundedIcon /> },
+    { to: '/ai-risk', label: 'AI Risk', icon: <WarningAmberRoundedIcon /> },
+    { to: '/ai-forecast', label: 'AI Forecast', icon: <TrendingUpRoundedIcon /> },
     { to: '/audit', label: 'Audit', icon: <ManageSearchRoundedIcon /> },
     { to: '/master-data', label: 'Master Data', icon: <StorageRoundedIcon /> },
     { to: '/notification-center', label: 'Notifications', icon: <CampaignRoundedIcon /> },
