@@ -11,9 +11,13 @@ import {
   DialogContent,
   DialogTitle,
   Divider,
+  FormControl,
   IconButton,
+  InputLabel,
   LinearProgress,
+  MenuItem,
   Paper,
+  Select,
   Stack,
   Tab,
   Table,
@@ -31,6 +35,7 @@ import {
   CheckCircle,
   History,
   PlayArrow,
+  Print as PrintIcon,
   Publish,
   Send,
   Undo,
@@ -168,6 +173,128 @@ function PlanDetailPanel({
   const currentVersion = plan.versions.find((v) => v.isCurrent) ?? plan.versions[0];
   const items = currentVersion?.items ?? [];
 
+  // ─── Print ──────────────────────────────────────────────────────────────────
+  const [printOpen, setPrintOpen] = useState(false);
+  const [printEmployee, setPrintEmployee] = useState(''); // '' = all
+
+  // Unique employees from current items
+  const uniqueEmployees = Array.from(
+    new Map(items.map((i) => [i.employee.id, i.employee])).values(),
+  ).sort((a, b) => a.name.localeCompare(b.name, 'th'));
+
+  const executePrint = () => {
+    const colStyle = 'padding:6px 8px;border:1px solid #cbd5e1;font-size:11px;vertical-align:top;';
+    const hStyle = `${colStyle}background:#1e293b;color:#fff;font-weight:700;white-space:nowrap;`;
+
+    const buildHeader = () => `
+      <tr>
+        <th style="${hStyle}">#</th>
+        <th style="${hStyle}">รหัส Agency</th>
+        <th style="${hStyle}">ชื่อ Agency</th>
+        <th style="${hStyle}">โซน Agency</th>
+        <th style="${hStyle}">โซนเซลส์</th>
+        <th style="${hStyle}">หมายเหตุ</th>
+      </tr>`;
+
+    const buildRows = (list: PlanItem[]) =>
+      list.map((item, i) => `
+        <tr style="background:${i % 2 === 0 ? '#fff' : '#f8fafc'}">
+          <td style="${colStyle}text-align:center;color:#94a3b8">${i + 1}</td>
+          <td style="${colStyle}white-space:nowrap;font-weight:600">${item.agency.code}</td>
+          <td style="${colStyle}">${item.agency.name}</td>
+          <td style="${colStyle}text-align:center">
+            <span style="background:#e0e7ff;color:#3730a3;padding:2px 8px;border-radius:9999px;font-size:10px">
+              ${item.agency.zone ?? '—'}
+            </span>
+          </td>
+          <td style="${colStyle}text-align:center">
+            <span style="background:${item.agency.zone && item.employee.zone === item.agency.zone ? '#dcfce7' : '#f1f5f9'};color:${item.agency.zone && item.employee.zone === item.agency.zone ? '#15803d' : '#64748b'};padding:2px 8px;border-radius:9999px;font-size:10px">
+              ${item.employee.zone ?? '—'}
+            </span>
+          </td>
+          <td style="${colStyle}color:#64748b">${item.note ?? ''}</td>
+        </tr>`).join('');
+
+    let bodyHtml = '';
+
+    if (printEmployee) {
+      // Single employee
+      const empItems = items.filter((i) => i.employee.id === printEmployee);
+      const emp = uniqueEmployees.find((e) => e.id === printEmployee);
+      bodyHtml = `
+        <div style="margin-bottom:8px;background:#3b82f6;color:#fff;padding:6px 12px;font-weight:700;font-size:13px;border-radius:4px">
+          👤 ${emp?.name ?? ''} — ${emp?.code ?? ''} &nbsp;|&nbsp; โซน: ${emp?.zone ?? '—'} &nbsp;|&nbsp; ${empItems.length} Agency
+        </div>
+        <table style="width:100%;border-collapse:collapse">
+          ${buildHeader()}
+          ${buildRows(empItems)}
+        </table>`;
+    } else {
+      // All employees — one section per person
+      bodyHtml = uniqueEmployees.map((emp) => {
+        const empItems = items.filter((i) => i.employee.id === emp.id);
+        return `
+          <div style="margin-bottom:24px;page-break-inside:avoid">
+            <div style="background:#1d4ed8;color:#fff;padding:6px 12px;font-weight:700;font-size:13px;border-radius:4px 4px 0 0">
+              👤 ${emp.name} (${emp.code}) &nbsp;|&nbsp; โซน: ${emp.zone ?? '—'} &nbsp;|&nbsp; ${empItems.length} Agency
+            </div>
+            <table style="width:100%;border-collapse:collapse">
+              ${buildHeader()}
+              ${buildRows(empItems)}
+            </table>
+          </div>`;
+      }).join('');
+    }
+
+    const empLabel = printEmployee
+      ? uniqueEmployees.find((e) => e.id === printEmployee)?.name ?? ''
+      : 'ทั้งหมด';
+
+    const todayStr = new Date().toLocaleDateString('th-TH', { day: '2-digit', month: 'short', year: 'numeric' });
+
+    const html = `<!DOCTYPE html><html><head>
+      <meta charset="utf-8"/>
+      <title>แผนมอบหมาย ${plan.period} — ${empLabel}</title>
+      <style>
+        * { font-family: 'Sarabun', Arial, sans-serif; box-sizing: border-box; }
+        body { margin: 0; padding: 16px 20px; color: #0f172a; }
+        @media print {
+          @page { size: A4 landscape; margin: 8mm 10mm; }
+          body { padding: 0; }
+          .no-print { display: none; }
+        }
+      </style>
+    </head><body>
+      <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:14px;border-bottom:3px solid #1d4ed8;padding-bottom:8px">
+        <div>
+          <div style="font-size:20px;font-weight:800;color:#1d4ed8">แผนมอบหมาย AI — Agency Care</div>
+          <div style="font-size:13px;color:#475569;margin-top:2px">
+            ประจำเดือน: <strong>${plan.period}</strong>
+            &nbsp;|&nbsp; เซลส์: <strong>${empLabel}</strong>
+            &nbsp;|&nbsp; สถานะ: <strong>${plan.status}</strong>
+          </div>
+        </div>
+        <div style="text-align:right;font-size:11px;color:#94a3b8">
+          พิมพ์เมื่อ: ${todayStr}<br/>
+          รวม ${printEmployee ? items.filter((i) => i.employee.id === printEmployee).length : items.length} รายการ
+          &nbsp;|&nbsp; ${printEmployee ? 1 : uniqueEmployees.length} เซลส์
+        </div>
+      </div>
+      ${bodyHtml}
+      <div class="no-print" style="margin-top:20px;text-align:center">
+        <button onclick="window.print()" style="padding:10px 32px;background:#1d4ed8;color:#fff;border:none;border-radius:6px;font-size:14px;cursor:pointer">🖨️ พิมพ์</button>
+      </div>
+    </body></html>`;
+
+    const w = window.open('', '_blank', 'width=1100,height=800');
+    if (w) {
+      w.document.write(html);
+      w.document.close();
+      setTimeout(() => w.print(), 500);
+    }
+    setPrintOpen(false);
+  };
+
   const act = async (method: 'patch' | 'post', path: string, body?: object) => {
     setLoading(true);
     setErr('');
@@ -204,7 +331,18 @@ function PlanDetailPanel({
       {err && <Alert severity="error" onClose={() => setErr('')} sx={{ mb: 1 }}>{err}</Alert>}
 
       {/* Action buttons */}
-      <Stack direction="row" spacing={1} mb={2} flexWrap="wrap">
+      <Stack direction="row" spacing={1} mb={2} flexWrap="wrap" alignItems="center">
+        {/* Print button — always visible when items exist */}
+        {items.length > 0 && (
+          <Button
+            variant="outlined"
+            startIcon={<PrintIcon />}
+            onClick={() => { setPrintEmployee(''); setPrintOpen(true); }}
+            size="small"
+          >
+            พิมพ์แผน
+          </Button>
+        )}
         {plan.status === 'draft' && (
           <Button
             variant="outlined"
@@ -288,6 +426,42 @@ function PlanDetailPanel({
           </Table>
         </Paper>
       )}
+
+      {/* ─── Print Dialog ─── */}
+      <Dialog open={printOpen} onClose={() => setPrintOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle>
+          <PrintIcon sx={{ mr: 1, verticalAlign: 'middle' }} fontSize="small" />
+          พิมพ์แผนมอบหมาย — {plan.period}
+        </DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} mt={1}>
+            <FormControl size="small" fullWidth>
+              <InputLabel>เซลส์</InputLabel>
+              <Select
+                value={printEmployee}
+                label="เซลส์"
+                onChange={(e) => setPrintEmployee(e.target.value)}
+              >
+                <MenuItem value="">ทั้งหมด (แยกกลุ่มตามคน — {uniqueEmployees.length} คน)</MenuItem>
+                {uniqueEmployees.map((e) => (
+                  <MenuItem key={e.id} value={e.id}>
+                    {e.name} ({e.code}) — {items.filter((i) => i.employee.id === e.id).length} Agency
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            <Alert severity="info" sx={{ py: 0.5, fontSize: 12 }}>
+              เปิดหน้าต่างใหม่ขนาด A4 แนวนอน พร้อมตาราง Agency–เซลส์
+            </Alert>
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setPrintOpen(false)}>{t('common.cancel')}</Button>
+          <Button variant="contained" startIcon={<PrintIcon />} onClick={executePrint}>
+            พิมพ์
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {activeTab === 1 && (
         <Paper variant="outlined">
