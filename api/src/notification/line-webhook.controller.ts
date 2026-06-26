@@ -4,6 +4,7 @@ import { createHmac, timingSafeEqual } from 'crypto';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { LineService } from './line.service';
+import { Public } from '../auth/guards';
 
 interface LineEvent {
   type: string;
@@ -29,6 +30,7 @@ export class LineWebhookController {
   ) {}
 
   /** LINE Webhook endpoint — ลงทะเบียนที่ LINE Developers Console */
+  @Public()
   @Post('webhook')
   @HttpCode(200)
   async webhook(@Req() req: Request, @Res() res: Response) {
