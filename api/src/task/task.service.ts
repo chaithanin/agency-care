@@ -28,30 +28,51 @@ export class TaskService {
       throw new ForbiddenException('เซลส์สร้างงานให้ตัวเองเท่านั้น');
     }
 
-    return this.prisma.task.create({
-      data: {
-        title: dto.title,
-        description: dto.description,
-        dueDate: dto.dueDate ? new Date(dto.dueDate) : undefined,
-        priority: dto.priority ?? 'medium',
-        type: dto.type ?? 'manual',
-        assignedToId,
-        agencyId: dto.agencyId,
-        visitPlanId: dto.visitPlanId,
-        createdById: callerEmp.id,
-      },
-      include: { assignedTo: { select: { id: true, name: true } }, agency: { select: { id: true, name: true } } },
-    });
+    const baseData = {
+      title: dto.title,
+      description: dto.description,
+      priority: dto.priority ?? 'medium',
+      type: dto.type ?? 'manual',
+      assignedToId,
+      agencyId: dto.agencyId,
+      visitPlanId: dto.visitPlanId,
+      createdById: callerEmp.id,
+      tag: dto.tag,
+      customerName: dto.customerName,
+      isRecurring: dto.isRecurring ?? false,
+      recurringFreq: dto.recurringFreq,
+      recurringUntil: dto.recurringUntil ? new Date(dto.recurringUntil) : undefined,
+    };
+
+    if (!dto.isRecurring || !dto.recurringFreq || !dto.dueDate || !dto.recurringUntil) {
+      return this.prisma.task.create({
+        data: { ...baseData, dueDate: dto.dueDate ? new Date(dto.dueDate) : undefined },
+        include: { assignedTo: { select: { id: true, name: true } }, agency: { select: { id: true, name: true } } },
+      });
+    }
+
+    const dates: Date[] = [];
+    const until = new Date(dto.recurringUntil);
+    let cur = new Date(dto.dueDate);
+    while (cur <= until) {
+      dates.push(new Date(cur));
+      if (dto.recurringFreq === 'daily') cur.setDate(cur.getDate() + 1);
+      else cur.setDate(cur.getDate() + 7);
+    }
+    await this.prisma.task.createMany({ data: dates.map((d) => ({ ...baseData, dueDate: d })) });
+    return { created: dates.length };
   }
 
-  async list(user: RequestUser, params: { status?: string; assignedToId?: string; agencyId?: string }) {
+  async list(user: RequestUser, params: {
+    status?: string; assignedToId?: string; agencyId?: string;
+    tag?: string; customerName?: string; from?: string; to?: string;
+  }) {
     const where: Prisma.TaskWhereInput = {};
 
     if (user.activeRole === 'sales') {
       const emp = await this.callerEmployee(user.id);
       where.assignedToId = emp.id;
     } else if (user.activeRole === 'closer') {
-      // Closer sees own team
       const emp = await this.callerEmployee(user.id);
       if (emp.teamId) {
         where.assignedTo = { teamId: emp.teamId };
@@ -59,11 +80,17 @@ export class TaskService {
         where.assignedToId = emp.id;
       }
     }
-    // admin sees all
 
     if (params.status) where.status = params.status as any;
     if (params.assignedToId && user.activeRole !== 'sales') where.assignedToId = params.assignedToId;
     if (params.agencyId) where.agencyId = params.agencyId;
+    if (params.tag) where.tag = params.tag;
+    if (params.customerName) where.customerName = { contains: params.customerName, mode: 'insensitive' };
+    if (params.from || params.to) {
+      where.dueDate = {};
+      if (params.from) (where.dueDate as Prisma.DateTimeFilter).gte = new Date(params.from);
+      if (params.to) (where.dueDate as Prisma.DateTimeFilter).lte = new Date(params.to);
+    }
 
     return this.prisma.task.findMany({
       where,
@@ -93,6 +120,8 @@ export class TaskService {
       if (dto.status === 'done') data.doneAt = new Date();
     }
     if (dto.assignedToId !== undefined && user.activeRole !== 'sales') data.assignedTo = { connect: { id: dto.assignedToId } };
+    if (dto.tag !== undefined) data.tag = dto.tag;
+    if (dto.customerName !== undefined) data.customerName = dto.customerName;
     return this.prisma.task.update({ where: { id }, data });
   }
 

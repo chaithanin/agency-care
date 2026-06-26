@@ -343,6 +343,12 @@ model VisitPlan {
   planDate   DateTime    @map("plan_date") @db.Date // วันที่นัดเยี่ยม
   status     VisitStatus @default(pending)
   note       String?
+  actionType      String?  @map("action_type")       // visit/call/invite/orientation/customer/followup_hold/followup_customer/delivery/event/launch/rental
+  requestDetails  String?  @map("request_details")   // what the assignee should do
+  priority        String   @default("medium")         // high/medium/low
+  isRecurring     Boolean  @default(false) @map("is_recurring")
+  recurringFreq   String?  @map("recurring_freq")     // weekly/monthly
+  recurringUntil  DateTime? @map("recurring_until") @db.Date
   // Pre-site visit confirmation
   callConfirmAt     DateTime?         @map("call_confirm_at")
   callConfirmResult CallConfirmResult? @map("call_confirm_result")
@@ -368,6 +374,7 @@ model VisitPlan {
   @@index([employeeId, planDate])
   @@index([agencyId, planDate])
   @@index([planDate, status])
+  @@index([actionType])
   @@map("visit_plans")
 }
 
@@ -621,7 +628,12 @@ model Task {
   assignedToId String       @map("assigned_to_id")
   agencyId     String?      @map("agency_id")
   visitPlanId  String?      @map("visit_plan_id")
-  createdById  String?      @map("created_by_id") // employeeId ของคนสร้าง
+  createdById  String?      @map("created_by_id")
+  tag          String?      // call/visit/orientation/customer/followup/delivery/event/etc.
+  customerName String?      @map("customer_name")
+  isRecurring  Boolean      @default(false) @map("is_recurring")
+  recurringFreq String?     @map("recurring_freq")   // daily/weekly
+  recurringUntil DateTime?  @map("recurring_until") @db.Date
   doneAt       DateTime?    @map("done_at")
   createdAt    DateTime     @default(now()) @map("created_at")
   updatedAt    DateTime     @updatedAt @map("updated_at")
@@ -633,6 +645,7 @@ model Task {
   @@index([assignedToId, status])
   @@index([status, dueDate])
   @@index([agencyId])
+  @@index([tag])
   @@map("tasks")
 }
 

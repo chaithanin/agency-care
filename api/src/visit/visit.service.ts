@@ -55,18 +55,43 @@ export class VisitService {
     if (!agency) throw new NotFoundException('ไม่พบ Agency');
     if (!employee) throw new NotFoundException('ไม่พบพนักงาน');
 
-    return this.prisma.visitPlan.create({
-      data: {
-        agencyId: dto.agencyId,
-        employeeId: dto.employeeId,
-        planDate: new Date(dto.planDate),
-        note: dto.note,
-      },
+    const baseData = {
+      agencyId: dto.agencyId,
+      employeeId: dto.employeeId,
+      note: dto.note,
+      actionType: dto.actionType,
+      requestDetails: dto.requestDetails,
+      priority: dto.priority ?? 'medium',
+      isRecurring: dto.isRecurring ?? false,
+      recurringFreq: dto.recurringFreq,
+      recurringUntil: dto.recurringUntil ? new Date(dto.recurringUntil) : undefined,
+    };
+
+    if (!dto.isRecurring || !dto.recurringFreq || !dto.recurringUntil) {
+      return this.prisma.visitPlan.create({
+        data: { ...baseData, planDate: new Date(dto.planDate) },
+      });
+    }
+
+    // Build recurring dates
+    const dates: Date[] = [];
+    const until = new Date(dto.recurringUntil);
+    let cur = new Date(dto.planDate);
+    while (cur <= until) {
+      dates.push(new Date(cur));
+      if (dto.recurringFreq === 'weekly') cur.setDate(cur.getDate() + 7);
+      else cur.setMonth(cur.getMonth() + 1); // monthly
+    }
+
+    await this.prisma.visitPlan.createMany({
+      data: dates.map((d) => ({ ...baseData, planDate: d })),
+      skipDuplicates: true,
     });
+    return { created: dates.length };
   }
 
   // list ตามช่วงวัน/เซลส์ — admin เห็นหมด, sales เห็นเฉพาะตัวเอง
-  async listPlans(user: RequestUser, params: { date?: string; from?: string; to?: string; employeeId?: string }) {
+  async listPlans(user: RequestUser, params: { date?: string; from?: string; to?: string; employeeId?: string; actionType?: string; status?: string }) {
     const where: Prisma.VisitPlanWhereInput = {};
 
     if (user.activeRole === 'sales') {
@@ -83,15 +108,17 @@ export class VisitService {
       if (params.from) (where.planDate as Prisma.DateTimeFilter).gte = new Date(params.from);
       if (params.to) (where.planDate as Prisma.DateTimeFilter).lte = new Date(params.to);
     }
+    if (params.actionType) where.actionType = params.actionType;
+    if (params.status) where.status = params.status as any;
 
     return this.prisma.visitPlan.findMany({
       where,
       orderBy: [{ planDate: 'asc' }, { createdAt: 'asc' }],
       include: {
-        agency: { select: { id: true, code: true, name: true, latitude: true, longitude: true, zone: true } },
+        agency: { select: { id: true, code: true, name: true, phone: true, latitude: true, longitude: true, zone: true } },
         employee: { select: { id: true, code: true, name: true } },
         checkin: { select: { id: true, checkinAt: true, withinRadius: true, distanceMeters: true } },
-        report: { select: { id: true } },
+        report: { select: { id: true, summary: true } },
       },
     });
   }

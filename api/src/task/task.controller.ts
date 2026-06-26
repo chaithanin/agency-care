@@ -19,8 +19,12 @@ export class TaskController {
     @Query('status') status?: string,
     @Query('assignedToId') assignedToId?: string,
     @Query('agencyId') agencyId?: string,
+    @Query('tag') tag?: string,
+    @Query('customerName') customerName?: string,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
   ) {
-    return this.service.list(user, { status, assignedToId, agencyId });
+    return this.service.list(user, { status, assignedToId, agencyId, tag, customerName, from, to });
   }
 
   @Get('summary')

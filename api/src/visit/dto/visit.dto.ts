@@ -33,11 +33,35 @@ export class CreatePlanDto {
   employeeId!: string;
 
   @IsDateString()
-  planDate!: string; // YYYY-MM-DD
+  planDate!: string;
 
   @IsOptional()
   @IsString()
   note?: string;
+
+  @IsOptional()
+  @IsString()
+  actionType?: string;
+
+  @IsOptional()
+  @IsString()
+  requestDetails?: string;
+
+  @IsOptional()
+  @IsIn(['high', 'medium', 'low'])
+  priority?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  isRecurring?: boolean;
+
+  @IsOptional()
+  @IsIn(['weekly', 'monthly'])
+  recurringFreq?: string;
+
+  @IsOptional()
+  @IsDateString()
+  recurringUntil?: string;
 }
 
 export class UpdatePlanStatusDto {

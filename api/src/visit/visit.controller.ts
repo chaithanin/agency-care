@@ -50,8 +50,10 @@ export class VisitController {
     @Query('from') from?: string,
     @Query('to') to?: string,
     @Query('employeeId') employeeId?: string,
+    @Query('actionType') actionType?: string,
+    @Query('status') status?: string,
   ) {
-    return this.service.listPlans(user, { date, from, to, employeeId });
+    return this.service.listPlans(user, { date, from, to, employeeId, actionType, status });
   }
 
   @Get('plans/:id')

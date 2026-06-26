@@ -1,4 +1,4 @@
-import { IsEnum, IsISO8601, IsOptional, IsString, MaxLength } from 'class-validator';
+import { IsBoolean, IsEnum, IsISO8601, IsIn, IsOptional, IsString, MaxLength } from 'class-validator';
 import { TaskPriority, TaskType } from '@prisma/client';
 
 export class CreateTaskDto {
@@ -24,7 +24,7 @@ export class CreateTaskDto {
 
   @IsOptional()
   @IsString()
-  assignedToId?: string; // default: caller's employee id
+  assignedToId?: string;
 
   @IsOptional()
   @IsString()
@@ -33,6 +33,26 @@ export class CreateTaskDto {
   @IsOptional()
   @IsString()
   visitPlanId?: string;
+
+  @IsOptional()
+  @IsString()
+  tag?: string;
+
+  @IsOptional()
+  @IsString()
+  customerName?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  isRecurring?: boolean;
+
+  @IsOptional()
+  @IsIn(['daily', 'weekly'])
+  recurringFreq?: string;
+
+  @IsOptional()
+  @IsISO8601()
+  recurringUntil?: string;
 }
 
 export class UpdateTaskDto {
@@ -60,4 +80,12 @@ export class UpdateTaskDto {
   @IsOptional()
   @IsString()
   assignedToId?: string;
+
+  @IsOptional()
+  @IsString()
+  tag?: string;
+
+  @IsOptional()
+  @IsString()
+  customerName?: string;
 }
