@@ -181,7 +181,10 @@ export class AuthService {
     );
 
     const liffId = this.config.get<string>('LINE_LIFF_ID', '2010519960-8863VFIr');
-    const liffUrl = `https://liff.line.me/${liffId}?liff.state=${encodeURIComponent(token)}`;
+    // liff.state ต้องเป็น query string ที่ LIFF จะ append ต่อท้าย Endpoint URL
+    // Endpoint: /line-link → LIFF redirects to /line-link?token=JWT
+    const state = `?token=${token}`;
+    const liffUrl = `https://liff.line.me/${liffId}?liff.state=${encodeURIComponent(state)}`;
     return { token, liffUrl, alreadyLinked: !!user.employee.lineUserId };
   }
 

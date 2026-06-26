@@ -46,9 +46,13 @@ export default function LineLinkPage() {
       const profile = await window.liff.getProfile();
       setDisplayName(profile.displayName);
 
-      // token อยู่ใน liff.state → search param
+      // LIFF appends liff.state value (?token=JWT) onto the endpoint URL
+      // Result: /line-link?token=JWT  → read 'token' directly
+      // Fallback: liff.state=JWT (old format) or raw state value
       const params = new URLSearchParams(window.location.search);
-      const token = params.get('liff.state') ?? params.get('token') ?? '';
+      const rawState = params.get('liff.state') ?? '';
+      const stateParams = new URLSearchParams(rawState.startsWith('?') ? rawState.slice(1) : rawState);
+      const token = params.get('token') ?? stateParams.get('token') ?? rawState;
 
       if (!token) {
         setPhase('notoken');
