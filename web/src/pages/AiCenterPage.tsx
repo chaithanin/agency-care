@@ -7,7 +7,7 @@ import {
 } from '@mui/material';
 import {
   Psychology, AutoAwesome, Route, CalendarMonth, Assessment, Stars, Warning,
-  TrendingUp, Lightbulb, ArrowForward, CheckCircle, Speed,
+  TrendingUp, Lightbulb, ArrowForward, CheckCircle, Speed, Favorite,
 } from '@mui/icons-material';
 import { api } from '../api/client';
 
@@ -19,21 +19,19 @@ const AI_MODULES = [
   { key: 'score', label: 'AI Agency Score', icon: <Stars />, desc: 'คำนวณคะแนน Agency อัตโนมัติ', color: '#D97706', route: '/agencies' },
   { key: 'risk', label: 'AI Risk Analysis', icon: <Warning />, desc: 'วิเคราะห์ความเสี่ยง Agency และพนักงาน', color: '#DC2626', route: '/ai-risk' },
   { key: 'forecast', label: 'AI Forecast', icon: <TrendingUp />, desc: 'พยากรณ์ KPI, Workload และ Scenario', color: '#0891B2', route: '/ai-forecast' },
-  { key: 'health', label: 'AI Health Score', icon: <Stars />, desc: 'Health Score 0-100 องค์กร/ทีม/Agency/พนักงาน', color: '#059669', route: '/ai-health' },
+  { key: 'health', label: 'AI Health Score', icon: <Favorite />, desc: 'Health Score 0-100 องค์กร/ทีม/Agency/พนักงาน', color: '#059669', route: '/ai-health' },
   { key: 'recommendation', label: 'AI Recommendation', icon: <Lightbulb />, desc: 'คำแนะนำการปรับปรุงผลงานแบบ Real-time', color: '#7C3AED', route: '/ai-risk' },
 ];
 
-interface AnalyticsSummary {
-  totalVisits?: number; avgVisitScore?: number; topPerformers?: Array<{ name: string; score: number }>;
-  riskAgencies?: Array<{ name: string; lastVisit: string; risk: string }>;
-  recommendations?: string[];
-  forecast?: Array<{ month: string; predicted: number }>;
+interface LiveData {
+  risk?: { agencies: { critical: number; high: number; medium: number; low: number; total: number }; sales: { critical: number; high: number; medium: number; low: number; total: number }; recommendations: string[] };
+  forecast?: { summary: { onTrack: number; atRisk: number; critical: number; total: number; avgVisitProjRate: number }; alerts: string[] };
 }
 
 export default function AiCenterPage() {
   const navigate = useNavigate();
   const [tab, setTab] = useState(0);
-  const [, setSummary] = useState<AnalyticsSummary | null>(null);
+  const [liveData, setLiveData] = useState<LiveData>({});
   const [loading, setLoading] = useState(true);
   const [calcLoading, setCalcLoading] = useState(false);
   const [calcResult, setCalcResult] = useState('');
@@ -41,7 +39,14 @@ export default function AiCenterPage() {
   const [year, setYear] = useState(new Date().getFullYear());
 
   useEffect(() => {
-    api.get<AnalyticsSummary>('/analytics/summary').then(r => setSummary(r.data)).catch(() => {}).finally(() => setLoading(false));
+    Promise.allSettled([
+      api.get('/ai-risk/dashboard'),
+      api.get('/ai-forecast/dashboard'),
+    ]).then(([riskRes, forecastRes]) => {
+      const risk = riskRes.status === 'fulfilled' ? riskRes.value.data : undefined;
+      const forecast = forecastRes.status === 'fulfilled' ? forecastRes.value.data : undefined;
+      setLiveData({ risk, forecast });
+    }).finally(() => setLoading(false));
   }, []);
 
   const calcAgencyScores = async () => {
@@ -118,19 +123,40 @@ export default function AiCenterPage() {
                   </List>
                 </Grid>
                 <Grid item xs={12} md={6}>
-                  <Typography variant="subtitle1" fontWeight={700} mb={2}>AI Metrics</Typography>
-                  {[
-                    { label: 'AI Assignment Accuracy', value: 92, color: '#4F46E5' },
-                    { label: 'Route Optimization', value: 87, color: '#2563EB' },
-                    { label: 'Performance Prediction', value: 78, color: '#16A34A' },
-                    { label: 'Agency Risk Detection', value: 65, color: '#DC2626' },
-                  ].map(m => (
-                    <Box key={m.label} mb={2}>
-                      <Box display="flex" justifyContent="space-between" mb={0.5}>
-                        <Typography variant="body2">{m.label}</Typography>
-                        <Typography variant="body2" fontWeight={700} sx={{ color: m.color }}>{m.value}%</Typography>
+                  <Typography variant="subtitle1" fontWeight={700} mb={2}>AI Live Insights</Typography>
+                  {liveData.risk && (
+                    <Box mb={2} sx={{ p: 1.5, border: '1px solid #FEE2E2', borderRadius: 2, bgcolor: '#FEF2F2' }}>
+                      <Typography variant="body2" fontWeight={700} sx={{ color: '#DC2626', mb: 0.5 }}>Agency Risk</Typography>
+                      <Box display="flex" gap={1} flexWrap="wrap">
+                        {[
+                          { l: 'วิกฤต', v: liveData.risk.agencies.critical, c: '#DC2626' },
+                          { l: 'สูง', v: liveData.risk.agencies.high, c: '#EA580C' },
+                          { l: 'ปานกลาง', v: liveData.risk.agencies.medium, c: '#D97706' },
+                          { l: 'ต่ำ', v: liveData.risk.agencies.low, c: '#16A34A' },
+                        ].map(x => (
+                          <Box key={x.l} sx={{ textAlign: 'center' }}>
+                            <Typography variant="h6" fontWeight={800} sx={{ color: x.c }}>{x.v}</Typography>
+                            <Typography variant="caption" color="text.secondary">{x.l}</Typography>
+                          </Box>
+                        ))}
                       </Box>
-                      <LinearProgress variant="determinate" value={m.value} sx={{ height: 8, borderRadius: 4, bgcolor: '#E2E8F0', '& .MuiLinearProgress-bar': { bgcolor: m.color } }} />
+                    </Box>
+                  )}
+                  {liveData.forecast && (
+                    <Box mb={2} sx={{ p: 1.5, border: '1px solid #DBEAFE', borderRadius: 2, bgcolor: '#EFF6FF' }}>
+                      <Typography variant="body2" fontWeight={700} sx={{ color: '#2563EB', mb: 0.5 }}>KPI Forecast เดือนนี้</Typography>
+                      <Box display="flex" gap={2}>
+                        <Box><Typography variant="h6" fontWeight={800} sx={{ color: '#16A34A' }}>{liveData.forecast.summary.onTrack}</Typography><Typography variant="caption">ตามเป้า</Typography></Box>
+                        <Box><Typography variant="h6" fontWeight={800} sx={{ color: '#D97706' }}>{liveData.forecast.summary.atRisk}</Typography><Typography variant="caption">เสี่ยง</Typography></Box>
+                        <Box><Typography variant="h6" fontWeight={800} sx={{ color: '#DC2626' }}>{liveData.forecast.summary.critical}</Typography><Typography variant="caption">วิกฤต</Typography></Box>
+                        <Box><Typography variant="h6" fontWeight={800} sx={{ color: '#6366F1' }}>{liveData.forecast.summary.avgVisitProjRate}%</Typography><Typography variant="caption">Achievement</Typography></Box>
+                      </Box>
+                    </Box>
+                  )}
+                  {liveData.risk?.recommendations?.slice(0, 2).map((r, i) => (
+                    <Box key={i} display="flex" gap={1} mb={0.5}>
+                      <Typography variant="body2" sx={{ color: '#D97706' }}>•</Typography>
+                      <Typography variant="body2">{r}</Typography>
                     </Box>
                   ))}
                 </Grid>

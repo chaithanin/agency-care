@@ -300,6 +300,90 @@ export class AiForecastController {
     };
   }
 
+  // ── Agency Growth Forecast ────────────────────────────────────────────────
+
+  @Get('agency-growth')
+  async agencyGrowth() {
+    // Get agencies with tier info
+    const agencies = await this.db.agency.findMany({
+      where: { status: 'active' },
+      select: { id: true, name: true, code: true, tier: true, level: true },
+      take: 300,
+    });
+
+    if (!agencies.length) return { upgrades: [], downgrades: [], stable: [] };
+    const ids = agencies.map(a => a.id);
+
+    // Get last 4 months of scores per agency
+    const scores = await this.db.$queryRaw<{
+      agency_id: string; month: number; year: number; overall_score: number;
+    }[]>`
+      SELECT agency_id, month, year, overall_score
+      FROM agency_scores
+      WHERE agency_id = ANY(${ids})
+        AND (year * 100 + month) >= (EXTRACT(YEAR FROM NOW())::int * 100 + EXTRACT(MONTH FROM NOW())::int - 3)
+      ORDER BY agency_id, year, month
+    `;
+
+    // Group by agency
+    const byAgency: Record<string, { month: number; year: number; overall_score: number }[]> = {};
+    for (const s of scores) {
+      if (!byAgency[s.agency_id]) byAgency[s.agency_id] = [];
+      byAgency[s.agency_id].push(s);
+    }
+
+    function tierFromScore(score: number): string {
+      if (score >= 90) return 'platinum';
+      if (score >= 70) return 'gold';
+      if (score >= 50) return 'silver';
+      if (score >= 30) return 'bronze';
+      return 'at_risk';
+    }
+
+    const TIER_ORDER = ['at_risk', 'bronze', 'silver', 'gold', 'platinum'];
+
+    const upgrades: object[] = [];
+    const downgrades: object[] = [];
+    const stable: object[] = [];
+
+    for (const a of agencies) {
+      const history = byAgency[a.id];
+      if (!history || history.length < 2) continue;
+
+      const vals = history.map(h => h.overall_score);
+      const trend = trendMultiplier(vals);
+      const latest = vals[vals.length - 1];
+      const forecastScore = Math.min(100, Math.max(0, Math.round(latest * Math.max(0.5, Math.min(1.5, trend))))));
+
+      const currentTier = tierFromScore(latest);
+      const forecastTier = tierFromScore(forecastScore);
+      const currentRank = TIER_ORDER.indexOf(currentTier);
+      const forecastRank = TIER_ORDER.indexOf(forecastTier);
+
+      const item = {
+        id: a.id, name: a.name, code: a.code,
+        currentTier: a.tier ?? currentTier,
+        scoreTier: currentTier,
+        forecastTier,
+        currentScore: Math.round(latest),
+        forecastScore,
+        scoreDelta: forecastScore - Math.round(latest),
+        trend: Math.round((trend - 1) * 100),
+        historyScores: vals,
+      };
+
+      if (forecastRank > currentRank) upgrades.push(item);
+      else if (forecastRank < currentRank) downgrades.push(item);
+      else stable.push(item);
+    }
+
+    return {
+      upgrades: upgrades.sort((a: any, b: any) => b.scoreDelta - a.scoreDelta),
+      downgrades: downgrades.sort((a: any, b: any) => a.scoreDelta - b.scoreDelta),
+      stable: stable.slice(0, 20),
+    };
+  }
+
   // ── Scenario Simulator ────────────────────────────────────────────────────
 
   @Get('scenario')

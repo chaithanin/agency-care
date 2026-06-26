@@ -10,7 +10,29 @@ import TrendingDownRoundedIcon from '@mui/icons-material/TrendingDownRounded';
 import TrendingFlatRoundedIcon from '@mui/icons-material/TrendingFlatRounded';
 import RefreshRoundedIcon from '@mui/icons-material/RefreshRounded';
 import WarningAmberRoundedIcon from '@mui/icons-material/WarningAmberRounded';
+import ArrowUpwardRoundedIcon from '@mui/icons-material/ArrowUpwardRounded';
+import ArrowDownwardRoundedIcon from '@mui/icons-material/ArrowDownwardRounded';
 import { api } from '../api/client';
+
+interface GrowthItem {
+  id: string; name: string; code: string;
+  currentTier: string; scoreTier: string; forecastTier: string;
+  currentScore: number; forecastScore: number; scoreDelta: number; trend: number;
+  historyScores: number[];
+}
+
+interface GrowthResult {
+  upgrades: GrowthItem[];
+  downgrades: GrowthItem[];
+  stable: GrowthItem[];
+}
+
+const TIER_COLOR: Record<string, string> = {
+  platinum: '#6366F1', gold: '#D97706', silver: '#6B7280', bronze: '#92400E', at_risk: '#DC2626',
+};
+const TIER_LABEL_TH: Record<string, string> = {
+  platinum: 'Platinum', gold: 'Gold', silver: 'Silver', bronze: 'Bronze', at_risk: 'เสี่ยง',
+};
 
 type RiskStatus = 'on_track' | 'at_risk' | 'critical' | 'unknown';
 
@@ -143,6 +165,7 @@ export default function AiForecastPage() {
   const [scenario, setScenario] = useState<ScenarioResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [growth, setGrowth] = useState<GrowthResult | null>(null);
   const [addSales, setAddSales] = useState(0);
   const [visitDelta, setVisitDelta] = useState(0);
   const [scenarioLoading, setScenarioLoading] = useState(false);
@@ -151,14 +174,16 @@ export default function AiForecastPage() {
     setLoading(true);
     setError('');
     try {
-      const [dashRes, kpiRes, workRes] = await Promise.all([
+      const [dashRes, kpiRes, workRes, growthRes] = await Promise.all([
         api.get('/ai-forecast/dashboard'),
         api.get('/ai-forecast/kpi'),
         api.get('/ai-forecast/workload'),
+        api.get('/ai-forecast/agency-growth'),
       ]);
       setDashboard(dashRes.data);
       setKpiItems(kpiRes.data.items ?? []);
       setWorkload(workRes.data);
+      setGrowth(growthRes.data);
     } catch {
       setError('ไม่สามารถโหลดข้อมูล Forecast ได้');
     } finally {
@@ -180,7 +205,7 @@ export default function AiForecastPage() {
 
   useEffect(() => { load(); }, [load]);
   useEffect(() => {
-    if (tab === 3) loadScenario();
+    if (tab === 4) loadScenario();
   }, [tab, addSales, visitDelta, loadScenario]);
 
   const periodLabel = (p: string) => {
@@ -210,6 +235,7 @@ export default function AiForecastPage() {
         <Tab label="Dashboard" />
         <Tab label="KPI Forecast" />
         <Tab label="Workload" />
+        <Tab label="Agency Growth" />
         <Tab label="Scenario" />
       </Tabs>
 
@@ -441,8 +467,82 @@ export default function AiForecastPage() {
             </Box>
           )}
 
+          {/* Agency Growth Tab */}
+          {tab === 3 && growth && (
+            <Box>
+              <Grid container spacing={2}>
+                <Grid item xs={12} md={6}>
+                  <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1.5 }}>
+                    <ArrowUpwardRoundedIcon sx={{ color: '#16A34A', fontSize: 20 }} />
+                    <Typography variant="subtitle2" fontWeight={700} sx={{ color: '#16A34A' }}>
+                      Agency คาดว่าจะ Upgrade ({growth.upgrades.length} ราย)
+                    </Typography>
+                  </Stack>
+                  {growth.upgrades.length === 0 ? (
+                    <Typography variant="body2" color="text.secondary">ไม่มี</Typography>
+                  ) : (
+                    <Stack spacing={1}>
+                      {growth.upgrades.slice(0, 10).map(a => (
+                        <Box key={a.id} sx={{ p: 1.5, border: '1px solid #D1FAE5', borderRadius: 2, bgcolor: '#F0FDF4' }}>
+                          <Stack direction="row" justifyContent="space-between" alignItems="center">
+                            <Box>
+                              <Typography variant="body2" fontWeight={700}>{a.name}</Typography>
+                              <Typography variant="caption" color="text.secondary">{a.code}</Typography>
+                            </Box>
+                            <Stack direction="row" alignItems="center" spacing={0.5}>
+                              <Chip label={TIER_LABEL_TH[a.scoreTier] ?? a.scoreTier} size="small" sx={{ bgcolor: TIER_COLOR[a.scoreTier] + '20', color: TIER_COLOR[a.scoreTier], fontWeight: 700, fontSize: 10 }} />
+                              <Typography variant="caption" sx={{ color: '#6B7280' }}>→</Typography>
+                              <Chip label={TIER_LABEL_TH[a.forecastTier] ?? a.forecastTier} size="small" sx={{ bgcolor: TIER_COLOR[a.forecastTier] + '20', color: TIER_COLOR[a.forecastTier], fontWeight: 700, fontSize: 10 }} />
+                            </Stack>
+                          </Stack>
+                          <Stack direction="row" justifyContent="space-between" sx={{ mt: 0.5 }}>
+                            <Typography variant="caption" color="text.secondary">คะแนนปัจจุบัน: {a.currentScore}</Typography>
+                            <Typography variant="caption" fontWeight={700} sx={{ color: '#16A34A' }}>+{a.scoreDelta} → {a.forecastScore}</Typography>
+                          </Stack>
+                        </Box>
+                      ))}
+                    </Stack>
+                  )}
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1.5 }}>
+                    <ArrowDownwardRoundedIcon sx={{ color: '#DC2626', fontSize: 20 }} />
+                    <Typography variant="subtitle2" fontWeight={700} sx={{ color: '#DC2626' }}>
+                      Agency เสี่ยง Downgrade ({growth.downgrades.length} ราย)
+                    </Typography>
+                  </Stack>
+                  {growth.downgrades.length === 0 ? (
+                    <Typography variant="body2" color="text.secondary">ไม่มี</Typography>
+                  ) : (
+                    <Stack spacing={1}>
+                      {growth.downgrades.slice(0, 10).map(a => (
+                        <Box key={a.id} sx={{ p: 1.5, border: '1px solid #FEE2E2', borderRadius: 2, bgcolor: '#FEF2F2' }}>
+                          <Stack direction="row" justifyContent="space-between" alignItems="center">
+                            <Box>
+                              <Typography variant="body2" fontWeight={700}>{a.name}</Typography>
+                              <Typography variant="caption" color="text.secondary">{a.code}</Typography>
+                            </Box>
+                            <Stack direction="row" alignItems="center" spacing={0.5}>
+                              <Chip label={TIER_LABEL_TH[a.scoreTier] ?? a.scoreTier} size="small" sx={{ bgcolor: TIER_COLOR[a.scoreTier] + '20', color: TIER_COLOR[a.scoreTier], fontWeight: 700, fontSize: 10 }} />
+                              <Typography variant="caption" sx={{ color: '#6B7280' }}>→</Typography>
+                              <Chip label={TIER_LABEL_TH[a.forecastTier] ?? a.forecastTier} size="small" sx={{ bgcolor: TIER_COLOR[a.forecastTier] + '20', color: TIER_COLOR[a.forecastTier], fontWeight: 700, fontSize: 10 }} />
+                            </Stack>
+                          </Stack>
+                          <Stack direction="row" justifyContent="space-between" sx={{ mt: 0.5 }}>
+                            <Typography variant="caption" color="text.secondary">คะแนนปัจจุบัน: {a.currentScore}</Typography>
+                            <Typography variant="caption" fontWeight={700} sx={{ color: '#DC2626' }}>{a.scoreDelta} → {a.forecastScore}</Typography>
+                          </Stack>
+                        </Box>
+                      ))}
+                    </Stack>
+                  )}
+                </Grid>
+              </Grid>
+            </Box>
+          )}
+
           {/* Scenario Tab */}
-          {tab === 3 && (
+          {tab === 4 && (
             <Box>
               <Card sx={{ mb: 3 }}>
                 <CardContent>
