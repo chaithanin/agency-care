@@ -47,7 +47,7 @@ interface AgActivityRow {
   phone?: string | null; contactPerson?: string | null;
   staffCount?: number | null;
   totalVisits: number; completedVisits: number;
-  lastVisitDate?: string | null; lastVisitBy?: string | null; leads: number;
+  lastVisitDate?: string | null; lastVisitBy?: string | null; lastReportDate?: string | null; leads: number;
   bringCustomers: string; lastSaleDate: string; hadOrientation: string;
   hasOrganicSocial: string; hasPaidSocial: string;
   websiteUrl: string;
@@ -630,6 +630,7 @@ function AgencyActivityTab() {
                   <TableCell>{t('rpt.contactPerson')}</TableCell>
                   <TableCell align="center">Visit (Done)</TableCell>
                   <TableCell align="center">Last Visit</TableCell>
+                  <TableCell align="center">Last Report</TableCell>
                   <TableCell align="center">Lead</TableCell>
                   <TableCell align="center">AG Bring Customer</TableCell>
                   <TableCell align="center">Orientation</TableCell>
@@ -669,6 +670,9 @@ function AgencyActivityTab() {
                     <TableCell align="center">
                       <Typography variant="caption">{fmtDate(r.lastVisitDate)}</Typography>
                       {r.lastVisitBy && <Typography variant="caption" color="text.secondary" display="block" noWrap>{r.lastVisitBy}</Typography>}
+                    </TableCell>
+                    <TableCell align="center">
+                      <Typography variant="caption">{r.lastReportDate ? fmtDate(r.lastReportDate) : '-'}</Typography>
                     </TableCell>
                     <TableCell align="center">
                       {r.leads > 0 ? <Chip size="small" label={r.leads} color="success" /> : <Typography variant="caption" color="text.disabled">-</Typography>}

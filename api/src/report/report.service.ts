@@ -209,7 +209,7 @@ export class ReportService {
           where: { planDate: { gte: new Date(from), lte: new Date(to) } },
           include: {
             employee: { select: { name: true } },
-            report: { select: { visitType: true, newLeads: true, interestLevel: true } },
+            report: { select: { visitType: true, newLeads: true, interestLevel: true, createdAt: true } },
           },
           orderBy: { planDate: 'desc' },
         },
@@ -240,6 +240,8 @@ export class ReportService {
       const completed = a.visitPlans.filter((p) => p.status === 'done');
       const lastPlan = a.visitPlans[0];
       const leads = completed.reduce((s, p) => s + (p.report?.newLeads ?? 0), 0);
+      const lastReportPlan = completed.find((p) => p.report);
+      const lastReportDate = lastReportPlan?.report?.createdAt?.toISOString().slice(0, 10) ?? null;
       const materials = posmByAgency.get(a.id) ?? [];
 
       return {
@@ -255,6 +257,7 @@ export class ReportService {
         completedVisits: completed.length,
         lastVisitDate: lastPlan?.planDate?.toISOString().slice(0, 10) ?? null,
         lastVisitBy: lastPlan?.employee?.name ?? null,
+        lastReportDate,
         leads,
         // From profileData (Agency Info Form)
         bringCustomers: (profile.bringCustomers as string) ?? '',
