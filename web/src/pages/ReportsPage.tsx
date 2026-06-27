@@ -117,6 +117,15 @@ function SummaryCard({ icon, label, value, sub }: { icon: React.ReactNode; label
   );
 }
 
+// ─── CSV export helper ───────────────────────────────────────────────────────
+function exportCsv(headers: string[], rows: (string | number)[][], filename: string) {
+  const lines = [headers, ...rows].map((r) => r.map((c) => `"${String(c ?? '').replace(/"/g, '""')}"`).join(','));
+  const blob = new Blob(['﻿' + lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+}
+
 // ─── Tab 1: Weekly Activity Summary ──────────────────────────────────────────
 function WeeklyTab() {
   const { t } = useT();
@@ -126,6 +135,13 @@ function WeeklyTab() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [sellerQ, setSellerQ] = useState('');
+
+  const exportWeeklyCsv = () => {
+    if (!data) return;
+    const headers = ['Employee', 'Code', 'Visit Agency', 'AG Bring Customer', 'Training', 'Other', 'Call', 'Orientation', 'Customer', 'Holding', 'Follow-up Customer', 'Total', 'Completed', 'Reports', 'Leads', 'Overdue'];
+    const rows = data.rows.map((r) => [r.name, r.code, r.visit_agency, r.agency_brings_client, r.training, r.other, r.call, r.orientation, r.customer, r.holding, r.followupCustomer, r.total, r.completed, r.withReport, r.leads, r.overdue]);
+    exportCsv(headers, rows, `weekly-activity-${from}-to-${to}.csv`);
+  };
 
   const load = useCallback(() => {
     setLoading(true); setError('');
@@ -193,9 +209,7 @@ function WeeklyTab() {
         <Paper sx={{ borderRadius: 3 }}>
           <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ p: 2, borderBottom: '1px solid', borderColor: 'divider' }}>
             <Typography fontWeight={700}>Weekly Sale Activity Summary</Typography>
-            <Tooltip title={t('rpt.exportTooltip')}>
-              <span><Button size="small" startIcon={<Download />} disabled>Export Excel</Button></span>
-            </Tooltip>
+            <Button size="small" startIcon={<Download />} onClick={exportWeeklyCsv}>Export CSV</Button>
           </Stack>
           <Box sx={{ overflowX: 'auto' }}>
             <Table size="small">
@@ -289,6 +303,13 @@ function MonthlyTab() {
 
   useEffect(() => { load(); }, [load]);
 
+  const exportMonthlyCsv = () => {
+    if (!data) return;
+    const headers = ['Employee', 'Code', 'Planned', 'Completed', '% Completion', 'Reports Submitted', '% Submission', 'New Leads'];
+    const rows = data.rows.map((r) => [r.name, r.code, r.planned, r.completed, r.planned > 0 ? Math.round((r.completed / r.planned) * 100) : 0, r.withReport, r.submissionRate, r.leads]);
+    exportCsv(headers, rows, `monthly-submission-${year}-${String(month).padStart(2, '0')}.csv`);
+  };
+
   const YEARS = Array.from({ length: 4 }, (_, i) => now.getFullYear() - i);
   const MONTHS = Array.from({ length: 12 }, (_, i) => ({ val: i + 1, label: new Date(2000, i, 1).toLocaleString('th-TH', { month: 'long' }) }));
 
@@ -339,9 +360,7 @@ function MonthlyTab() {
         <Paper sx={{ borderRadius: 3 }}>
           <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ p: 2, borderBottom: '1px solid', borderColor: 'divider' }}>
             <Typography fontWeight={700}>{t('svr.monthlyLog')} — {monthName(year, month)}</Typography>
-            <Tooltip title={t('rpt.exportTooltip')}>
-              <span><Button size="small" startIcon={<Download />} disabled>Export Excel</Button></span>
-            </Tooltip>
+            <Button size="small" startIcon={<Download />} onClick={exportMonthlyCsv}>Export CSV</Button>
           </Stack>
           <Box sx={{ overflowX: 'auto' }}>
             <Table size="small">
@@ -422,6 +441,13 @@ function AgencyPerfTab() {
 
   useEffect(() => { if (isAdmin) load(); }, [load, isAdmin]);
 
+  const exportAgencyCsv = () => {
+    if (!data) return;
+    const headers = ['Code', 'Name', 'Zone', 'Province', 'Level', 'Tier', 'Total Plans', 'Completed', 'Reports', 'Leads', 'Avg Interest', 'Last Visit', 'Score'];
+    const rows = data.rows.map((r) => [r.code, r.name, r.zone ?? '', r.province ?? '', r.level ?? '', r.tier ?? '', r.visits, r.completed, r.withReport, r.leads, r.avgInterest, r.lastVisit ?? '', r.score]);
+    exportCsv(headers, rows, `agency-performance-${from}-to-${to}.csv`);
+  };
+
   if (!isAdmin) return (
     <Alert severity="info">{t('rpt.adminOnly')}</Alert>
   );
@@ -478,9 +504,7 @@ function AgencyPerfTab() {
             <Typography fontWeight={700}>Agency Performance — {fmtDate(data.from)} {t('rpt.toDate')} {fmtDate(data.to)}</Typography>
             <Stack direction="row" spacing={1} alignItems="center">
               <Typography variant="caption" color="text.secondary">{data.rows.length} agencies</Typography>
-              <Tooltip title={t('rpt.exportTooltip')}>
-                <span><Button size="small" startIcon={<Download />} disabled>Export Excel</Button></span>
-              </Tooltip>
+              <Button size="small" startIcon={<Download />} onClick={exportAgencyCsv}>Export CSV</Button>
             </Stack>
           </Stack>
           <Box sx={{ overflowX: 'auto' }}>

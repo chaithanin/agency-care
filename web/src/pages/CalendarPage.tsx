@@ -6,6 +6,7 @@ import {
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
+import DownloadIcon from '@mui/icons-material/Download';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { api } from '../api/client';
@@ -56,6 +57,21 @@ export default function CalendarPage() {
   const [anchor, setAnchor] = useState(0); // index offset (วัน/สัปดาห์)
   const [data, setData] = useState<CalData | null>(null);
   const [exporting, setExporting] = useState(false);
+
+  const exportCsv = () => {
+    if (!data) return;
+    const lines = [['Date', 'Agency', 'Employee', 'Status'].join(',')];
+    for (const [date, visits] of Object.entries(data.days).sort()) {
+      for (const v of visits) {
+        lines.push([date, `"${v.agencyName}"`, `"${v.employeeName}"`, v.status].join(','));
+      }
+    }
+    const blob = new Blob(['﻿' + lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url;
+    a.download = `calendar-${month}${empId ? `-${data.sales.find((s) => s.id === empId)?.name}` : ''}.csv`;
+    a.click(); URL.revokeObjectURL(url);
+  };
   const pdfRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
   const { t } = useT();
@@ -224,6 +240,9 @@ export default function CalendarPage() {
             </TextField>
           )}
           <TextField type="month" size="small" value={month} onChange={(e) => setMonth(e.target.value)} />
+          <Button size="small" variant="outlined" startIcon={<DownloadIcon />} onClick={exportCsv}>
+            CSV
+          </Button>
           <Button size="small" variant="outlined" startIcon={<PictureAsPdfIcon />} disabled={exporting} onClick={exportCurrent}>
             PDF
           </Button>

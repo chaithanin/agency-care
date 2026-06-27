@@ -38,6 +38,7 @@ import EditNoteIcon from '@mui/icons-material/EditNote';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import DirectionsWalkIcon from '@mui/icons-material/DirectionsWalk';
 import ArticleOutlinedIcon from '@mui/icons-material/ArticleOutlined';
+import MonetizationOnIcon from '@mui/icons-material/MonetizationOn';
 import { api, errMsg } from '../api/client';
 import { useT } from '../i18n';
 
@@ -72,6 +73,133 @@ interface Agency {
   lastVisitDate?: string | null;
   completedVisits?: number;
   callCount?: number;
+  appointmentCount?: number;
+  totalCommission?: number;
+  totalBonus?: number;
+}
+
+interface CommissionRecord {
+  id: string;
+  type: string;
+  amount: number;
+  periodDate: string;
+  description?: string;
+  createdAt: string;
+}
+
+function CommissionDialog({ agency, onClose }: { agency: Agency; onClose: () => void }) {
+  const [records, setRecords] = useState<CommissionRecord[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [form, setForm] = useState({ type: 'commission', amount: '', periodDate: new Date().toISOString().slice(0, 7) + '-01', description: '' });
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState('');
+
+  const load = () => {
+    setLoading(true);
+    api.get(`/agencies/${agency.id}/commissions`)
+      .then((r) => setRecords(r.data))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(() => { load(); }, [agency.id]);
+
+  const save = async () => {
+    if (!form.amount || !form.periodDate) return;
+    setSaving(true); setErr('');
+    try {
+      await api.post(`/agencies/${agency.id}/commissions`, {
+        type: form.type,
+        amount: Number(form.amount),
+        periodDate: form.periodDate,
+        description: form.description || undefined,
+      });
+      setForm({ type: 'commission', amount: '', periodDate: new Date().toISOString().slice(0, 7) + '-01', description: '' });
+      load();
+    } catch (e) { setErr(errMsg(e)); } finally { setSaving(false); }
+  };
+
+  const del = async (id: string) => {
+    await api.delete(`/agencies/${agency.id}/commissions/${id}`);
+    load();
+  };
+
+  const totalComm = records.filter((r) => r.type === 'commission').reduce((s, r) => s + Number(r.amount), 0);
+  const totalBonus = records.filter((r) => r.type === 'bonus').reduce((s, r) => s + Number(r.amount), 0);
+
+  return (
+    <Dialog open onClose={onClose} fullWidth maxWidth="sm">
+      <DialogTitle>ค่าคอมมิชชั่น / โบนัส — {agency.name}</DialogTitle>
+      <DialogContent>
+        <Stack direction="row" spacing={2} mb={2}>
+          <Paper variant="outlined" sx={{ p: 1.5, flex: 1, textAlign: 'center' }}>
+            <Typography variant="caption" color="text.secondary">คอมมิชชั่นรวม</Typography>
+            <Typography variant="h6" fontWeight={700} color="success.main">{totalComm.toLocaleString()} ฿</Typography>
+          </Paper>
+          <Paper variant="outlined" sx={{ p: 1.5, flex: 1, textAlign: 'center' }}>
+            <Typography variant="caption" color="text.secondary">โบนัสรวม</Typography>
+            <Typography variant="h6" fontWeight={700} color="warning.main">{totalBonus.toLocaleString()} ฿</Typography>
+          </Paper>
+        </Stack>
+
+        <Stack spacing={1.5} mb={2}>
+          <Stack direction="row" spacing={1}>
+            <TextField select size="small" label="ประเภท" value={form.type}
+              onChange={(e) => setForm((f) => ({ ...f, type: e.target.value }))} sx={{ minWidth: 130 }}>
+              <MenuItem value="commission">Commission</MenuItem>
+              <MenuItem value="bonus">Bonus</MenuItem>
+            </TextField>
+            <TextField size="small" label="จำนวน (฿)" type="number" value={form.amount}
+              onChange={(e) => setForm((f) => ({ ...f, amount: e.target.value }))} sx={{ flex: 1 }} />
+            <TextField size="small" type="date" label="งวด" value={form.periodDate}
+              onChange={(e) => setForm((f) => ({ ...f, periodDate: e.target.value }))}
+              InputLabelProps={{ shrink: true }} />
+          </Stack>
+          <TextField size="small" label="หมายเหตุ" value={form.description}
+            onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} />
+          {err && <Alert severity="error" sx={{ py: 0 }}>{err}</Alert>}
+          <Button variant="contained" size="small" onClick={save} disabled={saving || !form.amount}>
+            บันทึก
+          </Button>
+        </Stack>
+
+        <Divider sx={{ mb: 1 }} />
+        {loading && <LinearProgress />}
+        <Table size="small">
+          <TableHead>
+            <TableRow>
+              <TableCell>งวด</TableCell>
+              <TableCell>ประเภท</TableCell>
+              <TableCell align="right">จำนวน (฿)</TableCell>
+              <TableCell>หมายเหตุ</TableCell>
+              <TableCell />
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {records.map((r) => (
+              <TableRow key={r.id}>
+                <TableCell>{r.periodDate?.slice(0, 10)}</TableCell>
+                <TableCell><Chip size="small" label={r.type} color={r.type === 'commission' ? 'success' : 'warning'} /></TableCell>
+                <TableCell align="right">{Number(r.amount).toLocaleString()}</TableCell>
+                <TableCell>{r.description || '—'}</TableCell>
+                <TableCell>
+                  <IconButton size="small" color="error" onClick={() => del(r.id)}>
+                    <Typography fontSize={12}>✕</Typography>
+                  </IconButton>
+                </TableCell>
+              </TableRow>
+            ))}
+            {records.length === 0 && !loading && (
+              <TableRow><TableCell colSpan={5} align="center" sx={{ color: 'text.secondary' }}>ยังไม่มีรายการ</TableCell></TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={onClose}>ปิด</Button>
+      </DialogActions>
+    </Dialog>
+  );
 }
 
 const gradeColor = (g?: string): 'success' | 'info' | 'warning' | 'error' | 'default' => {
@@ -232,6 +360,9 @@ export default function AgenciesPage() {
 
   // timeline dialog
   const [timelineFor, setTimelineFor] = useState<Agency | null>(null);
+
+  // commission dialog
+  const [commissionFor, setCommissionFor] = useState<Agency | null>(null);
 
   // bulk geocode
   const [geocoding, setGeocoding] = useState(false);
@@ -465,10 +596,12 @@ export default function AgenciesPage() {
               <TableCell sx={{ minWidth: 100 }}>{t('ag.lastVisit')}</TableCell>
               <TableCell align="center" sx={{ minWidth: 60 }}>{t('ag.visits')}</TableCell>
               <TableCell align="center" sx={{ minWidth: 60 }}>{t('ag.calls')}</TableCell>
+              <TableCell align="center" sx={{ minWidth: 70 }}>ลูกค้า</TableCell>
+              <TableCell align="right" sx={{ minWidth: 110 }}>Commission</TableCell>
               <TableCell sx={{ minWidth: 150 }}>{t('ag.colTierStage')}</TableCell>
               <TableCell sx={{ minWidth: 100 }}>{t('c.zone')}</TableCell>
               <TableCell sx={{ minWidth: 140 }}>{t('ag.assignedSeller')}</TableCell>
-              <TableCell align="right" sx={{ minWidth: 220 }}>{t('ag.actions')}</TableCell>
+              <TableCell align="right" sx={{ minWidth: 240 }}>{t('ag.actions')}</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -519,6 +652,28 @@ export default function AgenciesPage() {
                   <TableCell align="center">
                     <Typography variant="caption" fontWeight={600}>{a.callCount ?? 0}</Typography>
                   </TableCell>
+                  <TableCell align="center">
+                    <Tooltip title="จำนวนลูกค้าที่พามา (นัดเข้าโชว์รูม)">
+                      <Typography variant="caption" fontWeight={600} color={(a.appointmentCount ?? 0) > 0 ? 'success.main' : 'text.secondary'}>
+                        {a.appointmentCount ?? 0}
+                      </Typography>
+                    </Tooltip>
+                  </TableCell>
+                  <TableCell align="right">
+                    <Tooltip title={`Commission: ${(a.totalCommission ?? 0).toLocaleString()} ฿ / Bonus: ${(a.totalBonus ?? 0).toLocaleString()} ฿`}>
+                      <Stack alignItems="flex-end">
+                        {(a.totalCommission ?? 0) > 0 && (
+                          <Typography variant="caption" color="success.main">{(a.totalCommission ?? 0).toLocaleString()}</Typography>
+                        )}
+                        {(a.totalBonus ?? 0) > 0 && (
+                          <Typography variant="caption" color="warning.main">+{(a.totalBonus ?? 0).toLocaleString()}</Typography>
+                        )}
+                        {(a.totalCommission ?? 0) === 0 && (a.totalBonus ?? 0) === 0 && (
+                          <Typography variant="caption" color="text.disabled">—</Typography>
+                        )}
+                      </Stack>
+                    </Tooltip>
+                  </TableCell>
                   <TableCell>
                     <Stack direction="row" spacing={0.5}>
                       <Chip size="small" clickable color={tierColor(a.tier)} label={a.tier ?? 'gold'}
@@ -557,6 +712,11 @@ export default function AgenciesPage() {
                         onClick={() => setTimelineFor(a)}>
                         {t('ag.history')}
                       </Button>
+                      <Tooltip title="Commission / Bonus">
+                        <IconButton size="small" color="success" onClick={() => setCommissionFor(a)}>
+                          <MonetizationOnIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
                       <Button size="small" onClick={() => { setAssignFor(a); setAssignEmp(''); }}>
                         {t('ag.addSeller')}
                       </Button>
@@ -701,6 +861,13 @@ export default function AgenciesPage() {
           agencyId={timelineFor.id}
           agencyName={timelineFor.name}
           onClose={() => setTimelineFor(null)}
+        />
+      )}
+      {/* ─── Commission / Bonus ─── */}
+      {commissionFor && (
+        <CommissionDialog
+          agency={commissionFor}
+          onClose={() => { setCommissionFor(null); load(); }}
         />
       )}
     </Box>

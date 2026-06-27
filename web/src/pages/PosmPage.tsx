@@ -66,6 +66,7 @@ function StockTab() {
   const [data, setData] = useState<{ lowStockCount: number; urgentCount: number; items: InvItem[] } | null>(null);
   const [loading, setLoading] = useState(true);
   const [catFilter, setCatFilter] = useState('all');
+  const [nameSearch, setNameSearch] = useState('');
 
   // Add item dialog
   const [addOpen, setAddOpen] = useState(false);
@@ -115,7 +116,11 @@ function StockTab() {
     } catch (e) { setManErr(errMsg(e)); }
   };
 
-  const items = data?.items.filter((it) => catFilter === 'all' || it.category === catFilter) ?? [];
+  const items = (data?.items ?? []).filter((it) => {
+    if (catFilter !== 'all' && it.category !== catFilter) return false;
+    if (nameSearch && !it.name.toLowerCase().includes(nameSearch.toLowerCase()) && !it.code.toLowerCase().includes(nameSearch.toLowerCase())) return false;
+    return true;
+  });
 
   // Group by category for display
   const grouped = CATEGORIES.map((cat) => ({
@@ -146,6 +151,8 @@ function StockTab() {
             {CATEGORIES.map((c) => <MenuItem key={c} value={c}>{CATEGORY_LABEL[c]}</MenuItem>)}
           </Select>
         </FormControl>
+        <TextField size="small" placeholder="ค้นหาชื่อ/รหัสสื่อ" value={nameSearch}
+          onChange={(e) => setNameSearch(e.target.value)} sx={{ minWidth: 180 }} />
         <Button startIcon={<Refresh />} onClick={load} disabled={loading}>{t('posm.refresh')}</Button>
         <Box flex={1} />
         <Button variant="contained" startIcon={<Add />} onClick={() => { setAddErr(''); setAddOpen(true); }}>

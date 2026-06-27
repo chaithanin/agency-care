@@ -46,17 +46,33 @@ export class AgencyService {
           select: {
             visitPlans: { where: { status: 'done' } },
             tasks: { where: { tag: 'call', status: 'done' } },
+            appointments: true,
           },
+        },
+        commissions: {
+          select: { type: true, amount: true },
         },
       },
     });
-    return agencies.map((a) => ({
-      ...a,
-      lastVisitDate: a.visitPlans[0]?.planDate?.toISOString().slice(0, 10) ?? null,
-      completedVisits: a._count.visitPlans,
-      callCount: a._count.tasks,
-      visitPlans: undefined,
-    }));
+    return agencies.map((a) => {
+      const totalCommission = a.commissions
+        .filter((c) => c.type === 'commission')
+        .reduce((s, c) => s + Number(c.amount), 0);
+      const totalBonus = a.commissions
+        .filter((c) => c.type === 'bonus')
+        .reduce((s, c) => s + Number(c.amount), 0);
+      return {
+        ...a,
+        lastVisitDate: a.visitPlans[0]?.planDate?.toISOString().slice(0, 10) ?? null,
+        completedVisits: a._count.visitPlans,
+        callCount: a._count.tasks,
+        appointmentCount: a._count.appointments,
+        totalCommission,
+        totalBonus,
+        visitPlans: undefined,
+        commissions: undefined,
+      };
+    });
   }
 
   async get(id: string) {
@@ -425,6 +441,38 @@ export class AgencyService {
       select: { id: true, code: true, name: true, zone: true, approvalStatus: true,
         createdAt: true, addedBy: { select: { name: true, code: true } } },
       orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  // ─── Commission / Bonus ─────────────────────────────────────────────────────
+
+  async listCommissions(agencyId: string) {
+    return this.prisma.agencyCommission.findMany({
+      where: { agencyId },
+      orderBy: { periodDate: 'desc' },
+    });
+  }
+
+  async addCommission(
+    agencyId: string,
+    data: { type: string; amount: number; periodDate: string; description?: string },
+    userId: string,
+  ) {
+    return this.prisma.agencyCommission.create({
+      data: {
+        agencyId,
+        type: data.type,
+        amount: data.amount,
+        periodDate: new Date(data.periodDate),
+        description: data.description,
+        recordedById: userId,
+      },
+    });
+  }
+
+  async deleteCommission(agencyId: string, commissionId: string) {
+    return this.prisma.agencyCommission.delete({
+      where: { id: commissionId, agencyId },
     });
   }
 }

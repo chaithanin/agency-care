@@ -321,6 +321,7 @@ model Agency {
   planVersionItems PlanVersionItem[]
   scores        AgencyScore[]
   appointments  Appointment[]
+  commissions   AgencyCommission[]
 
   @@index([zone])
   @@index([province])
@@ -330,6 +331,24 @@ model Agency {
   @@index([agreementExpiry])
   @@index([approvalStatus])
   @@map("agencies")
+}
+
+// ── Commission / Bonus ที่จ่ายให้ Agency ─────────────────────────────────────
+model AgencyCommission {
+  id          String   @id @default(cuid())
+  agencyId    String   @map("agency_id")
+  agency      Agency   @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  type        String   @default("commission") // "commission" | "bonus"
+  amount      Decimal  @db.Decimal(12,2)
+  periodDate  DateTime @map("period_date") @db.Date
+  description String?
+  recordedById String  @map("recorded_by_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@index([agencyId])
+  @@index([periodDate])
+  @@map("agency_commissions")
 }
 
 // รูปการทำงาน ผูกกับแผนเยี่ยม (อัปโหลดได้ทุกเมื่อ เช่น ตอนเลื่อนนัด)

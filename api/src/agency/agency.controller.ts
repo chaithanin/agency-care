@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from '@nestjs/common';
 import { AgencyService } from './agency.service';
 import { AgencyScoreService } from './agency-score.service';
 import { CreateAgencyDto, UpdateAgencyDto } from './dto/agency.dto';
@@ -86,6 +86,29 @@ export class AgencyController {
   @Patch(':id')
   update(@CurrentUser() user: RequestUser, @Param('id') id: string, @Body() dto: UpdateAgencyDto) {
     return this.service.update(id, dto, user.id);
+  }
+
+  // ─── Commission / Bonus ────────────────────────────────────────────────────
+
+  @Get(':id/commissions')
+  listCommissions(@Param('id') id: string) {
+    return this.service.listCommissions(id);
+  }
+
+  @Roles('admin', 'closer', 'super_admin')
+  @Post(':id/commissions')
+  addCommission(
+    @Param('id') id: string,
+    @CurrentUser() user: RequestUser,
+    @Body() body: { type: string; amount: number; periodDate: string; description?: string },
+  ) {
+    return this.service.addCommission(id, body, user.id);
+  }
+
+  @Roles('admin', 'closer', 'super_admin')
+  @Delete(':id/commissions/:cid')
+  deleteCommission(@Param('id') id: string, @Param('cid') cid: string) {
+    return this.service.deleteCommission(id, cid);
   }
 
   // ─── Approval Workflow ─────────────────────────────────────────────────────
