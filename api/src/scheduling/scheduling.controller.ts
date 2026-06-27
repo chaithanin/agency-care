@@ -40,6 +40,16 @@ export class SchedulingController {
     return this.service.calendar(toInt(y), toInt(m), employeeId);
   }
 
+  @Roles('admin', 'closer')
+  @Get('calendar-range')
+  calendarRange(
+    @Query('from') from: string,
+    @Query('to') to: string,
+    @Query('employeeId') employeeId?: string,
+  ) {
+    return this.service.calendarRange(from, to, employeeId);
+  }
+
   // วันหยุดราย user
   @Roles('admin', 'closer')
   @Get('holidays')

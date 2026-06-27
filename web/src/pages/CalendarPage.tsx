@@ -50,6 +50,8 @@ function buildMonthHTML(d: CalData, title: string, month: string, dow: string[],
   return `<div style="font-family:sans-serif"><h3 style="margin:0 0 6px">${title} — ${month}</h3><table style="width:100%;border-collapse:collapse;table-layout:fixed"><tr>${head}</tr>${cells}</table></div>`;
 }
 
+const todayStr2 = () => new Date().toISOString().slice(0, 10);
+
 export default function CalendarPage() {
   const [month, setMonth] = useState(thisMonth());
   const [empId, setEmpId] = useState('');
@@ -57,6 +59,9 @@ export default function CalendarPage() {
   const [anchor, setAnchor] = useState(0); // index offset (วัน/สัปดาห์)
   const [data, setData] = useState<CalData | null>(null);
   const [exporting, setExporting] = useState(false);
+  const [rangeMode, setRangeMode] = useState(false);
+  const [rangeFrom, setRangeFrom] = useState(todayStr2());
+  const [rangeTo, setRangeTo] = useState(todayStr2());
 
   const exportCsv = () => {
     if (!data) return;
@@ -69,7 +74,7 @@ export default function CalendarPage() {
     const blob = new Blob(['﻿' + lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a'); a.href = url;
-    a.download = `calendar-${month}${empId ? `-${data.sales.find((s) => s.id === empId)?.name}` : ''}.csv`;
+    a.download = `calendar-${rangeMode ? `${rangeFrom}-${rangeTo}` : month}${empId ? `-${data.sales.find((s) => s.id === empId)?.name}` : ''}.csv`;
     a.click(); URL.revokeObjectURL(url);
   };
   const pdfRef = useRef<HTMLDivElement>(null);
@@ -119,11 +124,16 @@ export default function CalendarPage() {
 
   const load = useCallback(async () => {
     setData(null);
-    const [y, m] = month.split('-').map(Number);
-    const url = isSales ? '/scheduling/my-calendar' : '/scheduling/calendar';
-    const r = await api.get(url, { params: { year: y, month: m, employeeId: isSales ? undefined : empId || undefined } });
-    setData(r.data);
-  }, [month, empId, isSales]);
+    if (rangeMode && !isSales) {
+      const r = await api.get('/scheduling/calendar-range', { params: { from: rangeFrom, to: rangeTo, employeeId: empId || undefined } });
+      setData({ ...r.data, year: new Date(rangeFrom).getUTCFullYear(), month: new Date(rangeFrom).getUTCMonth() + 1 });
+    } else {
+      const [y, m] = month.split('-').map(Number);
+      const url = isSales ? '/scheduling/my-calendar' : '/scheduling/calendar';
+      const r = await api.get(url, { params: { year: y, month: m, employeeId: isSales ? undefined : empId || undefined } });
+      setData(r.data);
+    }
+  }, [month, empId, isSales, rangeMode, rangeFrom, rangeTo]);
   useEffect(() => { load(); }, [load]);
   useEffect(() => { setAnchor(0); }, [view, month]);
 
@@ -239,7 +249,20 @@ export default function CalendarPage() {
               {data.sales.map((s) => <MenuItem key={s.id} value={s.id}>{s.name}</MenuItem>)}
             </TextField>
           )}
-          <TextField type="month" size="small" value={month} onChange={(e) => setMonth(e.target.value)} />
+          {!isSales && (
+            <Chip size="small" label={rangeMode ? 'ช่วงวันที่' : 'รายเดือน'}
+              color={rangeMode ? 'primary' : 'default'} clickable onClick={() => setRangeMode((v) => !v)} />
+          )}
+          {rangeMode && !isSales ? (
+            <>
+              <TextField size="small" type="date" label="จาก" value={rangeFrom}
+                onChange={(e) => setRangeFrom(e.target.value)} InputLabelProps={{ shrink: true }} sx={{ width: 155 }} />
+              <TextField size="small" type="date" label="ถึง" value={rangeTo}
+                onChange={(e) => setRangeTo(e.target.value)} InputLabelProps={{ shrink: true }} sx={{ width: 155 }} />
+            </>
+          ) : (
+            <TextField type="month" size="small" value={month} onChange={(e) => setMonth(e.target.value)} />
+          )}
           <Button size="small" variant="outlined" startIcon={<DownloadIcon />} onClick={exportCsv}>
             CSV
           </Button>

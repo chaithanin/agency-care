@@ -427,6 +427,42 @@ export class SchedulingService {
     };
   }
 
+  // ===== ปฏิทิน date range (ข้ามเดือนได้) =====
+  async calendarRange(fromStr: string, toStr: string, employeeId?: string) {
+    const f = new Date(fromStr);
+    const t = new Date(toStr);
+    const gte = new Date(Date.UTC(f.getUTCFullYear(), f.getUTCMonth(), f.getUTCDate()));
+    const lt = new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth(), t.getUTCDate() + 1));
+
+    const [plans, holidays, sales] = await Promise.all([
+      this.prisma.visitPlan.findMany({
+        where: { planDate: { gte, lt }, ...(employeeId ? { employeeId } : {}) },
+        include: { agency: { select: { name: true } }, employee: { select: { name: true } } },
+        orderBy: { planDate: 'asc' },
+      }),
+      this.prisma.workCalendar.findMany({ where: { date: { gte, lt }, isHoliday: true }, select: { date: true } }),
+      this.prisma.employee.findMany({ where: { position: 'sales', isActive: true }, select: { id: true, name: true }, orderBy: { code: 'asc' } }),
+    ]);
+
+    const days: Record<string, { agencyName: string; status: string; employeeName: string }[]> = {};
+    for (const p of plans) {
+      const ds = p.planDate.toISOString().slice(0, 10);
+      (days[ds] ??= []).push({ agencyName: p.agency.name, status: p.status, employeeName: p.employee.name });
+    }
+    const empHolidays = employeeId
+      ? (await this.prisma.employeeHoliday.findMany({ where: { employeeId, date: { gte, lt } }, select: { date: true } }))
+          .map((h) => h.date.toISOString().slice(0, 10))
+      : [];
+    return {
+      from: fromStr,
+      to: toStr,
+      days,
+      holidays: holidays.map((h) => h.date.toISOString().slice(0, 10)),
+      empHolidays,
+      sales,
+    };
+  }
+
   // ===== วันหยุดราย user =====
   async toggleHoliday(employeeId: string, dateStr: string) {
     const n = new Date(dateStr);
