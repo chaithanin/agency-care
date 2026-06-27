@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards,
 } from '@nestjs/common';
 import { JwtAuthGuard, Roles } from '../auth/guards';
@@ -187,8 +188,8 @@ export class BroadcastController {
   @Post(':id/send')
   async send(@Param('id') id: string, @CurrentUser('id') userId: string) {
     const broadcast = await this.db.broadcast.findUniqueOrThrow({ where: { id } });
-    if (!['draft', 'approved', 'scheduled'].includes(broadcast.status)) {
-      return { ok: false, message: 'สถานะไม่ถูกต้องสำหรับการส่ง' };
+    if (!['draft', 'approved', 'scheduled', 'failed'].includes(broadcast.status)) {
+      throw new BadRequestException(`ไม่สามารถส่งได้: สถานะปัจจุบันคือ "${broadcast.status}"`);
     }
 
     await this.db.broadcast.update({ where: { id }, data: { status: 'sending' } });

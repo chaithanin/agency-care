@@ -193,24 +193,26 @@ export default function BroadcastPage() {
     setFormOpen(true);
   };
 
-  const save = async () => {
-    if (!form.title || !form.content) { flash('กรุณาใส่หัวข้อและเนื้อหา', true); return; }
+  const save = async (): Promise<string | null> => {
+    if (!form.title || !form.content) { flash('กรุณาใส่หัวข้อและเนื้อหา', true); return null; }
     try {
       const payload = {
         ...form,
         imageUrl: form.imageUrl || undefined,
         scheduledAt: form.scheduleType === 'scheduled' && form.scheduledAt ? new Date(form.scheduledAt).toISOString() : undefined,
       };
+      let savedId: string;
       if (editId) {
         await api.patch(`/broadcasts/${editId}`, payload);
-        flash('บันทึกสำเร็จ');
+        savedId = editId;
       } else {
-        await api.post('/broadcasts', payload);
-        flash('สร้าง Broadcast สำเร็จ');
+        const r = await api.post<{ id: string }>('/broadcasts', payload);
+        savedId = r.data.id;
       }
       setFormOpen(false);
       loadAll();
-    } catch (e) { flash(errMsg(e), true); }
+      return savedId;
+    } catch (e) { flash(errMsg(e), true); return null; }
   };
 
   const applyTemplate = (t: Template) => {
@@ -222,8 +224,12 @@ export default function BroadcastPage() {
   const sendNow = async (id: string) => {
     try {
       setLoading(true);
-      const r = await api.post<{ sentCount: number; failedCount: number }>(`/broadcasts/${id}/send`);
-      flash(`ส่งสำเร็จ ${r.data.sentCount} ราย`);
+      const r = await api.post<{ ok: boolean; sentCount: number; failedCount: number }>(`/broadcasts/${id}/send`);
+      if (r.data.sentCount > 0) {
+        flash(`ส่งสำเร็จ ${r.data.sentCount} ราย${r.data.failedCount > 0 ? ` (ล้มเหลว ${r.data.failedCount} ราย)` : ''}`);
+      } else {
+        flash(`ไม่มีผู้รับที่มี LINE ID — ส่งได้ 0 ราย (ตรวจสอบ LINE User ID ของพนักงาน)`, true);
+      }
       loadAll();
     } catch (e) { flash(errMsg(e), true); } finally { setLoading(false); }
   };
@@ -696,11 +702,21 @@ export default function BroadcastPage() {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setFormOpen(false)}>ยกเลิก</Button>
-          <Button variant="outlined" onClick={save} disabled={!form.title}>
+          <Button variant="outlined" onClick={() => save()} disabled={!form.title}>
             บันทึก Draft
           </Button>
-          {!form.approvalRequired && (
-            <Button variant="contained" onClick={async () => { await save(); }}
+          {form.approvalRequired ? (
+            <Button variant="contained" color="warning"
+              onClick={() => save()}
+              disabled={!form.title || !form.content}>
+              ส่งรออนุมัติ
+            </Button>
+          ) : (
+            <Button variant="contained"
+              onClick={async () => {
+                const id = await save();
+                if (id) await sendNow(id);
+              }}
               sx={{ bgcolor: '#06C755', '&:hover': { bgcolor: '#00A846' } }}
               disabled={!form.title || !form.content} startIcon={<Send />}>
               บันทึก + ส่ง
