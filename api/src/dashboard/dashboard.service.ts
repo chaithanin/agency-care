@@ -86,13 +86,24 @@ export class DashboardService {
     return { days };
   }
 
-  // แผนวันนี้พร้อมรายละเอียด
-  async todayPlans(dateStr?: string) {
-    const date = dateStr ? new Date(dateStr) : new Date();
-    const day = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+  // แผนวันนี้พร้อมรายละเอียด (รองรับ from/to range)
+  async todayPlans(dateStr?: string, fromStr?: string, toStr?: string) {
+    let where: any;
+    if (fromStr || toStr) {
+      where = {
+        planDate: {
+          ...(fromStr ? { gte: new Date(fromStr) } : {}),
+          ...(toStr ? { lte: new Date(toStr) } : {}),
+        },
+      };
+    } else {
+      const date = dateStr ? new Date(dateStr) : new Date();
+      const day = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+      where = { planDate: day };
+    }
     return this.prisma.visitPlan.findMany({
-      where: { planDate: day },
-      orderBy: [{ employee: { name: 'asc' } }],
+      where,
+      orderBy: [{ planDate: 'asc' }, { employee: { name: 'asc' } }],
       include: {
         agency: { select: { id: true, code: true, name: true, phone: true, zone: true } },
         employee: { select: { id: true, name: true, code: true } },

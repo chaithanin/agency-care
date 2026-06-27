@@ -114,4 +114,17 @@ export class AutoAssignService {
     }
     return { applied: pairs.length };
   }
+
+  async history(limit = 100) {
+    const assignments = await this.prisma.agencyAssignment.findMany({
+      where: { isActive: true },
+      orderBy: { assignedAt: 'desc' },
+      take: limit,
+      include: {
+        agency: { select: { id: true, code: true, name: true, zone: true, province: true } },
+        employee: { select: { id: true, name: true, code: true } },
+      },
+    });
+    return { assignments };
+  }
 }

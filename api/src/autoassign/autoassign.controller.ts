@@ -16,4 +16,9 @@ export class AutoAssignController {
   apply(@Body() dto: ApplyAssignmentDto) {
     return this.service.apply(dto);
   }
+
+  @Get('history')
+  history(@Query('limit') limit?: string) {
+    return this.service.history(limit ? parseInt(limit, 10) : 100);
+  }
 }

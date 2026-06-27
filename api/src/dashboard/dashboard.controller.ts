@@ -18,7 +18,11 @@ export class DashboardController {
   }
 
   @Get('today-plans')
-  todayPlans(@Query('date') date?: string) {
-    return this.service.todayPlans(date);
+  todayPlans(
+    @Query('date') date?: string,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+  ) {
+    return this.service.todayPlans(date, from, to);
   }
 }

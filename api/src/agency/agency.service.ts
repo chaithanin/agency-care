@@ -408,16 +408,52 @@ export class AgencyService {
   }
 
   async approveAgency(id: string, userId: string) {
-    const agency = await this.prisma.agency.findUnique({ where: { id } });
+    const agency = await this.prisma.agency.findUnique({
+      where: { id },
+      include: {
+        assignments: { where: { isActive: true }, include: { employee: true }, take: 1 },
+        addedBy: { select: { id: true } },
+      },
+    });
     if (!agency) throw new Error('Agency not found');
     const updated = await this.prisma.agency.update({
       where: { id },
-      data: { approvalStatus: 'approved' },
+      data: { approvalStatus: 'approved', pipelineStage: 'onboarding' },
     });
     await this.prisma.auditLog.create({
-      data: { userId, action: 'update', entity: 'agency', entityId: id,
-        metadata: { changes: [`approvalStatus: ${agency.approvalStatus} → approved`] } },
+      data: { userId, action: 'approve', entity: 'agency', entityId: id,
+        metadata: { changes: [`approvalStatus: ${agency.approvalStatus} → approved`, 'pipelineStage → onboarding'] } },
     });
+
+    // สร้าง onboarding tasks อัตโนมัติ
+    const assigneeId = (agency.assignments[0]?.employee?.id ?? agency.addedBy?.id) ?? null;
+    if (assigneeId) {
+      const now = new Date();
+      const addDays = (d: number) => { const dt = new Date(now); dt.setDate(dt.getDate() + d); return dt; };
+      const onboardingTasks = [
+        { title: `[Onboarding] เข้าเยี่ยมแนะนำตัวครั้งแรก — ${agency.name}`, tag: 'visit', dueDate: addDays(7), priority: 'high' as const },
+        { title: `[Onboarding] ส่งสื่อโครงการ/แคตตาล็อก — ${agency.name}`, tag: 'delivery', dueDate: addDays(3), priority: 'medium' as const },
+        { title: `[Onboarding] โทรติดตาม 1 สัปดาห์หลัง Approve — ${agency.name}`, tag: 'call', dueDate: addDays(14), priority: 'medium' as const },
+        { title: `[Onboarding] นัด Orientation ลูกค้า — ${agency.name}`, tag: 'orientation', dueDate: addDays(21), priority: 'medium' as const },
+      ];
+      await Promise.all(
+        onboardingTasks.map((task) =>
+          this.prisma.task.create({
+            data: {
+              title: task.title,
+              tag: task.tag,
+              priority: task.priority,
+              dueDate: task.dueDate,
+              status: 'pending',
+              type: 'auto',
+              agencyId: id,
+              assignedToId: assigneeId,
+            },
+          }),
+        ),
+      );
+    }
+
     return updated;
   }
 

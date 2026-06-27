@@ -573,6 +573,99 @@ export class SmartNotificationService {
   }
 
   // ============================================================
+  // Weekly Price List — ส่งทุกวันจันทร์ 09:00
+  // ============================================================
+
+  @Cron('0 9 * * 1', { timeZone: 'Asia/Bangkok' })
+  async runWeeklyPriceList() {
+    const priceListUrl = this.config.get<string>('PRICE_LIST_URL') ?? `${APP_URL}/products`;
+    const bookingUrl = this.config.get<string>('BOOKING_URL') ?? `${APP_URL}/products`;
+
+    const salesEmployees = await this.prisma.employee.findMany({
+      where: { isActive: true, position: 'sales', lineUserId: { not: null } },
+      select: { id: true, name: true, lineUserId: true },
+    });
+
+    const text = [
+      `📋 Price List ประจำสัปดาห์ (${new Date().toLocaleDateString('th-TH', { weekday: 'long', day: 'numeric', month: 'long' })})`,
+      ``,
+      `🏠 Price List & Promotion: ${priceListUrl}`,
+      `📅 จอง/ขอใบเสนอราคา: ${bookingUrl}`,
+      ``,
+      `💡 สามารถแชร์ให้ลูกค้าได้เลย`,
+    ].join('\n');
+
+    for (const emp of salesEmployees) {
+      if (!emp.lineUserId || !this.line.enabled) continue;
+      await this.line.pushText(emp.lineUserId, text);
+    }
+
+    // แจ้ง admin ด้วย
+    const admins = await this.prisma.user.findMany({
+      where: { role: { in: ['admin', 'super_admin'] }, isActive: true },
+      select: { employee: { select: { lineUserId: true } } },
+    });
+    const adminText = `📋 ส่ง Price List ให้ Sales แล้ว (${salesEmployees.length} คน)`;
+    for (const a of admins) {
+      if (!a.employee?.lineUserId || !this.line.enabled) continue;
+      await this.line.pushText(a.employee.lineUserId, adminText);
+    }
+
+    return { sent: salesEmployees.length };
+  }
+
+  // ============================================================
+  // 5-Day Plan Alert — แจ้ง Manager เมื่อ Sales มีงานค้างนาน 5 วัน
+  // ============================================================
+
+  @Cron('35 8 * * 1-6', { timeZone: 'Asia/Bangkok' })
+  async runFiveDayAlert() {
+    const fiveDaysAgo = new Date(Date.now() - 5 * 86400000);
+    const overduePlans = await this.prisma.visitPlan.findMany({
+      where: {
+        status: { in: ['pending', 'waiting_confirmation', 'confirmed'] },
+        planDate: { lte: fiveDaysAgo },
+      },
+      include: {
+        employee: { select: { id: true, name: true, lineUserId: true } },
+        agency: { select: { name: true, code: true } },
+      },
+    });
+
+    if (overduePlans.length === 0) return { alerted: 0 };
+
+    // Group by employee
+    const byEmp = new Map<string, { emp: { id: string; name: string; lineUserId: string | null }; plans: typeof overduePlans }>();
+    for (const plan of overduePlans) {
+      const key = plan.employeeId;
+      if (!byEmp.has(key)) byEmp.set(key, { emp: plan.employee, plans: [] });
+      byEmp.get(key)!.plans.push(plan);
+    }
+
+    // แจ้ง manager/admin
+    const managers = await this.prisma.user.findMany({
+      where: { role: { in: ['admin', 'super_admin', 'closer'] }, isActive: true },
+      select: { employee: { select: { lineUserId: true } } },
+    });
+
+    for (const [, { emp, plans }] of byEmp) {
+      const lines = [
+        `⚠️ แจ้งเตือน: ${emp.name} มีงานค้าง ${plans.length} รายการเกิน 5 วัน`,
+        ...plans.slice(0, 5).map((p) => `  • ${p.agency.code} ${p.agency.name} (${p.planDate.toISOString().slice(0, 10)})`),
+        plans.length > 5 ? `  ... และอีก ${plans.length - 5} รายการ` : '',
+        `👉 ${APP_URL}/plans`,
+      ].filter(Boolean).join('\n');
+
+      for (const mgr of managers) {
+        if (!mgr.employee?.lineUserId || !this.line.enabled) continue;
+        await this.line.pushText(mgr.employee.lineUserId, lines);
+      }
+    }
+
+    return { alerted: byEmp.size };
+  }
+
+  // ============================================================
   // Utils
   // ============================================================
 

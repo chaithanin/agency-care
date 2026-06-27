@@ -16,7 +16,7 @@ interface Summary {
 }
 interface WeekDay { date: string; planned: number; done: number; }
 interface TodayPlan {
-  id: string; status: string; actionType?: string | null; priority?: string;
+  id: string; status: string; planDate: string; actionType?: string | null; priority?: string;
   agency: { code: string; name: string; phone?: string | null; zone?: string | null };
   employee: { name: string; code: string };
   checkin?: { checkinAt: string; withinRadius: boolean } | null;
@@ -94,10 +94,14 @@ const statusColor: Record<string, 'default' | 'success' | 'warning' | 'error' | 
 export default function DashboardPage() {
   const { t } = useT();
   const [date, setDate] = useState(todayStr());
+  const [planFrom, setPlanFrom] = useState(todayStr());
+  const [planTo, setPlanTo] = useState(todayStr());
+  const [rangeMode, setRangeMode] = useState(false);
   const [data, setData] = useState<Summary | null>(null);
   const [weekDays, setWeekDays] = useState<WeekDay[]>([]);
   const [todayPlans, setTodayPlans] = useState<TodayPlan[]>([]);
   const [loading, setLoading] = useState(false);
+  const [plansLoading, setPlansLoading] = useState(false);
 
   useEffect(() => {
     api.get('/dashboard/weekly').then((r) => setWeekDays(r.data.days ?? []));
@@ -105,14 +109,20 @@ export default function DashboardPage() {
 
   useEffect(() => {
     setLoading(true);
-    Promise.all([
-      api.get('/dashboard/summary', { params: { date } }),
-      api.get('/dashboard/today-plans', { params: { date } }),
-    ]).then(([sumRes, plansRes]) => {
-      setData(sumRes.data);
-      setTodayPlans(plansRes.data ?? []);
-    }).finally(() => setLoading(false));
+    api.get('/dashboard/summary', { params: { date } })
+      .then((r) => setData(r.data))
+      .finally(() => setLoading(false));
   }, [date]);
+
+  const loadPlans = () => {
+    setPlansLoading(true);
+    const params = rangeMode ? { from: planFrom, to: planTo } : { date };
+    api.get('/dashboard/today-plans', { params })
+      .then((r) => setTodayPlans(r.data ?? []))
+      .finally(() => setPlansLoading(false));
+  };
+
+  useEffect(() => { loadPlans(); }, [date, rangeMode, planFrom, planTo]);
 
   return (
     <Box>
@@ -189,13 +199,29 @@ export default function DashboardPage() {
 
         {/* Today's plan detail */}
         <Paper sx={{ p: 2 }}>
-          <Typography variant="subtitle1" fontWeight={700} mb={1}>
-            {t('dash.todayPlanList')} ({todayPlans.length})
-          </Typography>
+          <Stack direction="row" justifyContent="space-between" alignItems="center" mb={1} flexWrap="wrap" gap={1}>
+            <Typography variant="subtitle1" fontWeight={700}>
+              {rangeMode ? 'แผนงาน' : t('dash.todayPlanList')} ({todayPlans.length})
+            </Typography>
+            <Stack direction="row" spacing={1} alignItems="center">
+              <Chip size="small" label={rangeMode ? 'ช่วงวันที่' : 'วันเดียว'}
+                color={rangeMode ? 'primary' : 'default'} clickable onClick={() => setRangeMode((v) => !v)} />
+              {rangeMode && (
+                <>
+                  <TextField size="small" type="date" label="จาก" value={planFrom}
+                    onChange={(e) => setPlanFrom(e.target.value)} InputLabelProps={{ shrink: true }} />
+                  <TextField size="small" type="date" label="ถึง" value={planTo}
+                    onChange={(e) => setPlanTo(e.target.value)} InputLabelProps={{ shrink: true }} />
+                </>
+              )}
+            </Stack>
+          </Stack>
+          {plansLoading && <LinearProgress sx={{ mb: 1 }} />}
           <Box sx={{ maxHeight: 400, overflowY: 'auto' }}>
             <Table size="small" stickyHeader>
               <TableHead>
                 <TableRow>
+                  {rangeMode && <TableCell>วันที่</TableCell>}
                   <TableCell>Agency</TableCell>
                   <TableCell>{t('c.seller')}</TableCell>
                   <TableCell>{t('c.status')}</TableCell>
@@ -204,13 +230,14 @@ export default function DashboardPage() {
               <TableBody>
                 {todayPlans.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={3} align="center" sx={{ color: 'text.secondary' }}>
+                    <TableCell colSpan={rangeMode ? 4 : 3} align="center" sx={{ color: 'text.secondary' }}>
                       {t('dash.noPlan')}
                     </TableCell>
                   </TableRow>
                 )}
                 {todayPlans.map((p) => (
                   <TableRow key={p.id} hover>
+                    {rangeMode && <TableCell><Typography variant="caption">{p.planDate?.slice(0, 10)}</Typography></TableCell>}
                     <TableCell>
                       <Tooltip title={p.agency.phone ?? ''}>
                         <Typography component={Link} to={`/visits/${p.id}`} variant="body2"
