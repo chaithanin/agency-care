@@ -90,6 +90,33 @@ export class VisitService {
     return { created: dates.length };
   }
 
+  // Bulk create — หลาย agency วันเดียวกัน
+  async bulkCreate(dto: {
+    agencyIds: string[];
+    employeeId: string;
+    planDate: string;
+    actionType?: string;
+    requestDetails?: string;
+    priority?: string;
+    note?: string;
+  }) {
+    if (!dto.agencyIds?.length) return { created: 0 };
+    const result = await this.prisma.visitPlan.createMany({
+      data: dto.agencyIds.map((agencyId) => ({
+        agencyId,
+        employeeId: dto.employeeId,
+        planDate: new Date(dto.planDate),
+        actionType: dto.actionType ?? 'visit',
+        requestDetails: dto.requestDetails,
+        priority: dto.priority ?? 'medium',
+        note: dto.note,
+        isRecurring: false,
+      })),
+      skipDuplicates: true,
+    });
+    return { created: result.count };
+  }
+
   // list ตามช่วงวัน/เซลส์ — admin เห็นหมด, sales เห็นเฉพาะตัวเอง
   async listPlans(user: RequestUser, params: { date?: string; from?: string; to?: string; employeeId?: string; actionType?: string; status?: string }) {
     const where: Prisma.VisitPlanWhereInput = {};

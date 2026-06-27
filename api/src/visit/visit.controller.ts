@@ -43,6 +43,12 @@ export class VisitController {
     return this.service.createPlan(dto);
   }
 
+  @Roles('admin', 'closer')
+  @Post('plans/bulk')
+  bulkCreatePlans(@Body() dto: { agencyIds: string[]; employeeId: string; planDate: string; actionType?: string; requestDetails?: string; priority?: string; note?: string }) {
+    return this.service.bulkCreate(dto);
+  }
+
   @Get('plans')
   listPlans(
     @CurrentUser() user: RequestUser,

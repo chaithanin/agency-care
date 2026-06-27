@@ -488,8 +488,21 @@ export default function KpiPage() {
                   <Typography variant="subtitle1" fontWeight={600}>
                     {t('kpi.individualTitle')}
                   </Typography>
-                  <TextField size="small" label={t('c.searchSeller')} value={sellerSearch}
-                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSellerSearch(e.target.value)} sx={{ width: 200 }} />
+                  <Stack direction="row" spacing={1} alignItems="center">
+                    <TextField size="small" label={t('c.searchSeller')} value={sellerSearch}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSellerSearch(e.target.value)} sx={{ width: 200 }} />
+                    <Button size="small" variant="outlined" onClick={() => {
+                      const headers = ['ชื่อ', 'รหัส', 'เยี่ยม', 'เป้า', '%', 'Agency', 'Call', 'Orientation', 'ลูกค้า', 'Holding', 'ติดตาม', 'ยอดขาย'];
+                      const rows2 = teamKpi
+                        .filter((r) => !sellerSearch || (r.employee?.name ?? '').toLowerCase().includes(sellerSearch.toLowerCase()) || (r.employee?.code ?? '').toLowerCase().includes(sellerSearch.toLowerCase()))
+                        .map((r) => [r.employee?.name ?? '', r.employee?.code ?? '', r.visitActual, r.visitTarget, r.visitRate, r.newAgencyActual, r.callCount ?? 0, r.orientationCount ?? 0, r.customerCount ?? 0, r.holdingCount ?? 0, r.followupActual, r.salesActual]);
+                      const lines = [headers, ...rows2].map((row) => row.map((c) => `"${String(c ?? '').replace(/"/g, '""')}"`).join(','));
+                      const blob = new Blob(['﻿' + lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement('a'); a.href = url; a.download = `kpi-team-${period}.csv`; a.click();
+                      URL.revokeObjectURL(url);
+                    }}>Export CSV</Button>
+                  </Stack>
                 </Stack>
                 <TeamKpiTable rows={teamKpi} searchQ={sellerSearch} />
               </Box>

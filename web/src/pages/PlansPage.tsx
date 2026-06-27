@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import {
-  Alert, Box, Button, Chip, CircularProgress, Dialog, DialogActions, DialogContent,
+  Alert, Box, Button, Checkbox, Chip, CircularProgress, Dialog, DialogActions, DialogContent,
   DialogTitle, Divider, FormControl, FormControlLabel, InputLabel, LinearProgress,
   MenuItem, Paper, Select, Stack, Switch, Table, TableBody, TableCell, TableHead,
   TableRow, TextField, Tooltip, Typography,
@@ -116,6 +116,34 @@ export default function PlansPage() {
   const [rescheduleTo, setRescheduleTo] = useState('');
   const [callLoading, setCallLoading] = useState(false);
   const [callErr, setCallErr] = useState('');
+
+  // ─── Bulk Create ────────────────────────────────────────────────────────
+  const [bulkOpen, setBulkOpen] = useState(false);
+  const [bulkAgencySearch, setBulkAgencySearch] = useState('');
+  const [bulkSelected, setBulkSelected] = useState<string[]>([]);
+  const [bulkForm, setBulkForm] = useState({ employeeId: '', date: todayStr(), actionType: 'visit', priority: 'medium', note: '' });
+  const [bulkLoading, setBulkLoading] = useState(false);
+  const [bulkMsg, setBulkMsg] = useState('');
+
+  const bulkFilteredAgencies = agencies.filter((a) => {
+    if (!bulkAgencySearch) return true;
+    const q = bulkAgencySearch.toLowerCase();
+    return a.name.toLowerCase().includes(q) || a.code.toLowerCase().includes(q);
+  });
+
+  const doBulkCreate = async () => {
+    if (!bulkSelected.length || !bulkForm.employeeId || !bulkForm.date) {
+      setBulkMsg('กรุณาเลือก Agency, เซลส์ และวันที่'); return;
+    }
+    setBulkLoading(true); setBulkMsg('');
+    try {
+      const { data } = await api.post('/visits/plans/bulk', { agencyIds: bulkSelected, ...bulkForm });
+      setBulkMsg(`สร้างแผนงานสำเร็จ ${data.created} รายการ`);
+      setBulkSelected([]);
+      loadPlans();
+    } catch (e) { setBulkMsg(errMsg(e)); }
+    finally { setBulkLoading(false); }
+  };
 
   // ─── Smart Replacement ────────────────────────────────────────────────────
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
@@ -407,6 +435,11 @@ export default function PlansPage() {
               {t('pl.print')}
             </Button>
           </Tooltip>
+          {isManager && (
+            <Button variant="outlined" color="secondary" startIcon={<AddIcon />} onClick={() => setBulkOpen(true)}>
+              เพิ่มหลาย Agency
+            </Button>
+          )}
           <Button variant="contained" startIcon={<AddIcon />} onClick={() => { setOpenAdd(true); setError(''); }}>
             {t('pl2.add')}
           </Button>
@@ -563,6 +596,76 @@ export default function PlansPage() {
           </Typography>
         </Box>
       </Paper>
+
+      {/* ─── Bulk Create Dialog ─── */}
+      <Dialog open={bulkOpen} onClose={() => { setBulkOpen(false); setBulkMsg(''); setBulkSelected([]); }} maxWidth="md" fullWidth>
+        <DialogTitle>เพิ่มแผนงานหลาย Agency พร้อมกัน</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} mt={1}>
+            {bulkMsg && <Alert severity={bulkMsg.includes('สำเร็จ') ? 'success' : 'error'}>{bulkMsg}</Alert>}
+            <Stack direction="row" spacing={2} flexWrap="wrap" useFlexGap>
+              <FormControl size="small" sx={{ flex: 1, minWidth: 180 }}>
+                <InputLabel>{t('c.seller')}</InputLabel>
+                <Select label={t('c.seller')} value={bulkForm.employeeId} onChange={(e) => setBulkForm({ ...bulkForm, employeeId: e.target.value })}>
+                  {employees.map((e) => <MenuItem key={e.id} value={e.id}>{e.code} {e.name}</MenuItem>)}
+                </Select>
+              </FormControl>
+              <TextField size="small" type="date" label="วันที่" value={bulkForm.date}
+                onChange={(e) => setBulkForm({ ...bulkForm, date: e.target.value })} InputLabelProps={{ shrink: true }} sx={{ flex: 1, minWidth: 150 }} />
+              <FormControl size="small" sx={{ flex: 1, minWidth: 160 }}>
+                <InputLabel>{t('pl.actionType')}</InputLabel>
+                <Select label={t('pl.actionType')} value={bulkForm.actionType} onChange={(e) => setBulkForm({ ...bulkForm, actionType: e.target.value })}>
+                  {ACTION_TYPES.map((a) => <MenuItem key={a.value} value={a.value}>{a.label}</MenuItem>)}
+                </Select>
+              </FormControl>
+              <FormControl size="small" sx={{ flex: 1, minWidth: 140 }}>
+                <InputLabel>{t('pl.priority')}</InputLabel>
+                <Select label={t('pl.priority')} value={bulkForm.priority} onChange={(e) => setBulkForm({ ...bulkForm, priority: e.target.value })}>
+                  {PRIORITIES.map((p) => <MenuItem key={p.value} value={p.value}>{p.label}</MenuItem>)}
+                </Select>
+              </FormControl>
+            </Stack>
+            <Divider>เลือก Agency ({bulkSelected.length} รายการ)</Divider>
+            <TextField size="small" placeholder="ค้นหา Agency..." value={bulkAgencySearch}
+              onChange={(e) => setBulkAgencySearch(e.target.value)} />
+            <Paper variant="outlined" sx={{ maxHeight: 280, overflowY: 'auto' }}>
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell padding="checkbox">
+                      <Checkbox size="small"
+                        checked={bulkFilteredAgencies.length > 0 && bulkFilteredAgencies.every((a) => bulkSelected.includes(a.id))}
+                        indeterminate={bulkFilteredAgencies.some((a) => bulkSelected.includes(a.id)) && !bulkFilteredAgencies.every((a) => bulkSelected.includes(a.id))}
+                        onChange={(e) => {
+                          if (e.target.checked) setBulkSelected((prev) => [...new Set([...prev, ...bulkFilteredAgencies.map((a) => a.id)])]);
+                          else setBulkSelected((prev) => prev.filter((id) => !bulkFilteredAgencies.find((a) => a.id === id)));
+                        }}
+                      />
+                    </TableCell>
+                    <TableCell>รหัส</TableCell>
+                    <TableCell>ชื่อ</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {bulkFilteredAgencies.map((a) => (
+                    <TableRow key={a.id} hover onClick={() => setBulkSelected((prev) => prev.includes(a.id) ? prev.filter((id) => id !== a.id) : [...prev, a.id])} sx={{ cursor: 'pointer' }}>
+                      <TableCell padding="checkbox"><Checkbox size="small" checked={bulkSelected.includes(a.id)} /></TableCell>
+                      <TableCell>{a.code}</TableCell>
+                      <TableCell>{a.name}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </Paper>
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => { setBulkOpen(false); setBulkMsg(''); setBulkSelected([]); }}>ปิด</Button>
+          <Button variant="contained" onClick={doBulkCreate} disabled={bulkLoading || !bulkSelected.length}>
+            {bulkLoading ? <CircularProgress size={18} /> : `สร้าง ${bulkSelected.length} แผนงาน`}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* ─── Add Plan Dialog ─── */}
       <Dialog open={openAdd} onClose={() => setOpenAdd(false)} maxWidth="sm" fullWidth>
