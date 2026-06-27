@@ -29,6 +29,7 @@ import { Roles } from '../auth/guards';
 import { CurrentUser, RequestUser } from '../common/current-user.decorator';
 import { TaskService } from '../task/task.service';
 import { LineService } from '../notification/line.service';
+import { PrismaService } from '../prisma/prisma.service';
 
 @Controller('visits')
 export class VisitController {
@@ -36,6 +37,7 @@ export class VisitController {
     private service: VisitService,
     private taskService: TaskService,
     private line: LineService,
+    private prisma: PrismaService,
   ) {}
 
   // ---- Plans ----
@@ -131,10 +133,13 @@ export class VisitController {
     if (result.visitPlanId) {
       this.service.getPlanById(result.visitPlanId).then(async (plan) => {
         if (!plan) return;
-        // 1. Auto-create follow-up task
+        const ag = await this.prisma.agency.findUnique({ where: { id: plan.agencyId }, select: { automationPaused: true } });
+        // 1. Auto-create follow-up task (always, even if paused)
         this.taskService.autoCreateAfterVisit(plan.id, plan.employeeId, plan.agencyId).catch(() => {});
-        // 2. LINE thank-you template to sales employee to forward to agency
-        this.service.sendThankYouReminder(plan.id, plan.employeeId, plan.agencyId, this.line).catch(() => {});
+        // 2. LINE thank-you — skip if automation paused
+        if (!ag?.automationPaused) {
+          this.service.sendThankYouReminder(plan.id, plan.employeeId, plan.agencyId, this.line).catch(() => {});
+        }
       }).catch(() => {});
     }
     return result;

@@ -122,7 +122,12 @@ export class TaskService {
     if (dto.assignedToId !== undefined && user.activeRole !== 'sales') data.assignedTo = { connect: { id: dto.assignedToId } };
     if (dto.tag !== undefined) data.tag = dto.tag;
     if (dto.customerName !== undefined) data.customerName = dto.customerName;
-    return this.prisma.task.update({ where: { id }, data });
+    const updated = await this.prisma.task.update({ where: { id }, data });
+    // Phase 4.2: trigger auto follow-up when customer/holding task completed
+    if (dto.status === 'done' && task.agencyId && ['customer', 'holding', 'agency_brings_client'].includes(task.tag ?? '')) {
+      this.autoFollowUpOnCustomerHolding(id, task.agencyId, task.assignedToId).catch(() => {});
+    }
+    return updated;
   }
 
   async delete(user: RequestUser, id: string) {
@@ -172,6 +177,37 @@ export class TaskService {
         agencyId,
         visitPlanId,
       },
+    });
+  }
+
+  // Phase 4.2: Auto 3x follow-up when customer/holding KPI task is completed and not yet sold
+  async autoFollowUpOnCustomerHolding(taskId: string, agencyId: string, assignedToId: string | null) {
+    if (!agencyId || !assignedToId) return;
+    const agency = await this.prisma.agency.findUnique({
+      where: { id: agencyId },
+      select: { automationPaused: true, name: true, commissions: { select: { type: true }, take: 1, where: { type: 'commission' } } },
+    });
+    if (!agency || agency.automationPaused) return;
+    if (agency.commissions.length > 0) return; // already sold
+    const now = new Date();
+    const addDays = (d: number) => { const dt = new Date(now); dt.setDate(dt.getDate() + d); return dt; };
+    const followups = [
+      { title: `[Auto Follow-up 1] โทรติดตาม ${agency.name}`, dueDate: addDays(3) },
+      { title: `[Auto Follow-up 2] โทรติดตาม ${agency.name}`, dueDate: addDays(7) },
+      { title: `[Auto Follow-up 3] โทรปิดการขาย ${agency.name}`, dueDate: addDays(14) },
+    ];
+    await this.prisma.task.createMany({
+      data: followups.map((f) => ({
+        title: f.title,
+        tag: 'call',
+        dueDate: f.dueDate,
+        priority: 'high' as const,
+        status: 'pending',
+        type: 'auto' as TaskType,
+        agencyId,
+        assignedToId,
+      })),
+      skipDuplicates: true,
     });
   }
 

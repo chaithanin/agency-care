@@ -2,6 +2,8 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { ConfigService } from '@nestjs/config';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { NotificationService } from '../notification/notification.service';
+import { LineService } from '../notification/line.service';
 import { CreateAgencyDto, UpdateAgencyDto } from './dto/agency.dto';
 
 function calcAgencyScore(totalUnits: number): string {
@@ -16,6 +18,8 @@ export class AgencyService {
   constructor(
     private prisma: PrismaService,
     private config: ConfigService,
+    private notif: NotificationService,
+    private line: LineService,
   ) {}
 
   async list(params: { zone?: string; status?: string; q?: string }) {
@@ -454,7 +458,38 @@ export class AgencyService {
       );
     }
 
+    // Phase 1: Welcome email + LINE greeting
+    const assigneeEmployee = agency.assignments[0]?.employee ?? null;
+    const assigneeName = assigneeEmployee?.name ?? 'ทีมงาน';
+    await this.sendWelcomeEmail(
+      { name: agency.name, email: agency.email, code: agency.code },
+      assigneeName,
+    );
+    await this.sendFirstLineGreeting(agency.name, assigneeName, assigneeEmployee as any);
+
     return updated;
+  }
+
+  private async sendFirstLineGreeting(
+    agencyName: string,
+    assigneeName: string,
+    assigneeEmployee: { lineUserId?: string | null } | null,
+  ) {
+    if (!assigneeEmployee?.lineUserId || !this.line.enabled) return;
+    const text = [
+      `🎉 เอเจนซี่ใหม่ได้รับการอนุมัติแล้ว!`,
+      ``,
+      `🏢 ${agencyName}`,
+      `👤 Seller ที่รับผิดชอบ: ${assigneeName}`,
+      ``,
+      `📋 ขั้นตอนต่อไป:`,
+      `1. เชิญเข้า LINE Group โครงการ`,
+      `2. ส่ง POSM / Catalog ภายใน 3 วัน`,
+      `3. นัด Orientation ภายใน 1 สัปดาห์`,
+      ``,
+      `ระบบได้สร้าง Task onboarding ให้อัตโนมัติแล้วใน /tasks`,
+    ].join('\n');
+    await this.line.pushText(assigneeEmployee.lineUserId, text);
   }
 
   async rejectAgency(id: string, userId: string, reason?: string) {
@@ -522,8 +557,8 @@ export class AgencyService {
   }
 
   // ── Send Welcome Email (called from approveAgency) ────────────────────────
-  async sendWelcomeEmail(agency: { name: string; email: string | null; code: string }, assigneeName: string, notifService?: { sendEmail: (to: string, subject: string, html: string) => Promise<boolean> }) {
-    if (!agency.email || !notifService) return false;
+  async sendWelcomeEmail(agency: { name: string; email: string | null; code: string }, assigneeName: string) {
+    if (!agency.email) return false;
     const appUrl = process.env.APP_URL ?? 'https://agency.chaithanin.com';
     const html = `
 <h2>ยินดีต้อนรับสู่ Chaithanin Agency Network!</h2>
@@ -542,6 +577,6 @@ export class AgencyService {
 </ol>
 <p>หากมีข้อสงสัยติดต่อ Seller ของท่าน: <b>${assigneeName}</b></p>
 <p>ขอบคุณที่ร่วมเป็นส่วนหนึ่งของครอบครัว Chaithanin 🙏</p>`;
-    return notifService.sendEmail(agency.email, `ยินดีต้อนรับ ${agency.name} สู่ Chaithanin Agency Network!`, html);
+    return this.notif.sendEmail(agency.email, `ยินดีต้อนรับ ${agency.name} สู่ Chaithanin Agency Network!`, html);
   }
 }
