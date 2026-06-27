@@ -28,12 +28,14 @@ import {
 import { Roles } from '../auth/guards';
 import { CurrentUser, RequestUser } from '../common/current-user.decorator';
 import { TaskService } from '../task/task.service';
+import { LineService } from '../notification/line.service';
 
 @Controller('visits')
 export class VisitController {
   constructor(
     private service: VisitService,
     private taskService: TaskService,
+    private line: LineService,
   ) {}
 
   // ---- Plans ----
@@ -126,12 +128,13 @@ export class VisitController {
   @Post('checkins/:checkinId/checkout')
   async checkout(@CurrentUser() user: RequestUser, @Param('checkinId') checkinId: string) {
     const result = await this.service.checkout(user, checkinId);
-    // Auto-create follow-up task asynchronously
     if (result.visitPlanId) {
-      this.service.getPlanById(result.visitPlanId).then(plan => {
-        if (plan) {
-          this.taskService.autoCreateAfterVisit(plan.id, plan.employeeId, plan.agencyId).catch(() => {});
-        }
+      this.service.getPlanById(result.visitPlanId).then(async (plan) => {
+        if (!plan) return;
+        // 1. Auto-create follow-up task
+        this.taskService.autoCreateAfterVisit(plan.id, plan.employeeId, plan.agencyId).catch(() => {});
+        // 2. LINE thank-you template to sales employee to forward to agency
+        this.service.sendThankYouReminder(plan.id, plan.employeeId, plan.agencyId, this.line).catch(() => {});
       }).catch(() => {});
     }
     return result;

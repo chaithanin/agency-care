@@ -294,6 +294,25 @@ export class VisitService {
     return this.prisma.visitPlan.findUnique({ where: { id }, select: { id: true, agencyId: true, employeeId: true } });
   }
 
+  async sendThankYouReminder(planId: string, employeeId: string, agencyId: string, line: { pushText: (to: string, text: string) => Promise<boolean>; enabled: boolean }) {
+    const [emp, agency] = await Promise.all([
+      this.prisma.employee.findUnique({ where: { id: employeeId }, select: { name: true, lineUserId: true } }),
+      this.prisma.agency.findUnique({ where: { id: agencyId }, select: { name: true, ownerName: true, managerName: true, phone: true } }),
+    ]);
+    if (!emp?.lineUserId || !agency) return;
+    const contact = agency.managerName ?? agency.ownerName ?? 'คุณ';
+    const text = [
+      `✅ ออกจากงาน ${agency.name} แล้ว`,
+      ``,
+      `📱 ข้อความขอบคุณ (ส่งต่อให้ลูกค้า):`,
+      `สวัสดีครับ ${contact}`,
+      `ขอบคุณที่ให้เวลาพบปะวันนี้นะครับ`,
+      `หากมีข้อสงสัยหรือต้องการข้อมูลเพิ่มเติม`,
+      `ติดต่อได้เลยครับ 🙏`,
+    ].join('\n');
+    if (line.enabled) await line.pushText(emp.lineUserId, text);
+  }
+
   // ---- Smart Replacement — หาร้านทดแทนใกล้เคียงเมื่อ reschedule ─────────
   async getSuggestions(user: RequestUser, planId: string, limit = 10) {
     const plan = await this.prisma.visitPlan.findUnique({
