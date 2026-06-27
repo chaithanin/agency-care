@@ -266,6 +266,23 @@ export class SmartNotificationService {
       }
     }
 
+    // Executive midday org summary (always, so admin can verify the cron fires)
+    const execsMid = await this.prisma.user.findMany({
+      where: { role: { in: ['admin', 'super_admin'] }, isActive: true },
+      select: { employee: { select: { id: true, lineUserId: true } } },
+    });
+    const orgPending = await this.prisma.visitPlan.count({
+      where: { planDate: { gte: today, lt: tomorrow }, status: 'pending' },
+    });
+    for (const exec of execsMid) {
+      if (!exec.employee?.lineUserId || !this.line.enabled) continue;
+      const text = `⏰ Midday Org Summary\nงานค้างทั้งองค์กร: ${orgPending} งาน\n👉 ${APP_URL}/`;
+      const ok = await this.line.pushText(exec.employee.lineUserId, text);
+      if (exec.employee.id) {
+        await this.log({ notifType: 'midday', channel: 'line', recipientId: exec.employee.id, role: 'admin', taskCount: orgPending, overdueCount: 0, messageBody: text, status: ok ? 'sent' : 'failed' });
+      }
+    }
+
     return { sent };
   }
 
@@ -319,6 +336,21 @@ export class SmartNotificationService {
       if (closer.lineUserId && this.line.enabled) {
         const ok = await this.line.pushText(closer.lineUserId, text);
         await this.log({ notifType: 'afternoon', channel: 'line', recipientId: closer.id, role: 'closer', taskCount: total, overdueCount: 0, messageBody: text, status: ok ? 'sent' : 'failed' });
+      }
+    }
+
+    // Executive afternoon org summary (always)
+    const execsAfternoon = await this.prisma.user.findMany({
+      where: { role: { in: ['admin', 'super_admin'] }, isActive: true },
+      select: { employee: { select: { id: true, lineUserId: true } } },
+    });
+    const orgAfternoonPending = escalatedSales.reduce((s, e) => s + e.pending, 0);
+    for (const exec of execsAfternoon) {
+      if (!exec.employee?.lineUserId || !this.line.enabled) continue;
+      const text = `🔔 Afternoon Org Summary\nพนักงานมีงานค้าง ${escalatedSales.length} คน (รวม ${orgAfternoonPending} งาน)\n👉 ${APP_URL}/`;
+      const ok = await this.line.pushText(exec.employee.lineUserId, text);
+      if (exec.employee.id) {
+        await this.log({ notifType: 'afternoon', channel: 'line', recipientId: exec.employee.id, role: 'admin', taskCount: orgAfternoonPending, overdueCount: 0, messageBody: text, status: ok ? 'sent' : 'failed' });
       }
     }
 
