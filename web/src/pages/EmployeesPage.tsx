@@ -18,18 +18,33 @@ import {
   Chip,
   Alert,
   MenuItem,
+  FormControl,
   FormControlLabel,
+  InputLabel,
+  Select,
   Checkbox,
+  Divider,
   IconButton,
   Tooltip,
+  ToggleButton,
+  ToggleButtonGroup,
   LinearProgress,
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import EventBusyIcon from '@mui/icons-material/EventBusy';
+import LinkIcon from '@mui/icons-material/Link';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import { api, errMsg } from '../api/client';
 import { useT } from '../i18n';
+
+interface UserOption {
+  id: string;
+  email: string;
+  name: string;
+  role: string;
+  employee: { id: string; code: string; name: string } | null;
+}
 
 interface Employee {
   id: string;
@@ -48,7 +63,13 @@ interface Employee {
 }
 interface Team { id: string; name: string }
 
-const emptyCreate = { code: '', name: '', phone: '', zone: '', lineUserId: '', email: '', password: '' };
+type LinkMode = 'none' | 'existing' | 'new';
+const emptyCreate = {
+  code: '', name: '', phone: '', zone: '', lineUserId: '',
+  email: '', password: '',
+  linkMode: 'none' as LinkMode,
+  userId: '',
+};
 const thisYM = () => new Date().toISOString().slice(0, 7);
 
 const DOW_TH = ['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส'];
@@ -58,10 +79,12 @@ export default function EmployeesPage() {
   const { t, lang } = useT();
   const [rows, setRows] = useState<Employee[]>([]);
   const [teams, setTeams] = useState<Team[]>([]);
+  const [users, setUsers] = useState<UserOption[]>([]);
   const [createOpen, setCreateOpen] = useState(false);
   const [form, setForm] = useState({ ...emptyCreate });
   const [edit, setEdit] = useState<Employee | null>(null);
   const [editEmail, setEditEmail] = useState('');
+  const [editLinkUserId, setEditLinkUserId] = useState('');
   const [error, setError] = useState('');
   const [notifyMsg, setNotifyMsg] = useState('');
   const [notifying, setNotifying] = useState(false);
@@ -122,8 +145,10 @@ export default function EmployeesPage() {
   // ──────────────────────────────────────────────────────────────────────────
 
   const load = () => api.get('/employees').then((r) => setRows(r.data));
+  const loadUsers = () => api.get('/users').then((r) => setUsers(r.data)).catch(() => {});
   useEffect(() => {
     load();
+    loadUsers();
     api.get('/scheduling/teams').then((r) => setTeams(r.data)).catch(() => {});
   }, []);
 
@@ -150,12 +175,16 @@ export default function EmployeesPage() {
         phone: form.phone || undefined,
         zone: form.zone || undefined,
         lineUserId: form.lineUserId || undefined,
-        email: form.email || undefined,
-        password: form.password || undefined,
+        ...(form.linkMode === 'existing' && form.userId
+          ? { userId: form.userId }
+          : form.linkMode === 'new'
+          ? { email: form.email || undefined, password: form.password || undefined }
+          : {}),
       });
       setCreateOpen(false);
       setForm({ ...emptyCreate });
       load();
+      loadUsers();
     } catch (e) {
       setError(errMsg(e));
     }
@@ -175,9 +204,11 @@ export default function EmployeesPage() {
         inTraining: edit.inTraining,
         isActive: edit.isActive,
         ...(edit.user && editEmail ? { email: editEmail } : {}),
+        ...(!edit.user && editLinkUserId ? { userId: editLinkUserId } : {}),
       });
       setEdit(null);
       load();
+      loadUsers();
     } catch (e) {
       setError(errMsg(e));
     }
@@ -240,7 +271,7 @@ export default function EmployeesPage() {
                   </Tooltip>
                 </TableCell>
                 <TableCell align="center">
-                  <IconButton size="small" onClick={() => { setError(''); setEditEmail(e.user?.email ?? ''); setEdit({ ...e }); }}><EditIcon fontSize="small" /></IconButton>
+                  <IconButton size="small" onClick={() => { setError(''); setEditEmail(e.user?.email ?? ''); setEditLinkUserId(''); setEdit({ ...e }); }}><EditIcon fontSize="small" /></IconButton>
                 </TableCell>
               </TableRow>
             ))}
@@ -317,9 +348,48 @@ export default function EmployeesPage() {
             <TextField label={t('d.fullName')} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
             <TextField label={t('c.phone')} value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
             <TextField label="LINE User ID" value={form.lineUserId} onChange={(e) => setForm({ ...form, lineUserId: e.target.value })} placeholder="Uxxxxxxxx..." />
-            <Typography variant="subtitle2" color="text.secondary">{t('emp.loginHint')}</Typography>
-            <TextField label={t('usr.email')} type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
-            <TextField label={t('d.password')} type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
+
+            <Divider />
+            <Typography variant="subtitle2" fontWeight={700}>บัญชี Login</Typography>
+            <ToggleButtonGroup
+              value={form.linkMode}
+              exclusive
+              size="small"
+              onChange={(_, v) => { if (v) setForm({ ...form, linkMode: v as LinkMode, userId: '', email: '', password: '' }); }}
+              fullWidth
+            >
+              <ToggleButton value="none">ไม่มีบัญชี</ToggleButton>
+              <ToggleButton value="existing">
+                <LinkIcon fontSize="small" sx={{ mr: 0.5 }} />
+                เลือก User ที่มีอยู่
+              </ToggleButton>
+              <ToggleButton value="new">สร้างบัญชีใหม่</ToggleButton>
+            </ToggleButtonGroup>
+
+            {form.linkMode === 'existing' && (
+              <FormControl size="small" fullWidth>
+                <InputLabel>User (ยังไม่มี Staff Profile)</InputLabel>
+                <Select
+                  value={form.userId}
+                  label="User (ยังไม่มี Staff Profile)"
+                  onChange={(e) => setForm({ ...form, userId: e.target.value })}
+                >
+                  <MenuItem value=""><em>— เลือก User —</em></MenuItem>
+                  {users.filter((u) => !u.employee).map((u) => (
+                    <MenuItem key={u.id} value={u.id}>
+                      {u.name} &lt;{u.email}&gt; [{u.role}]
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            )}
+
+            {form.linkMode === 'new' && (
+              <>
+                <TextField label={t('usr.email')} type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} size="small" />
+                <TextField label={t('d.password')} type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} size="small" helperText={t('d.minChars')} />
+              </>
+            )}
           </Stack>
         </DialogContent>
         <DialogActions>
@@ -359,7 +429,27 @@ export default function EmployeesPage() {
                   onChange={(e) => setEditEmail(e.target.value)}
                 />
               ) : (
-                <Typography variant="caption" color="text.secondary">{t('emp.noAccount')}</Typography>
+                <Box sx={{ p: 1.5, border: '1px dashed', borderColor: 'divider', borderRadius: 1 }}>
+                  <Stack direction="row" alignItems="center" gap={1} mb={1}>
+                    <LinkIcon fontSize="small" color="action" />
+                    <Typography variant="subtitle2">เชื่อมกับ User ที่มีอยู่</Typography>
+                  </Stack>
+                  <FormControl size="small" fullWidth>
+                    <InputLabel>เลือก User (ยังไม่มี Staff Profile)</InputLabel>
+                    <Select
+                      value={editLinkUserId}
+                      label="เลือก User (ยังไม่มี Staff Profile)"
+                      onChange={(e) => setEditLinkUserId(e.target.value)}
+                    >
+                      <MenuItem value=""><em>— ไม่เชื่อม —</em></MenuItem>
+                      {users.filter((u) => !u.employee).map((u) => (
+                        <MenuItem key={u.id} value={u.id}>
+                          {u.name} &lt;{u.email}&gt; [{u.role}]
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Box>
               )}
               <Stack direction="row" spacing={2}>
                 <FormControlLabel control={<Checkbox checked={!!edit.inTraining} onChange={(e) => setEdit({ ...edit, inTraining: e.target.checked })} />} label={t('emp.training2')} />

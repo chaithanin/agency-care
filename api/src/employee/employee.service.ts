@@ -31,9 +31,17 @@ export class EmployeeService {
     const dup = await this.prisma.employee.findUnique({ where: { code: dto.code } });
     if (dup) throw new BadRequestException(`รหัสพนักงาน ${dto.code} ถูกใช้แล้ว`);
 
-    // สร้างบัญชี login ถ้าให้ email+password มา
     let userId: string | undefined;
-    if (dto.email && dto.password) {
+
+    if (dto.userId) {
+      // เชื่อมกับ User ที่มีอยู่แล้ว
+      const user = await this.prisma.user.findUnique({ where: { id: dto.userId } });
+      if (!user) throw new BadRequestException('ไม่พบ User ที่ระบุ');
+      const already = await this.prisma.employee.findUnique({ where: { userId: dto.userId } });
+      if (already) throw new BadRequestException(`User นี้ถูกเชื่อมกับพนักงาน ${already.code} แล้ว`);
+      userId = dto.userId;
+    } else if (dto.email && dto.password) {
+      // สร้างบัญชี login ใหม่
       const dupUser = await this.prisma.user.findUnique({ where: { email: dto.email } });
       if (dupUser) throw new BadRequestException(`อีเมล ${dto.email} ถูกใช้แล้ว`);
       const passwordHash = await argon2.hash(dto.password);
@@ -59,7 +67,7 @@ export class EmployeeService {
 
   async update(id: string, dto: UpdateEmployeeDto) {
     const emp = await this.get(id);
-    const { email, ...rest } = dto;
+    const { email, userId: linkUserId, ...rest } = dto;
 
     if (email) {
       if (!emp.userId) throw new BadRequestException('พนักงานนี้ยังไม่มีบัญชี login');
@@ -68,8 +76,28 @@ export class EmployeeService {
       await this.prisma.user.update({ where: { id: emp.userId }, data: { email } });
     }
 
-    // teamId '' -> null (ไม่สังกัดทีม)
-    const data = { ...rest, teamId: dto.teamId === '' ? null : dto.teamId };
+    // เชื่อม / ยกเลิกเชื่อม User ที่มีอยู่
+    let resolvedUserId: string | null | undefined;
+    if (linkUserId !== undefined) {
+      if (linkUserId === '' || linkUserId === null) {
+        resolvedUserId = null; // unlink
+      } else {
+        const user = await this.prisma.user.findUnique({ where: { id: linkUserId } });
+        if (!user) throw new BadRequestException('ไม่พบ User ที่ระบุ');
+        const already = await this.prisma.employee.findFirst({
+          where: { userId: linkUserId, NOT: { id } },
+        });
+        if (already) throw new BadRequestException(`User นี้ถูกเชื่อมกับพนักงาน ${already.code} แล้ว`);
+        resolvedUserId = linkUserId;
+      }
+    }
+
+    // teamId '' -> null
+    const data = {
+      ...rest,
+      teamId: dto.teamId === '' ? null : dto.teamId,
+      ...(resolvedUserId !== undefined ? { userId: resolvedUserId } : {}),
+    };
     return this.prisma.employee.update({ where: { id }, data });
   }
 }

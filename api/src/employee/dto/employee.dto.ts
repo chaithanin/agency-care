@@ -37,6 +37,11 @@ export class CreateEmployeeDto {
   @IsString()
   @MinLength(6)
   password?: string;
+
+  // หรือเชื่อมกับ User ที่มีอยู่แล้ว (ใส่ userId แทน email+password)
+  @IsOptional()
+  @IsString()
+  userId?: string;
 }
 
 export class UpdateEmployeeDto {
@@ -75,4 +80,9 @@ export class UpdateEmployeeDto {
   @IsOptional()
   @IsEmail()
   email?: string;
+
+  // เชื่อมกับ User ที่มีอยู่ ('' = ยกเลิกการเชื่อม)
+  @IsOptional()
+  @IsString()
+  userId?: string | null;
 }
