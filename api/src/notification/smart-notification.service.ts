@@ -728,6 +728,79 @@ ${rows}
   }
 
   // ============================================================
+  // Monthly 4x LINE Reminder — 1, 8, 15, 22 ของเดือน เวลา 08:45
+  // ส่งสรุปแผนงานสัปดาห์นี้ให้ Sales ทุกคน
+  // ============================================================
+
+  @Cron('45 8 1,8,15,22 * *', { timeZone: 'Asia/Bangkok' })
+  async runMonthlyLineReminder() {
+    this.logger.log('Monthly LINE Reminder: 4x/month');
+    const today = new Date();
+    const in7 = new Date(today.getTime() + 7 * 86400000);
+
+    const salesEmployees = await this.prisma.employee.findMany({
+      where: { position: 'sales', isActive: true, lineUserId: { not: null } },
+      select: { id: true, name: true, lineUserId: true },
+    });
+
+    let sent = 0;
+    for (const emp of salesEmployees) {
+      if (!emp.lineUserId || !this.line.enabled) continue;
+
+      const plans = await this.prisma.visitPlan.findMany({
+        where: {
+          employeeId: emp.id,
+          planDate: {
+            gte: new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate())),
+            lt: new Date(Date.UTC(in7.getUTCFullYear(), in7.getUTCMonth(), in7.getUTCDate())),
+          },
+          status: { in: ['pending', 'waiting_confirmation', 'confirmed'] },
+        },
+        include: { agency: { select: { name: true, zone: true } } },
+        orderBy: { planDate: 'asc' },
+      });
+
+      const overduePlans = await this.prisma.visitPlan.count({
+        where: {
+          employeeId: emp.id,
+          planDate: { lt: new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate())) },
+          status: { in: ['pending', 'waiting_confirmation', 'confirmed'] },
+        },
+      });
+
+      const dateRange = `${today.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' })} – ${in7.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' })}`;
+      const lines = plans.slice(0, 7).map((p) => `• ${p.planDate.toLocaleDateString('th-TH', { weekday: 'short', day: 'numeric', month: 'short' })} — ${p.agency.name}`);
+      const moreText = plans.length > 7 ? `\n…และอีก ${plans.length - 7} นัด` : '';
+      const overdueText = overduePlans > 0 ? `\n⚠️ มีงานค้าง ${overduePlans} รายการ` : '';
+
+      const text = [
+        `📅 แผนงานสัปดาห์นี้ (${dateRange})`,
+        `คุณ${emp.name}: มี ${plans.length} นัด`,
+        ...lines,
+        moreText,
+        overdueText,
+        ``,
+        `👉 ${APP_URL}/plans`,
+      ].filter((s) => s !== null && s !== undefined).join('\n');
+
+      const ok = await this.line.pushText(emp.lineUserId, text);
+      if (ok) sent++;
+    }
+
+    const admins = await this.prisma.user.findMany({
+      where: { role: { in: ['admin', 'super_admin'] }, isActive: true },
+      select: { employee: { select: { lineUserId: true } } },
+    });
+    const adminText = `📊 ส่ง Monthly Reminder 4x/month ให้ Sales แล้ว (${sent}/${salesEmployees.length} คน)`;
+    for (const a of admins) {
+      if (!a.employee?.lineUserId || !this.line.enabled) continue;
+      await this.line.pushText(a.employee.lineUserId, adminText);
+    }
+
+    return { sent, total: salesEmployees.length };
+  }
+
+  // ============================================================
   // Utils
   // ============================================================
 
