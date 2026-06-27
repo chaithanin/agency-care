@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { randomUUID } from 'crypto';
-import { AssignmentPlanStatus } from '@prisma/client';
+import { AssignmentPlanStatus, VisitStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { RequestUser } from '../common/current-user.decorator';
 import { ApprovePlanDto, GeneratePlanDto, SaveVersionDto, SubmitPlanDto } from './assignment-plan.dto';
@@ -258,6 +258,36 @@ export class AssignmentPlanService {
     const items = currentVersion.items;
     const agencyIds = [...new Set(items.map((i) => i.agencyId))];
 
+    // ─── คำนวณวันทำการในเดือนนั้น ──────────────────────────────────────────
+    const [yearStr, monthStr] = plan.period.split('-');
+    const y = Number(yearStr);
+    const m = Number(monthStr); // 1-indexed
+    const daysInMonth = new Date(Date.UTC(y, m, 0)).getUTCDate();
+    const workingDays: Date[] = [];
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dt = new Date(Date.UTC(y, m - 1, d));
+      const dow = dt.getUTCDay(); // 0=Sun, 6=Sat
+      if (dow !== 0 && dow !== 6) workingDays.push(dt);
+    }
+    if (workingDays.length === 0) workingDays.push(new Date(Date.UTC(y, m - 1, 1)));
+
+    // กระจาย agency ให้แต่ละเซลส์ round-robin ตามวันทำการ
+    const autoNote = `[AssignmentPlan:${planId}]`;
+    const empDayIdx = new Map<string, number>();
+    const visitPlanData = items.map((item) => {
+      const idx = empDayIdx.get(item.employeeId) ?? 0;
+      empDayIdx.set(item.employeeId, idx + 1);
+      return {
+        id: randomUUID(),
+        agencyId: item.agencyId,
+        employeeId: item.employeeId,
+        planDate: workingDays[idx % workingDays.length],
+        status: VisitStatus.pending,
+        priority: 'medium',
+        note: autoNote,
+      };
+    });
+
     await this.prisma.$transaction(async (tx) => {
       // ปิด assignment เดิมของ agency เหล่านี้
       await tx.agencyAssignment.updateMany({
@@ -287,6 +317,16 @@ export class AssignmentPlanService {
           data: { isActive: true, assignedAt: new Date() },
         });
       }
+
+      // ลบ VisitPlan เก่าที่ auto-gen จากแผนนี้ (กรณี re-publish)
+      await tx.visitPlan.deleteMany({
+        where: { note: { contains: autoNote }, status: 'pending' },
+      });
+      // สร้าง VisitPlan ใหม่จากแผน
+      if (visitPlanData.length > 0) {
+        await tx.visitPlan.createMany({ data: visitPlanData });
+      }
+
       // update plan status
       await tx.assignmentPlan.update({
         where: { id: planId },
@@ -294,7 +334,7 @@ export class AssignmentPlanService {
       });
     });
 
-    return { published: true, applied: items.length };
+    return { published: true, applied: items.length, visitPlansCreated: visitPlanData.length };
   }
 
   // ─── Rollback ไป version เก่า (สร้าง version ใหม่จาก version นั้น) ──────
