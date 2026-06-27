@@ -3,6 +3,7 @@ import { Cron } from '@nestjs/schedule';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { LineService } from './line.service';
+import { NotificationService } from './notification.service';
 import { randomUUID } from 'crypto';
 
 const APP_URL = process.env.APP_URL ?? 'https://agency-care-1027220843311.asia-east2.run.app';
@@ -17,6 +18,7 @@ export class SmartNotificationService {
     private prisma: PrismaService,
     private config: ConfigService,
     private line: LineService,
+    private notif: NotificationService,
   ) {}
 
   // ============================================================
@@ -663,6 +665,66 @@ export class SmartNotificationService {
     }
 
     return { alerted: byEmp.size };
+  }
+
+  // ============================================================
+  // 7-Day Email Alert — แจ้ง manager ทาง Email รายสัปดาห์ (ทุกวันจันทร์ 09:05)
+  // ============================================================
+
+  @Cron('5 9 * * 1', { timeZone: 'Asia/Bangkok' })
+  async runWeeklyEmailAlert() {
+    const sevenDaysAgo = new Date(Date.now() - 7 * 86400000);
+    const overduePlans = await this.prisma.visitPlan.findMany({
+      where: {
+        status: { in: ['pending', 'waiting_confirmation', 'confirmed'] },
+        planDate: { lte: sevenDaysAgo },
+      },
+      include: {
+        employee: { select: { id: true, name: true, code: true } },
+        agency: { select: { name: true, code: true, zone: true } },
+      },
+    });
+
+    if (overduePlans.length === 0) return { emailSent: 0 };
+
+    const byEmp = new Map<string, { name: string; code: string; plans: typeof overduePlans }>();
+    for (const plan of overduePlans) {
+      const key = plan.employeeId;
+      if (!byEmp.has(key)) byEmp.set(key, { name: plan.employee.name, code: plan.employee.code, plans: [] });
+      byEmp.get(key)!.plans.push(plan);
+    }
+
+    const dateLabel = new Date().toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' });
+    const rows = [...byEmp.values()].map(({ name, code, plans }) =>
+      `<tr><td>${code} ${name}</td><td align="center">${plans.length}</td><td>${plans.slice(0, 3).map((p) => `${p.agency.code} ${p.agency.name}`).join(', ')}${plans.length > 3 ? ` +${plans.length - 3}` : ''}</td></tr>`
+    ).join('');
+
+    const html = `<h2>รายงานแผนงานค้างเกิน 7 วัน — ${dateLabel}</h2>
+<p>พบแผนงานที่ยังไม่ดำเนินการทั้งหมด <b>${overduePlans.length}</b> รายการ จาก <b>${byEmp.size}</b> เซลส์</p>
+<table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse;width:100%">
+<tr style="background:#f5f5f5"><th>เซลส์</th><th>จำนวนงานค้าง</th><th>ตัวอย่าง Agency</th></tr>
+${rows}
+</table>
+<p><a href="${APP_URL}/plans">ดูรายละเอียดเพิ่มเติม</a></p>`;
+
+    const adminEmail = this.config.get<string>('ADMIN_EMAIL');
+    const adminUsers = await this.prisma.user.findMany({
+      where: { role: { in: ['admin', 'super_admin', 'closer'] }, isActive: true },
+      select: { email: true },
+    });
+    const emails = adminEmail
+      ? adminEmail.split(',').map((e) => e.trim())
+      : adminUsers.map((u) => u.email);
+
+    let sent = 0;
+    for (const to of emails) {
+      try {
+        if (await this.notif.sendEmail(to, `⚠️ รายงานแผนงานค้าง ${overduePlans.length} รายการ — ${dateLabel}`, html)) {
+          sent++;
+        }
+      } catch (e) { this.logger.warn(`7-day email to ${to}: ${(e as Error).message}`); }
+    }
+    return { emailSent: sent, plans: overduePlans.length };
   }
 
   // ============================================================
