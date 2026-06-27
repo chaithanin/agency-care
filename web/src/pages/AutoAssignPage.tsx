@@ -66,6 +66,10 @@ export default function AutoAssignPage() {
   const [history, setHistory] = useState<AssignmentHistory[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historySearch, setHistorySearch] = useState('');
+  const [yearlyYear, setYearlyYear] = useState(() => String(new Date().getFullYear() + 1));
+  const [yearlyLoading, setYearlyLoading] = useState(false);
+  const [yearlyMsg, setYearlyMsg] = useState('');
+  const [yearlyErr, setYearlyErr] = useState('');
   const pdfRef = useRef<HTMLDivElement>(null);
 
   const loadHistory = () => {
@@ -73,6 +77,15 @@ export default function AutoAssignPage() {
     api.get('/auto-assign/history', { params: { limit: 300 } })
       .then((r) => setHistory(r.data.assignments ?? []))
       .finally(() => setHistoryLoading(false));
+  };
+
+  const generateYearly = async () => {
+    setYearlyLoading(true); setYearlyMsg(''); setYearlyErr('');
+    try {
+      const { data } = await api.post('/auto-assign/yearly-plans', { year: Number(yearlyYear) });
+      setYearlyMsg(`สร้างแผนสำเร็จ ${data.plansCreated} รายการ จาก ${data.agenciesProcessed} Agency สำหรับปี ${data.year}`);
+    } catch (e) { setYearlyErr(errMsg(e)); }
+    setYearlyLoading(false);
   };
 
   useEffect(() => {
@@ -156,6 +169,7 @@ export default function AutoAssignPage() {
       <Tabs value={activeTab} onChange={(_, v) => setActiveTab(v)} sx={{ mb: 2 }}>
         <Tab label={t('aa.propose')} />
         <Tab label="ประวัติการมอบหมาย" />
+        <Tab label="แผนเยี่ยมรายปี" />
       </Tabs>
 
       {activeTab === 0 && (
@@ -325,6 +339,31 @@ export default function AutoAssignPage() {
               </TableBody>
             </Table>
           </Paper>
+        </Box>
+      )}
+
+      {/* Yearly Plans Tab */}
+      {activeTab === 2 && (
+        <Box>
+          <Alert severity="info" sx={{ mb: 2 }}>
+            สร้างแผนเยี่ยมรายปีตามระดับ Agency: <b>Platinum</b>=12ครั้ง, <b>Gold</b>=6ครั้ง, <b>Silver/Bronze</b>=4ครั้ง, <b>Standard</b>=2ครั้ง
+            — กระจายสม่ำเสมอตลอดปี ข้ามวันอาทิตย์อัตโนมัติ
+          </Alert>
+          <Stack direction="row" spacing={2} alignItems="center" mb={2}>
+            <TextField
+              label="ปี (ค.ศ.)"
+              type="number"
+              size="small"
+              value={yearlyYear}
+              onChange={(e) => setYearlyYear(e.target.value)}
+              sx={{ width: 120 }}
+            />
+            <Button variant="contained" onClick={generateYearly} disabled={yearlyLoading || !yearlyYear}>
+              {yearlyLoading ? 'กำลังสร้าง…' : `สร้างแผนปี ${yearlyYear}`}
+            </Button>
+          </Stack>
+          {yearlyMsg && <Alert severity="success" sx={{ mb: 2 }}>{yearlyMsg}</Alert>}
+          {yearlyErr && <Alert severity="error" sx={{ mb: 2 }}>{yearlyErr}</Alert>}
         </Box>
       )}
     </Box>

@@ -127,4 +127,59 @@ export class AutoAssignService {
     });
     return { assignments };
   }
+
+  // ── สร้างแผนเยี่ยมรายปี (Yearly Visit Plan Generator) ──────────────────
+  // agencyTier → frequency/year: platinum=12, gold=6, silver=4, bronze=2, standard=2
+  async generateYearlyPlans(year: number) {
+    const FREQ: Record<string, number> = { platinum: 12, gold: 6, silver: 4, bronze: 2, standard: 2 };
+
+    const assignments = await this.prisma.agencyAssignment.findMany({
+      where: { isActive: true },
+      include: {
+        agency: { select: { id: true, code: true, name: true, tier: true } },
+        employee: { select: { id: true, name: true } },
+      },
+    });
+
+    const planData: { agencyId: string; employeeId: string; planDate: Date; actionType: string; note: string }[] = [];
+
+    for (const asgn of assignments) {
+      const freq = FREQ[asgn.agency.tier ?? 'standard'] ?? 2;
+      const intervalDays = Math.floor(365 / freq);
+
+      for (let i = 0; i < freq; i++) {
+        const dayOfYear = Math.round(i * intervalDays + intervalDays / 2);
+        const d = new Date(Date.UTC(year, 0, 1 + dayOfYear));
+        // Skip Sundays (0)
+        if (d.getUTCDay() === 0) d.setUTCDate(d.getUTCDate() + 1);
+        planData.push({
+          agencyId: asgn.agency.id,
+          employeeId: asgn.employeeId,
+          planDate: d,
+          actionType: 'visit',
+          note: `[Yearly ${year}] เยี่ยมครั้งที่ ${i + 1}/${freq}`,
+        });
+      }
+    }
+
+    const result = await this.prisma.visitPlan.createMany({
+      data: planData.map((p) => ({
+        agencyId: p.agencyId,
+        employeeId: p.employeeId,
+        planDate: p.planDate,
+        actionType: p.actionType,
+        note: p.note,
+        isRecurring: true,
+        priority: 'medium',
+        status: 'pending',
+      })),
+      skipDuplicates: true,
+    });
+
+    return {
+      year,
+      agenciesProcessed: assignments.length,
+      plansCreated: result.count,
+    };
+  }
 }

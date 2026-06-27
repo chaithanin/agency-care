@@ -21,4 +21,11 @@ export class AutoAssignController {
   history(@Query('limit') limit?: string) {
     return this.service.history(limit ? parseInt(limit, 10) : 100);
   }
+
+  @Roles('admin')
+  @Post('yearly-plans')
+  generateYearlyPlans(@Body() body: { year?: number }) {
+    const year = body.year ?? new Date().getUTCFullYear() + 1;
+    return this.service.generateYearlyPlans(year);
+  }
 }
