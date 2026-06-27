@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle,
-  FormControlLabel, IconButton, InputAdornment, Link, Paper, Stack,
+  Box, Button, Checkbox, Chip, Dialog, DialogActions, DialogContent, DialogTitle,
+  Divider, FormControlLabel, IconButton, InputAdornment, Link, Paper, Stack,
   Switch, Table, TableBody, TableCell, TableHead, TableRow, TextField,
   Tooltip, Typography, Alert,
 } from '@mui/material';
@@ -9,8 +9,209 @@ import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import LaunchIcon from '@mui/icons-material/Launch';
 import SearchIcon from '@mui/icons-material/Search';
+import PrintIcon from '@mui/icons-material/Print';
+import RequestQuoteIcon from '@mui/icons-material/RequestQuote';
 import { api, errMsg } from '../api/client';
 import { useT } from '../i18n';
+
+interface QuoteLine { product: Product; qty: number; unitPrice: number; }
+
+function QuotationDialog({ open, onClose, products }: { open: boolean; onClose: () => void; products: Product[] }) {
+  const printRef = useRef<HTMLDivElement>(null);
+  const [customerName, setCustomerName] = useState('');
+  const [customerTel, setCustomerTel] = useState('');
+  const [note, setNote] = useState('');
+  const [lines, setLines] = useState<QuoteLine[]>([]);
+  const [quoteNo] = useState(() => `QT-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${Math.floor(Math.random() * 9000) + 1000}`);
+
+  const toggleProduct = (p: Product) => {
+    setLines((prev) => {
+      const idx = prev.findIndex((l) => l.product.id === p.id);
+      if (idx >= 0) return prev.filter((_, i) => i !== idx);
+      return [...prev, { product: p, qty: 1, unitPrice: p.price }];
+    });
+  };
+  const setQty = (id: string, qty: number) => setLines((prev) => prev.map((l) => l.product.id === id ? { ...l, qty } : l));
+  const setUnitPrice = (id: string, v: number) => setLines((prev) => prev.map((l) => l.product.id === id ? { ...l, unitPrice: v } : l));
+
+  const subtotal = lines.reduce((s, l) => s + l.qty * l.unitPrice, 0);
+  const vat = Math.round(subtotal * 0.07);
+  const total = subtotal + vat;
+
+  const doPrint = () => {
+    if (!printRef.current) return;
+    const w = window.open('', '_blank');
+    if (!w) return;
+    w.document.write(`<html><head><title>ใบเสนอราคา</title><style>
+      body{font-family:sans-serif;margin:24px;font-size:13px}
+      table{width:100%;border-collapse:collapse}
+      th,td{border:1px solid #ccc;padding:6px 8px}
+      th{background:#f5f5f5}
+      .right{text-align:right}.center{text-align:center}
+      @media print{button{display:none}}
+    </style></head><body>${printRef.current.innerHTML}</body></html>`);
+    w.document.close();
+    w.print();
+  };
+
+  const today = new Date().toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' });
+
+  return (
+    <Dialog open={open} onClose={onClose} fullWidth maxWidth="md">
+      <DialogTitle>
+        <Stack direction="row" justifyContent="space-between" alignItems="center">
+          <span>สร้างใบเสนอราคา</span>
+          <Button size="small" variant="outlined" startIcon={<PrintIcon />} onClick={doPrint} disabled={lines.length === 0}>
+            พิมพ์
+          </Button>
+        </Stack>
+      </DialogTitle>
+      <DialogContent>
+        <Stack direction="row" spacing={2} mb={2} mt={1} flexWrap="wrap" useFlexGap>
+          <TextField size="small" label="ชื่อลูกค้า / Agency" value={customerName} onChange={(e) => setCustomerName(e.target.value)} sx={{ flex: 2, minWidth: 200 }} />
+          <TextField size="small" label="เบอร์โทรศัพท์" value={customerTel} onChange={(e) => setCustomerTel(e.target.value)} sx={{ flex: 1, minWidth: 150 }} />
+        </Stack>
+
+        <Typography variant="subtitle2" fontWeight={700} mb={1}>เลือกสินค้า/โครงการ</Typography>
+        <Paper variant="outlined" sx={{ mb: 2, maxHeight: 220, overflowY: 'auto' }}>
+          <Table size="small">
+            <TableBody>
+              {products.filter((p) => p.isActive).map((p) => {
+                const sel = lines.find((l) => l.product.id === p.id);
+                return (
+                  <TableRow key={p.id} hover selected={!!sel} onClick={() => toggleProduct(p)} sx={{ cursor: 'pointer' }}>
+                    <TableCell padding="checkbox"><Checkbox size="small" checked={!!sel} /></TableCell>
+                    <TableCell>{p.code}</TableCell>
+                    <TableCell>{p.name}</TableCell>
+                    <TableCell align="right">{p.price.toLocaleString()}</TableCell>
+                    <TableCell>{p.unit ?? '-'}</TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </Paper>
+
+        {lines.length > 0 && (
+          <>
+            <Typography variant="subtitle2" fontWeight={700} mb={1}>รายการในใบเสนอราคา</Typography>
+            <Table size="small" sx={{ mb: 2 }}>
+              <TableHead>
+                <TableRow>
+                  <TableCell>สินค้า/โครงการ</TableCell>
+                  <TableCell align="center" sx={{ width: 80 }}>จำนวน</TableCell>
+                  <TableCell align="right" sx={{ width: 130 }}>ราคาต่อหน่วย</TableCell>
+                  <TableCell align="right" sx={{ width: 120 }}>รวม</TableCell>
+                  <TableCell sx={{ width: 40 }} />
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {lines.map((l) => (
+                  <TableRow key={l.product.id}>
+                    <TableCell>{l.product.name}</TableCell>
+                    <TableCell align="center">
+                      <TextField size="small" type="number" value={l.qty} onChange={(e) => setQty(l.product.id, Number(e.target.value))}
+                        inputProps={{ min: 1, style: { textAlign: 'center' } }} sx={{ width: 70 }} onClick={(e) => e.stopPropagation()} />
+                    </TableCell>
+                    <TableCell align="right">
+                      <TextField size="small" type="number" value={l.unitPrice} onChange={(e) => setUnitPrice(l.product.id, Number(e.target.value))}
+                        inputProps={{ style: { textAlign: 'right' } }} sx={{ width: 120 }} onClick={(e) => e.stopPropagation()} />
+                    </TableCell>
+                    <TableCell align="right">{(l.qty * l.unitPrice).toLocaleString()}</TableCell>
+                    <TableCell>
+                      <IconButton size="small" onClick={(e) => { e.stopPropagation(); toggleProduct(l.product); }}><DeleteIcon fontSize="small" /></IconButton>
+                    </TableCell>
+                  </TableRow>
+                ))}
+                <TableRow>
+                  <TableCell colSpan={3} align="right" sx={{ fontWeight: 600 }}>ราคารวม (ก่อน VAT)</TableCell>
+                  <TableCell align="right">{subtotal.toLocaleString()}</TableCell>
+                  <TableCell />
+                </TableRow>
+                <TableRow>
+                  <TableCell colSpan={3} align="right">VAT 7%</TableCell>
+                  <TableCell align="right">{vat.toLocaleString()}</TableCell>
+                  <TableCell />
+                </TableRow>
+                <TableRow>
+                  <TableCell colSpan={3} align="right" sx={{ fontWeight: 700, fontSize: '1rem' }}>ยอดรวมทั้งสิ้น</TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 700, fontSize: '1rem', color: 'primary.main' }}>{total.toLocaleString()}</TableCell>
+                  <TableCell />
+                </TableRow>
+              </TableBody>
+            </Table>
+          </>
+        )}
+
+        <TextField size="small" label="หมายเหตุ" value={note} onChange={(e) => setNote(e.target.value)}
+          fullWidth multiline minRows={2} placeholder="เงื่อนไขการชำระเงิน, ระยะเวลาดำเนินการ..." />
+
+        {/* Hidden print area */}
+        <Box ref={printRef} sx={{ display: 'none' }}>
+          <div style={{ padding: '20px' }}>
+            <table style={{ width: '100%', marginBottom: 16 }}>
+              <tbody>
+                <tr>
+                  <td><h2 style={{ margin: 0 }}>ใบเสนอราคา (Quotation)</h2></td>
+                  <td style={{ textAlign: 'right', verticalAlign: 'top' }}>
+                    <div><b>เลขที่:</b> {quoteNo}</div>
+                    <div><b>วันที่:</b> {today}</div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+            <div style={{ marginBottom: 12 }}>
+              <div><b>เสนอให้:</b> {customerName || '-'}</div>
+              <div><b>โทร:</b> {customerTel || '-'}</div>
+            </div>
+            <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 12 }}>
+              <thead>
+                <tr>
+                  <th style={{ border: '1px solid #ccc', padding: '6px 8px', background: '#f5f5f5' }}>ลำดับ</th>
+                  <th style={{ border: '1px solid #ccc', padding: '6px 8px', background: '#f5f5f5' }}>สินค้า/โครงการ</th>
+                  <th style={{ border: '1px solid #ccc', padding: '6px 8px', background: '#f5f5f5', textAlign: 'center' }}>จำนวน</th>
+                  <th style={{ border: '1px solid #ccc', padding: '6px 8px', background: '#f5f5f5', textAlign: 'right' }}>ราคาต่อหน่วย</th>
+                  <th style={{ border: '1px solid #ccc', padding: '6px 8px', background: '#f5f5f5', textAlign: 'right' }}>จำนวนเงิน</th>
+                </tr>
+              </thead>
+              <tbody>
+                {lines.map((l, i) => (
+                  <tr key={l.product.id}>
+                    <td style={{ border: '1px solid #ccc', padding: '6px 8px', textAlign: 'center' }}>{i + 1}</td>
+                    <td style={{ border: '1px solid #ccc', padding: '6px 8px' }}>{l.product.name}{l.product.unit ? ` (${l.product.unit})` : ''}</td>
+                    <td style={{ border: '1px solid #ccc', padding: '6px 8px', textAlign: 'center' }}>{l.qty}</td>
+                    <td style={{ border: '1px solid #ccc', padding: '6px 8px', textAlign: 'right' }}>{l.unitPrice.toLocaleString()}</td>
+                    <td style={{ border: '1px solid #ccc', padding: '6px 8px', textAlign: 'right' }}>{(l.qty * l.unitPrice).toLocaleString()}</td>
+                  </tr>
+                ))}
+                <tr>
+                  <td colSpan={4} style={{ border: '1px solid #ccc', padding: '6px 8px', textAlign: 'right' }}>ราคารวมก่อน VAT</td>
+                  <td style={{ border: '1px solid #ccc', padding: '6px 8px', textAlign: 'right' }}>{subtotal.toLocaleString()}</td>
+                </tr>
+                <tr>
+                  <td colSpan={4} style={{ border: '1px solid #ccc', padding: '6px 8px', textAlign: 'right' }}>VAT 7%</td>
+                  <td style={{ border: '1px solid #ccc', padding: '6px 8px', textAlign: 'right' }}>{vat.toLocaleString()}</td>
+                </tr>
+                <tr>
+                  <td colSpan={4} style={{ border: '1px solid #ccc', padding: '6px 8px', textAlign: 'right', fontWeight: 'bold' }}>ยอดรวมทั้งสิ้น</td>
+                  <td style={{ border: '1px solid #ccc', padding: '6px 8px', textAlign: 'right', fontWeight: 'bold' }}>{total.toLocaleString()} บาท</td>
+                </tr>
+              </tbody>
+            </table>
+            {note && <div style={{ marginBottom: 8 }}><b>หมายเหตุ:</b> {note}</div>}
+            <div style={{ marginTop: 40, display: 'flex', justifyContent: 'space-between' }}>
+              <div style={{ textAlign: 'center' }}><div style={{ borderTop: '1px solid #333', width: 160, margin: '0 auto' }}></div><div style={{ marginTop: 4 }}>ผู้เสนอราคา</div></div>
+              <div style={{ textAlign: 'center' }}><div style={{ borderTop: '1px solid #333', width: 160, margin: '0 auto' }}></div><div style={{ marginTop: 4 }}>ผู้อนุมัติ / ผู้มีอำนาจ</div></div>
+            </div>
+          </div>
+        </Box>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={onClose}>ปิด</Button>
+      </DialogActions>
+    </Dialog>
+  );
+}
 
 interface Product {
   id: string;
@@ -32,6 +233,7 @@ export default function ProductsPage() {
   const [rows, setRows] = useState<Product[]>([]);
   const [searchQ, setSearchQ] = useState('');
   const [open, setOpen] = useState(false);
+  const [quoteOpen, setQuoteOpen] = useState(false);
   const [form, setForm] = useState({ ...emptyForm });
   const [formError, setFormError] = useState('');
   const [editId, setEditId] = useState('');
@@ -128,6 +330,7 @@ export default function ProductsPage() {
             onChange={(e) => setSearchQ(e.target.value)}
             InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment> }}
             sx={{ width: 220 }} />
+          <Button variant="outlined" startIcon={<RequestQuoteIcon />} onClick={() => setQuoteOpen(true)}>ใบเสนอราคา</Button>
           <Button variant="contained" onClick={() => setOpen(true)}>{t('pr.add')}</Button>
         </Stack>
       </Stack>
@@ -201,6 +404,9 @@ export default function ProductsPage() {
           <Button variant="contained" onClick={save}>{t('common.save')}</Button>
         </DialogActions>
       </Dialog>
+
+      {/* Quotation dialog */}
+      <QuotationDialog open={quoteOpen} onClose={() => setQuoteOpen(false)} products={rows} />
 
       {/* Edit dialog */}
       <Dialog open={editOpen} onClose={() => setEditOpen(false)} fullWidth maxWidth="sm">
