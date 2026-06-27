@@ -39,6 +39,7 @@ import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import DirectionsWalkIcon from '@mui/icons-material/DirectionsWalk';
 import ArticleOutlinedIcon from '@mui/icons-material/ArticleOutlined';
 import MonetizationOnIcon from '@mui/icons-material/MonetizationOn';
+import UploadFileIcon from '@mui/icons-material/UploadFile';
 import { api, errMsg } from '../api/client';
 import { useT } from '../i18n';
 
@@ -448,6 +449,45 @@ export default function AgenciesPage() {
   };
   // ──────────────────────────────────────────────────────────────────────────
 
+  // ── CSV / Excel Import ───────────────────────────────────────────────────
+  const [importOpen, setImportOpen] = useState(false);
+  const [importRows, setImportRows] = useState<Record<string, string>[]>([]);
+  const [importLoading, setImportLoading] = useState(false);
+  const [importMsg, setImportMsg] = useState('');
+  const [importErr, setImportErr] = useState('');
+
+  const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setImportErr(''); setImportMsg(''); setImportRows([]);
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const text = ev.target?.result as string;
+      const lines = text.replace(/\r/g, '').split('\n').filter(Boolean);
+      if (lines.length < 2) { setImportErr('ไฟล์ว่างหรือไม่มี header'); return; }
+      const headers = lines[0].split(',').map((h) => h.trim().replace(/^"(.*)"$/, '$1'));
+      const parsed = lines.slice(1).map((line) => {
+        const cols = line.split(',').map((c) => c.trim().replace(/^"(.*)"$/, '$1'));
+        return Object.fromEntries(headers.map((h, i) => [h, cols[i] ?? '']));
+      }).filter((row) => Object.values(row).some((v) => v));
+      setImportRows(parsed);
+    };
+    reader.readAsText(file, 'UTF-8');
+    e.target.value = '';
+  };
+
+  const doImport = async () => {
+    if (!importRows.length) return;
+    setImportLoading(true); setImportErr(''); setImportMsg('');
+    try {
+      const { data } = await api.post('/agencies/bulk-import', { rows: importRows });
+      setImportMsg(`นำเข้าสำเร็จ ${data.created} รายการ${data.skipped ? ` · ข้าม ${data.skipped}` : ''}`);
+      load();
+    } catch (e) { setImportErr(errMsg(e)); }
+    setImportLoading(false);
+  };
+  // ──────────────────────────────────────────────────────────────────────────
+
   const load = () => api.get('/agencies').then((r) => setRows(r.data));
   useEffect(() => {
     load();
@@ -521,6 +561,9 @@ export default function AgenciesPage() {
         <Stack direction="row" spacing={1}>
           <Button variant="outlined" onClick={runGeocode} disabled={geocoding}>
             {geocoding ? t('ag.geocoding') : t('ag.geocode')}
+          </Button>
+          <Button variant="outlined" startIcon={<UploadFileIcon />} onClick={() => { setImportMsg(''); setImportErr(''); setImportRows([]); setImportOpen(true); }}>
+            นำเข้า CSV
           </Button>
           <Button variant="contained" onClick={openCreate}>{t('ag.add')}</Button>
         </Stack>
@@ -870,6 +913,63 @@ export default function AgenciesPage() {
           onClose={() => { setCommissionFor(null); load(); }}
         />
       )}
+      {/* ─── CSV Import ─── */}
+      <Dialog open={importOpen} onClose={() => setImportOpen(false)} maxWidth="md" fullWidth>
+        <DialogTitle>นำเข้า Agency จาก CSV</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} mt={1}>
+            <Alert severity="info" sx={{ py: 0.5 }}>
+              ไฟล์ CSV ต้องมี header row: <b>code, name, zone, province, address, phone, email, ownerName, managerName, level, source</b> (ข้ามฟิลด์ที่ไม่มีได้)
+            </Alert>
+            <Button component="label" variant="outlined" startIcon={<UploadFileIcon />} sx={{ alignSelf: 'flex-start' }}>
+              เลือกไฟล์ CSV
+              <input type="file" accept=".csv,text/csv" hidden onChange={handleImportFile} />
+            </Button>
+            {importRows.length > 0 && (
+              <Alert severity="success" sx={{ py: 0.5 }}>
+                พบข้อมูล <b>{importRows.length}</b> รายการ พร้อมนำเข้า
+              </Alert>
+            )}
+            {importMsg && <Alert severity="success" sx={{ py: 0.5 }}>{importMsg}</Alert>}
+            {importErr && <Alert severity="error" sx={{ py: 0.5 }}>{importErr}</Alert>}
+            {importRows.length > 0 && (
+              <Box sx={{ maxHeight: 260, overflow: 'auto' }}>
+                <Table size="small" stickyHeader>
+                  <TableHead>
+                    <TableRow>
+                      {Object.keys(importRows[0]).slice(0, 6).map((h) => (
+                        <TableCell key={h} sx={{ fontWeight: 700 }}>{h}</TableCell>
+                      ))}
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {importRows.slice(0, 5).map((row, i) => (
+                      <TableRow key={i}>
+                        {Object.values(row).slice(0, 6).map((v, j) => (
+                          <TableCell key={j} sx={{ maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v}</TableCell>
+                        ))}
+                      </TableRow>
+                    ))}
+                    {importRows.length > 5 && (
+                      <TableRow>
+                        <TableCell colSpan={6} sx={{ color: 'text.secondary', fontStyle: 'italic' }}>
+                          … และอีก {importRows.length - 5} รายการ
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </Box>
+            )}
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setImportOpen(false)}>ปิด</Button>
+          <Button variant="contained" disabled={!importRows.length || importLoading} onClick={doImport}>
+            {importLoading ? 'กำลังนำเข้า…' : `นำเข้า ${importRows.length} รายการ`}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }
