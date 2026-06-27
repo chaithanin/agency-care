@@ -511,4 +511,37 @@ export class AgencyService {
       where: { id: commissionId, agencyId },
     });
   }
+
+  // ── Stop/Resume Automation ────────────────────────────────────────────────
+  async toggleAutomation(id: string) {
+    const agency = await this.prisma.agency.findUnique({ where: { id }, select: { automationPaused: true, name: true } });
+    if (!agency) throw new NotFoundException('Agency not found');
+    const next = !agency.automationPaused;
+    await this.prisma.agency.update({ where: { id }, data: { automationPaused: next } });
+    return { id, automationPaused: next, message: next ? `หยุด Automation สำหรับ ${agency.name} แล้ว` : `เปิด Automation สำหรับ ${agency.name} แล้ว` };
+  }
+
+  // ── Send Welcome Email (called from approveAgency) ────────────────────────
+  async sendWelcomeEmail(agency: { name: string; email: string | null; code: string }, assigneeName: string, notifService?: { sendEmail: (to: string, subject: string, html: string) => Promise<boolean> }) {
+    if (!agency.email || !notifService) return false;
+    const appUrl = process.env.APP_URL ?? 'https://agency.chaithanin.com';
+    const html = `
+<h2>ยินดีต้อนรับสู่ Chaithanin Agency Network!</h2>
+<p>เรียน ทีมงาน ${agency.name},</p>
+<p>ยินดีต้อนรับสู่โครงการ Chaithanin! ทางทีมของเราได้อนุมัติการเป็น Agency Partner เรียบร้อยแล้ว</p>
+<h3>ข้อมูลสำหรับเข้าระบบ</h3>
+<ul>
+  <li><b>รหัส Agency:</b> ${agency.code}</li>
+  <li><b>ลิงก์ดู Price List & ขอใบเสนอราคา:</b> <a href="${appUrl}/products">${appUrl}/products</a></li>
+</ul>
+<h3>ขั้นตอนถัดไป</h3>
+<ol>
+  <li>ดาวน์โหลดแคตตาล็อกและข้อมูลโครงการได้ที่ลิงก์ด้านบน</li>
+  <li>ทีม Seller ของเราจะติดต่อนัดหมาย Orientation ภายใน 7 วัน</li>
+  <li>รับสื่อการตลาด (POSM) พร้อมเริ่มแนะนำลูกค้า</li>
+</ol>
+<p>หากมีข้อสงสัยติดต่อ Seller ของท่าน: <b>${assigneeName}</b></p>
+<p>ขอบคุณที่ร่วมเป็นส่วนหนึ่งของครอบครัว Chaithanin 🙏</p>`;
+    return notifService.sendEmail(agency.email, `ยินดีต้อนรับ ${agency.name} สู่ Chaithanin Agency Network!`, html);
+  }
 }

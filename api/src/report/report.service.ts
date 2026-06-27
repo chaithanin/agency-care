@@ -483,4 +483,113 @@ export class ReportService {
 
     return { from, to, rows };
   }
+
+  // ── Report 6: Seller Performance Dashboard ────────────────────────────────
+  async sellerPerformanceDashboard(from: string, to: string, visitTarget = 2, ohTarget = 2, callTarget = 7) {
+    const gte = new Date(from);
+    const lte = new Date(to);
+
+    // All sales employees
+    const salesEmployees = await this.prisma.employee.findMany({
+      where: { position: 'sales', isActive: true },
+      select: { id: true, code: true, name: true },
+      orderBy: { name: 'asc' },
+    });
+
+    // All visit plans in period
+    const plans = await this.prisma.visitPlan.findMany({
+      where: { planDate: { gte, lte } },
+      include: {
+        employee: { select: { id: true } },
+        agency: { select: { id: true, name: true } },
+        report: { select: { visitType: true, newLeads: true } },
+      },
+    });
+
+    // Tasks completed in period for call/orientation/customer/holding
+    const tasks = await this.prisma.task.findMany({
+      where: {
+        status: 'done',
+        doneAt: { gte, lte },
+        tag: { in: ['call', 'orientation', 'customer', 'followup_hold'] },
+      },
+      select: { assignedToId: true, tag: true },
+    });
+
+    // Agency commission (deal values)
+    const commissions = await this.prisma.agencyCommission.findMany({
+      where: { periodDate: { gte, lte } },
+      include: { agency: { select: { id: true, name: true, assignments: { select: { employeeId: true, isActive: true } } } } },
+    });
+
+    // Total agencies count
+    const totalAgencies = await this.prisma.agency.count({ where: { status: 'active' } });
+
+    // Build per-seller maps
+    const sellerMap = new Map<string, {
+      id: string; code: string; name: string;
+      visits: number; ohCount: number; calls: number; orientation: number; customer: number; holding: number;
+      deals: number; dealValue: number; leads: number;
+      agenciesBrought: string[];
+    }>(
+      salesEmployees.map((e) => [e.id, {
+        id: e.id, code: e.code, name: e.name,
+        visits: 0, ohCount: 0, calls: 0, orientation: 0, customer: 0, holding: 0,
+        deals: 0, dealValue: 0, leads: 0, agenciesBrought: [],
+      }])
+    );
+
+    for (const p of plans) {
+      const s = sellerMap.get(p.employeeId);
+      if (!s) continue;
+      if (p.status === 'done') s.visits++;
+      if (p.report?.visitType === 'agency_brings_client') {
+        s.ohCount++;
+        if (!s.agenciesBrought.includes(p.agency.name)) s.agenciesBrought.push(p.agency.name);
+      }
+      s.leads += p.report?.newLeads ?? 0;
+    }
+
+    for (const tk of tasks) {
+      const s = sellerMap.get(tk.assignedToId);
+      if (!s) continue;
+      if (tk.tag === 'call') s.calls++;
+      else if (tk.tag === 'orientation') s.orientation++;
+      else if (tk.tag === 'customer') s.customer++;
+      else if (tk.tag === 'followup_hold') s.holding++;
+    }
+
+    let totalDealValue = 0;
+    let totalDeals = 0;
+    for (const c of commissions) {
+      const assignedEmpId = c.agency.assignments.find((a) => a.isActive)?.employeeId;
+      if (assignedEmpId) {
+        const s = sellerMap.get(assignedEmpId);
+        if (s) {
+          s.dealValue += Number(c.amount);
+          if (c.type === 'commission') s.deals++;
+        }
+      }
+      totalDealValue += Number(c.amount);
+      if (c.type === 'commission') totalDeals++;
+    }
+
+    const sellers = [...sellerMap.values()].map((s) => {
+      const visitAch = visitTarget > 0 ? Math.round((s.visits / visitTarget) * 100) : 0;
+      const ohAch = ohTarget > 0 ? Math.round((s.ohCount / ohTarget) * 100) : 0;
+      const status = visitAch >= 100 && ohAch >= 100 ? 'Met' : visitAch >= 50 || ohAch >= 50 ? 'Partial' : 'Missed';
+      const perfScore = Math.round((visitAch + ohAch) / 200 * 100) / 100;
+      return { ...s, visitTarget, ohTarget, callTarget, visitAch, ohAch, status, perfScore };
+    });
+
+    const grandVisits = sellers.reduce((s, r) => s + r.visits, 0);
+    const grandOh = sellers.reduce((s, r) => s + r.ohCount, 0);
+    const grandCalls = sellers.reduce((s, r) => s + r.calls, 0);
+
+    return {
+      from, to,
+      sellers: sellers.sort((a, b) => b.perfScore - a.perfScore),
+      totals: { totalAgencies, totalDeals, totalDealValue, grandVisits, grandOh, grandCalls },
+    };
+  }
 }

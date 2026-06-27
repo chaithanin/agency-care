@@ -70,6 +70,7 @@ interface Agency {
   geocodeSource?: string | null;
   tier?: string;
   pipelineStage?: string;
+  automationPaused?: boolean;
   assignments: { employee: { id: string; name: string; code: string } }[];
   lastVisitDate?: string | null;
   completedVisits?: number;
@@ -763,6 +764,19 @@ export default function AgenciesPage() {
                       <Button size="small" onClick={() => { setAssignFor(a); setAssignEmp(''); }}>
                         {t('ag.addSeller')}
                       </Button>
+                      <Tooltip title={a.automationPaused ? 'เปิด Automation' : 'หยุด Automation'}>
+                        <Chip
+                          size="small"
+                          label={a.automationPaused ? '⏸ Paused' : '▶ Auto'}
+                          color={a.automationPaused ? 'default' : 'primary'}
+                          variant={a.automationPaused ? 'outlined' : 'filled'}
+                          onClick={async () => {
+                            await api.patch(`/agencies/${a.id}/toggle-automation`);
+                            load();
+                          }}
+                          sx={{ cursor: 'pointer' }}
+                        />
+                      </Tooltip>
                     </Stack>
                   </TableCell>
                 </TableRow>

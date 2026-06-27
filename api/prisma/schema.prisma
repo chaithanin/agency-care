@@ -298,6 +298,7 @@ model Agency {
   visitFrequency       Int?      @map("visit_frequency") // 1, 2, or 4 per month
   assignedCloserId     String?   @map("assigned_closer_id")
   approvalStatus       String    @default("active") @map("approval_status") // draft/pending_approval/approved/active
+  automationPaused     Boolean   @default(false) @map("automation_paused") // หยุด automation ชั่วคราว
 
   assignedCloser       Employee? @relation("AgencyCloser", fields: [assignedCloserId], references: [id], onDelete: SetNull)
 

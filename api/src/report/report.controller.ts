@@ -70,4 +70,24 @@ export class ReportController {
     const firstOfMonth = today.slice(0, 8) + '01';
     return this.service.agencyPerformance(user, from ?? firstOfMonth, to ?? today);
   }
+
+  @Roles('admin', 'closer')
+  @Get('seller-performance-dashboard')
+  sellerPerformanceDashboard(
+    @Query('from') from: string,
+    @Query('to') to: string,
+    @Query('visitTarget') visitTarget?: string,
+    @Query('ohTarget') ohTarget?: string,
+    @Query('callTarget') callTarget?: string,
+  ) {
+    const today = new Date().toISOString().slice(0, 10);
+    const firstOfMonth = today.slice(0, 8) + '01';
+    return this.service.sellerPerformanceDashboard(
+      from ?? firstOfMonth,
+      to ?? today,
+      visitTarget ? Number(visitTarget) : 2,
+      ohTarget ? Number(ohTarget) : 2,
+      callTarget ? Number(callTarget) : 7,
+    );
+  }
 }

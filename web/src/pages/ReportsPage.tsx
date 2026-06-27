@@ -39,6 +39,7 @@ import {
 import { api, errMsg } from '../api/client';
 import { useAuth } from '../auth/AuthContext';
 import { useT } from '../i18n';
+import SalesDashboardTab from './SalesDashboardTab';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 interface AgActivityRow {
@@ -961,6 +962,7 @@ export default function ReportsPage() {
           <Tab icon={<EmojiEvents fontSize="small" />} iconPosition="start" label="Agency Performance" />
           <Tab icon={<BusinessCenter fontSize="small" />} iconPosition="start" label="Agency Activity Report" />
           <Tab icon={<TableChart fontSize="small" />} iconPosition="start" label={t('svr.dailyTracker')} />
+          <Tab icon={<TrendingUp fontSize="small" />} iconPosition="start" label="Sales Dashboard" />
         </Tabs>
       </Paper>
 
@@ -969,6 +971,7 @@ export default function ReportsPage() {
       <Box hidden={tab !== 2}><AgencyPerfTab /></Box>
       <Box hidden={tab !== 3}><AgencyActivityTab /></Box>
       <Box hidden={tab !== 4}><DailyTrackerTab /></Box>
+      <Box hidden={tab !== 5}><SalesDashboardTab /></Box>
     </Box>
   );
 }

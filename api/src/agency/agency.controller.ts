@@ -136,4 +136,10 @@ export class AgencyController {
   rejectAgency(@Param('id') id: string, @CurrentUser() user: RequestUser, @Body() body: { reason?: string }) {
     return this.service.rejectAgency(id, user.id, body.reason);
   }
+
+  @Patch(':id/toggle-automation')
+  @Roles('admin', 'closer')
+  toggleAutomation(@Param('id') id: string) {
+    return this.service.toggleAutomation(id);
+  }
 }
