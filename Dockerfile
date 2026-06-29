@@ -41,5 +41,5 @@ WORKDIR /app/api
 EXPOSE 8080
 # startup.sh เพิ่ม connection_limit=1 ให้ DATABASE_URL ก่อนรัน migrate + server
 COPY startup.sh ./startup.sh
-RUN chmod +x startup.sh
+RUN sed -i 's/\r$//' startup.sh && chmod +x startup.sh
 CMD ["./startup.sh"]
