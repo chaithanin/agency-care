@@ -4,18 +4,14 @@
   "private": true,
   "description": "Agency Care Enterprise — ระบบดูแล/เข้าเยี่ยม Agency ภาคสนาม (MVP เฟส 1)",
   "scripts": {
-    "dev": "corepack pnpm --parallel --filter ./api --filter ./web dev",
-    "dev:api": "corepack pnpm --filter ./api dev",
-    "dev:web": "corepack pnpm --filter ./web dev",
-    "build": "corepack pnpm --filter ./shared build && corepack pnpm --filter ./api build && corepack pnpm --filter ./web build",
-    "typecheck": "corepack pnpm --filter ./shared typecheck && corepack pnpm --filter ./api typecheck && corepack pnpm --filter ./web typecheck",
-    "test": "corepack pnpm --filter ./api test",
-    "ci": "corepack pnpm --filter ./api prisma:validate && corepack pnpm --filter ./api prisma:generate && corepack pnpm typecheck && corepack pnpm test && corepack pnpm build",
-    "verify": "corepack pnpm run ci",
-    "db:migrate": "corepack pnpm --filter ./api prisma:migrate",
-    "db:seed": "corepack pnpm --filter ./api prisma:seed",
-    "db:import": "corepack pnpm --filter ./api prisma:import",
-    "db:studio": "corepack pnpm --filter ./api prisma:studio"
+    "dev": "pnpm --parallel --filter ./api --filter ./web dev",
+    "dev:api": "pnpm --filter ./api dev",
+    "dev:web": "pnpm --filter ./web dev",
+    "build": "pnpm --filter ./shared build && pnpm --filter ./api build && pnpm --filter ./web build",
+    "db:migrate": "pnpm --filter ./api prisma:migrate",
+    "db:seed": "pnpm --filter ./api prisma:seed",
+    "db:import": "pnpm --filter ./api prisma:import",
+    "db:studio": "pnpm --filter ./api prisma:studio"
   },
   "engines": {
     "node": ">=20"
