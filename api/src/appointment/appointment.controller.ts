@@ -2,7 +2,8 @@ import {
   Controller, Get, Post, Patch, Delete, Body, Param, Query,
   UseGuards, NotFoundException, ForbiddenException,
 } from '@nestjs/common';
-import { JwtAuthGuard, CurrentUser, Roles } from '../auth/guards';
+import { JwtAuthGuard, Roles } from '../auth/guards';
+import { CurrentUser } from '../common/current-user.decorator';
 import { PrismaService } from '../prisma/prisma.service';
 
 function apptColor(apptType: string, meetingType?: string): string {
@@ -141,26 +142,67 @@ export class AppointmentController {
     @Query('from') from?: string,
     @Query('to') to?: string,
     @Query('agencyId') agencyId?: string,
+    @Query('saleId') saleId?: string,
+    @Query('apptType') apptType?: string,
+    @Query('meetingType') meetingType?: string,
+    @Query('agencyCategory') agencyCategory?: string,
   ) {
     const isAdmin = ['manager', 'super_admin', 'admin'].includes(role);
     const take = Math.min(parseInt(limit) || 50, 200);
     const skip = parseInt(offset) || 0;
 
-    const where: any = {};
+    const and: any[] = [];
     if (!isAdmin) {
-      where.OR = [{ saleId: userId }, { closerId: userId }, { createdById: userId }];
+      and.push({ OR: [{ saleId: userId }, { closerId: userId }, { createdById: userId }] });
     }
-    if (status) where.status = status;
-    if (agencyId) where.agencyId = agencyId;
-    if (from) where.apptDate = { ...where.apptDate, gte: new Date(from) };
-    if (to) where.apptDate = { ...where.apptDate, lte: new Date(to) };
-    if (search) {
-      where.OR = [
-        { agency: { name: { contains: search, mode: 'insensitive' } } },
-        { apptNo: { contains: search, mode: 'insensitive' } },
-        { contactPerson: { contains: search, mode: 'insensitive' } },
+    if (status) and.push({ status });
+    if (agencyId) and.push({ agencyId });
+    if (saleId) and.push({ saleId });
+    if (apptType) and.push({ apptType });
+    if (meetingType) and.push({ meetingType });
+    if (from || to) {
+      and.push({
+        apptDate: {
+          ...(from ? { gte: new Date(from) } : {}),
+          ...(to ? { lte: new Date(to) } : {}),
+        },
+      });
+    }
+    if (agencyCategory) {
+      const agencyFilters: any[] = [
+        { type: { contains: agencyCategory, mode: 'insensitive' } },
+        { classification: { contains: agencyCategory, mode: 'insensitive' } },
+        { tier: { contains: agencyCategory, mode: 'insensitive' } },
+        { pipelineStage: { contains: agencyCategory, mode: 'insensitive' } },
       ];
+      if (['VIP', 'A', 'B', 'C', 'D'].includes(agencyCategory.toUpperCase())) {
+        agencyFilters.push({ level: agencyCategory.toUpperCase() });
+      }
+      and.push({
+        agency: {
+          OR: agencyFilters,
+        },
+      });
     }
+    if (search) {
+      and.push({
+        OR: [
+          { agency: { name: { contains: search, mode: 'insensitive' } } },
+          { agency: { code: { contains: search, mode: 'insensitive' } } },
+          { agency: { type: { contains: search, mode: 'insensitive' } } },
+          { agency: { classification: { contains: search, mode: 'insensitive' } } },
+          { apptNo: { contains: search, mode: 'insensitive' } },
+          { contactPerson: { contains: search, mode: 'insensitive' } },
+          { contactPhone: { contains: search, mode: 'insensitive' } },
+          { meetingRoom: { contains: search, mode: 'insensitive' } },
+          { purpose: { contains: search, mode: 'insensitive' } },
+          { notes: { contains: search, mode: 'insensitive' } },
+          { sale: { name: { contains: search, mode: 'insensitive' } } },
+          { closer: { name: { contains: search, mode: 'insensitive' } } },
+        ],
+      });
+    }
+    const where = and.length > 0 ? { AND: and } : {};
 
     const [total, items] = await Promise.all([
       this.db.appointment.count({ where }),
@@ -168,7 +210,7 @@ export class AppointmentController {
         where, take, skip,
         orderBy: [{ apptDate: 'desc' }, { startTime: 'desc' }],
         include: {
-          agency: { select: { id: true, name: true, code: true } },
+          agency: { select: { id: true, name: true, code: true, type: true, classification: true, level: true, tier: true } },
           sale: { select: { id: true, name: true } },
           closer: { select: { id: true, name: true } },
           report: { select: { id: true, interestScore: true } },
@@ -215,7 +257,7 @@ export class AppointmentController {
     const appt = await this.db.appointment.findUnique({
       where: { id },
       include: {
-        agency: { select: { id: true, name: true, code: true, phone: true } },
+        agency: { select: { id: true, name: true, code: true, phone: true, type: true, classification: true, level: true, tier: true } },
         sale: { select: { id: true, name: true } },
         closer: { select: { id: true, name: true } },
         createdBy: { select: { id: true, name: true } },

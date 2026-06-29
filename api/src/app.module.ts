@@ -5,6 +5,7 @@ import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
+import { validateEnv } from './config/env.validation';
 import { AppController } from './app.controller';
 import { PrismaModule } from './prisma/prisma.module';
 import { StorageModule } from './storage/storage.module';
@@ -45,7 +46,7 @@ import { AppointmentModule } from './appointment/appointment.module';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
+    ConfigModule.forRoot({ isGlobal: true, validate: validateEnv }),
     ScheduleModule.forRoot(),
     // rate limit: 100 req/นาที ต่อ IP (login เข้มกว่าใน controller)
     ThrottlerModule.forRoot([{ ttl: 60000, limit: 100 }]),

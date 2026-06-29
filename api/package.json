@@ -5,8 +5,11 @@
   "scripts": {
     "dev": "nest start --watch",
     "build": "nest build",
+    "typecheck": "tsc --noEmit",
+    "test": "ts-node --project tsconfig.json test/env.validation.test.ts",
     "start": "node dist/main.js",
     "prisma:generate": "prisma generate",
+    "prisma:validate": "prisma validate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:deploy": "prisma migrate deploy",
     "prisma:studio": "prisma studio",

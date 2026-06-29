@@ -18,6 +18,12 @@ import { useAuth } from '../auth/AuthContext';
 
 const MEETING_TYPES = [
   { key: 'project_presentation', label: 'Project Presentation', color: '#2563EB' },
+  { key: 'orientation', label: 'Orientation', color: '#0891B2' },
+  { key: 'agency_call', label: 'Call Agency', color: '#0D9488' },
+  { key: 'visit_agency', label: 'We Visit Agency Office', color: '#16A34A' },
+  { key: 'agency_visit_us', label: 'Agency Visit Us', color: '#7C3AED' },
+  { key: 'sign_new_agency_contract', label: 'Sign New Agency Contract', color: '#DC2626' },
+  { key: 'renew_contract', label: 'Renew Contract', color: '#9333EA' },
   { key: 'training', label: 'Training', color: '#D97706' },
   { key: 'follow_up', label: 'Follow-up', color: '#EA580C' },
   { key: 'contract', label: 'Contract', color: '#DC2626' },
@@ -25,6 +31,14 @@ const MEETING_TYPES = [
   { key: 'campaign', label: 'Campaign', color: '#9333EA' },
   { key: 'complaint', label: 'Complaint', color: '#BE123C' },
   { key: 'other', label: 'Other', color: '#64748B' },
+];
+
+const APPT_TYPES = [
+  { key: 'showroom', label: 'Agency Visit Us' },
+  { key: 'site_visit', label: 'We Visit Agency Office' },
+  { key: 'call', label: 'Call' },
+  { key: 'orientation', label: 'Orientation' },
+  { key: 'contract', label: 'Contract' },
 ];
 
 const MEETING_ROOMS = ['ห้องประชุม A', 'ห้องประชุม B', 'ห้องโชว์รูม 1', 'ห้องโชว์รูม 2', 'พื้นที่โชว์รูม'];
@@ -92,7 +106,7 @@ interface CalendarEvent {
 interface Appointment {
   id: string; apptNo: string; status: string; apptType: string; meetingType: string;
   apptDate: string; startTime: string; endTime: string;
-  agency: { id: string; name: string; code: string; phone?: string };
+  agency: { id: string; name: string; code: string; phone?: string; type?: string; classification?: string; level?: string; tier?: string };
   sale?: { id: string; name: string };
   closer?: { id: string; name: string };
   createdBy?: { id: string; name: string };
@@ -148,6 +162,10 @@ export default function AppointmentPage() {
   const [filterSearch, setFilterSearch] = useState('');
   const [filterFrom, setFilterFrom] = useState('');
   const [filterTo, setFilterTo] = useState('');
+  const [filterSaleId, setFilterSaleId] = useState('');
+  const [filterApptType, setFilterApptType] = useState('');
+  const [filterMeetingType, setFilterMeetingType] = useState('');
+  const [filterAgencyCategory, setFilterAgencyCategory] = useState('');
 
   const [agencyOpts, setAgencyOpts] = useState<AgencyOpt[]>([]);
   const [userOpts, setUserOpts] = useState<UserOpt[]>([]);
@@ -180,12 +198,16 @@ export default function AppointmentPage() {
       if (filterSearch) p.set('search', filterSearch);
       if (filterFrom) p.set('from', filterFrom);
       if (filterTo) p.set('to', filterTo);
+      if (filterSaleId) p.set('saleId', filterSaleId);
+      if (filterApptType) p.set('apptType', filterApptType);
+      if (filterMeetingType) p.set('meetingType', filterMeetingType);
+      if (filterAgencyCategory) p.set('agencyCategory', filterAgencyCategory);
       const r = await api.get<{ total: number; items: Appointment[] }>(`/appointments?${p}`);
       setAppts(r.data.items);
       setApptTotal(r.data.total);
     } catch { setError('โหลดข้อมูลไม่สำเร็จ'); }
     finally { setLoading(false); }
-  }, [filterStatus, filterSearch, filterFrom, filterTo]);
+  }, [filterStatus, filterSearch, filterFrom, filterTo, filterSaleId, filterApptType, filterMeetingType, filterAgencyCategory]);
 
   const fetchDetail = useCallback(async (id: string) => {
     try { const r = await api.get<Appointment>(`/appointments/${id}`); setDetail(r.data); } catch { /* ignore */ }
@@ -211,7 +233,18 @@ export default function AppointmentPage() {
     } catch { /* ignore */ }
   }, []);
 
-  useEffect(() => { if (addOpen || editOpen) loadUsers(); }, [addOpen, editOpen, loadUsers]);
+  useEffect(() => { if (addOpen || editOpen || view === 'list') loadUsers(); }, [addOpen, editOpen, view, loadUsers]);
+
+  const clearListFilters = () => {
+    setFilterStatus('');
+    setFilterSearch('');
+    setFilterFrom('');
+    setFilterTo('');
+    setFilterSaleId('');
+    setFilterApptType('');
+    setFilterMeetingType('');
+    setFilterAgencyCategory('');
+  };
 
   const handleCreate = async () => {
     if (!form.agencyId || !form.apptDate) return;
@@ -338,9 +371,8 @@ export default function AppointmentPage() {
           <Grid item xs={12} sm={4}>
             <FormControl size="small" fullWidth>
               <InputLabel>ประเภทนัด</InputLabel>
-              <Select value={form.apptType} label="ประเภทนัด" onChange={e => setForm(f => ({ ...f, apptType: e.target.value }))}>
-                <MenuItem value="showroom">🏢 Showroom Visit</MenuItem>
-                <MenuItem value="site_visit">🚗 Site Visit</MenuItem>
+              <Select value={form.apptType} label="Appointment type" onChange={e => setForm(f => ({ ...f, apptType: e.target.value }))}>
+                {APPT_TYPES.map(t => <MenuItem key={t.key} value={t.key}>{t.label}</MenuItem>)}
               </Select>
             </FormControl>
           </Grid>
@@ -640,21 +672,46 @@ export default function AppointmentPage() {
         <Box>
           <Paper variant="outlined" sx={{ p: 2, mb: 2 }}>
             <Box display="flex" gap={1.5} flexWrap="wrap" alignItems="center">
-              <TextField size="small" placeholder="ค้นหา Agency, เลขที่..." value={filterSearch}
+              <TextField size="small" placeholder="Search agency, seller, contact, phone, note..." value={filterSearch}
                 onChange={e => setFilterSearch(e.target.value)} onKeyDown={e => e.key === 'Enter' && fetchList()}
-                sx={{ minWidth: 200 }} />
+                sx={{ minWidth: 260 }} />
               <FormControl size="small" sx={{ minWidth: 140 }}>
-                <InputLabel>สถานะ</InputLabel>
-                <Select value={filterStatus} label="สถานะ" onChange={e => setFilterStatus(e.target.value)}>
-                  <MenuItem value="">ทั้งหมด</MenuItem>
+                <InputLabel>Status</InputLabel>
+                <Select value={filterStatus} label="Status" onChange={e => setFilterStatus(e.target.value)}>
+                  <MenuItem value="">All status</MenuItem>
                   {Object.entries(STATUS).map(([k, v]) => <MenuItem key={k} value={k}>{v.label}</MenuItem>)}
                 </Select>
               </FormControl>
-              <TextField size="small" label="ตั้งแต่" type="date" value={filterFrom}
+              <FormControl size="small" sx={{ minWidth: 180 }}>
+                <InputLabel>Seller</InputLabel>
+                <Select value={filterSaleId} label="Seller" onChange={e => setFilterSaleId(e.target.value)}>
+                  <MenuItem value="">All sellers</MenuItem>
+                  {userOpts.map(u => <MenuItem key={u.id} value={u.id}>{u.name}</MenuItem>)}
+                </Select>
+              </FormControl>
+              <FormControl size="small" sx={{ minWidth: 170 }}>
+                <InputLabel>Appointment</InputLabel>
+                <Select value={filterApptType} label="Appointment" onChange={e => setFilterApptType(e.target.value)}>
+                  <MenuItem value="">All appointments</MenuItem>
+                  {APPT_TYPES.map(t => <MenuItem key={t.key} value={t.key}>{t.label}</MenuItem>)}
+                </Select>
+              </FormControl>
+              <FormControl size="small" sx={{ minWidth: 210 }}>
+                <InputLabel>Activity / Result</InputLabel>
+                <Select value={filterMeetingType} label="Activity / Result" onChange={e => setFilterMeetingType(e.target.value)}>
+                  <MenuItem value="">All activity types</MenuItem>
+                  {MEETING_TYPES.map(m => <MenuItem key={m.key} value={m.key}>{m.label}</MenuItem>)}
+                </Select>
+              </FormControl>
+              <TextField size="small" label="Agency category" placeholder="type, tier, level..."
+                value={filterAgencyCategory} onChange={e => setFilterAgencyCategory(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && fetchList()} sx={{ minWidth: 180 }} />
+              <TextField size="small" label="From" type="date" value={filterFrom}
                 onChange={e => setFilterFrom(e.target.value)} InputLabelProps={{ shrink: true }} sx={{ width: 150 }} />
-              <TextField size="small" label="ถึง" type="date" value={filterTo}
+              <TextField size="small" label="To" type="date" value={filterTo}
                 onChange={e => setFilterTo(e.target.value)} InputLabelProps={{ shrink: true }} sx={{ width: 150 }} />
-              <Button variant="contained" size="small" onClick={fetchList}>ค้นหา</Button>
+              <Button variant="contained" size="small" onClick={fetchList}>Search</Button>
+              <Button variant="text" size="small" onClick={clearListFilters}>Clear</Button>
               <IconButton size="small" onClick={fetchList}><Refresh /></IconButton>
             </Box>
           </Paper>
@@ -681,6 +738,11 @@ export default function AppointmentPage() {
                         <TableCell>
                           <Typography variant="body2" fontWeight={600}>{a.agency?.name}</Typography>
                           <Typography variant="caption" color="text.secondary">{a.agency?.code}</Typography>
+                          {(a.agency?.type || a.agency?.classification || a.agency?.tier || a.agency?.level) && (
+                            <Typography variant="caption" color="text.secondary" display="block">
+                              {[a.agency?.type, a.agency?.classification, a.agency?.tier, a.agency?.level].filter(Boolean).join(' / ')}
+                            </Typography>
+                          )}
                         </TableCell>
                         <TableCell>
                           <Chip label={MEETING_TYPES.find(m => m.key === a.meetingType)?.label ?? a.meetingType}
@@ -727,6 +789,11 @@ export default function AppointmentPage() {
                     <Box>
                       <Typography fontWeight={700}>{detail.agency?.name}</Typography>
                       <Typography variant="caption" color="text.secondary">{detail.agency?.code}</Typography>
+                      {(detail.agency?.type || detail.agency?.classification || detail.agency?.tier || detail.agency?.level) && (
+                        <Typography variant="caption" color="text.secondary" display="block">
+                          {[detail.agency?.type, detail.agency?.classification, detail.agency?.tier, detail.agency?.level].filter(Boolean).join(' / ')}
+                        </Typography>
+                      )}
                     </Box>
                   </Box>
                   <Box display="flex" gap={1} alignItems="center">
@@ -749,6 +816,8 @@ export default function AppointmentPage() {
                   )}
                   <Divider />
                   <Box display="flex" gap={1} flexWrap="wrap">
+                    <Chip label={APPT_TYPES.find(t => t.key === detail.apptType)?.label ?? detail.apptType}
+                      size="small" variant="outlined" />
                     <Chip label={MEETING_TYPES.find(m => m.key === detail.meetingType)?.label ?? detail.meetingType}
                       size="small" sx={{ bgcolor: getColor(detail.apptType, detail.meetingType), color: '#fff' }} />
                     {detail.sale && <Chip label={`Sale: ${detail.sale.name}`} size="small" variant="outlined" />}
