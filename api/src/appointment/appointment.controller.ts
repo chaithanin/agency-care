@@ -56,16 +56,32 @@ export class AppointmentController {
   }
 
   @Get('calendar')
-  async calendar(@Query('from') from?: string, @Query('to') to?: string) {
+  async calendar(
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+    @Query('search') search?: string,
+    @Query('saleId') saleId?: string,
+    @Query('meetingType') meetingType?: string,
+  ) {
     const fromDate = from ? new Date(from) : new Date(new Date().getFullYear(), new Date().getMonth(), 1);
     const toDate = to ? new Date(to) : new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0);
     // extend to cover full days in Bangkok time
     const toDateEnd = new Date(toDate);
     toDateEnd.setHours(23, 59, 59);
 
+    // Build where clause with filters
+    const apptWhere: any = { apptDate: { gte: fromDate, lte: toDateEnd }, status: { not: 'cancelled' } };
+    if (saleId) apptWhere.saleId = saleId;
+    if (meetingType) apptWhere.meetingType = meetingType;
+    if (search) apptWhere.agency = { name: { contains: search, mode: 'insensitive' } };
+
+    const visitWhere: any = { planDate: { gte: fromDate, lte: toDateEnd } };
+    if (saleId) visitWhere.employeeId = saleId;
+    if (search) visitWhere.agency = { name: { contains: search, mode: 'insensitive' } };
+
     const [appts, visits] = await Promise.all([
       this.db.appointment.findMany({
-        where: { apptDate: { gte: fromDate, lte: toDateEnd }, status: { not: 'cancelled' } },
+        where: apptWhere,
         include: {
           agency: { select: { id: true, name: true } },
           sale: { select: { id: true, name: true } },
@@ -74,7 +90,7 @@ export class AppointmentController {
         orderBy: { startTime: 'asc' },
       }),
       this.db.visitPlan.findMany({
-        where: { planDate: { gte: fromDate, lte: toDateEnd } },
+        where: visitWhere,
         include: {
           agency: { select: { id: true, name: true } },
           employee: { include: { user: { select: { id: true, name: true } } } },
