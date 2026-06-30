@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Box, Typography, Paper, Stack, TextField, MenuItem, LinearProgress, Chip, Tooltip,
-  ToggleButton, ToggleButtonGroup, IconButton, Button,
+  ToggleButton, ToggleButtonGroup, IconButton, Button, FormControl, InputLabel, Select,
+  OutlinedInput, Checkbox, ListItemText,
 } from '@mui/material';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
@@ -67,6 +68,16 @@ export default function CalendarPage() {
   // Filter state
   const [filterDateFrom, setFilterDateFrom] = useState('');
   const [filterDateTo, setFilterDateTo] = useState('');
+  const [filterType, setFilterType] = useState<string[]>([]);
+  const [filterKeyActivity, setFilterKeyActivity] = useState('');
+  const [filterStatus, setFilterStatus] = useState('');
+  const [filterCustomer, setFilterCustomer] = useState('');
+  const [filterOwner, setFilterOwner] = useState<string[]>([]);
+
+  const activityTypes = ['Activity', 'Conversation', 'Task', 'Birthday'];
+  const statuses = ['Active', 'Pending', 'Completed', 'Cancelled'];
+  const keyActivities = ['Follow-up', 'Meeting', 'Proposal', 'Contract', 'Demo'];
+  const owners = data?.sales ?? [];
 
   const exportCsv = () => {
     if (!data) return;
@@ -273,38 +284,112 @@ export default function CalendarPage() {
   const resetFilters = () => {
     setFilterDateFrom('');
     setFilterDateTo('');
+    setFilterType([]);
+    setFilterKeyActivity('');
+    setFilterStatus('');
+    setFilterCustomer('');
+    setFilterOwner([]);
   };
+
+  const hasAnyFilters = filterDateFrom || filterDateTo || filterType.length > 0 || filterKeyActivity || filterStatus || filterCustomer || filterOwner.length > 0;
 
   return (
     <Box>
       {/* Filter Section */}
       <Paper sx={{ p: 2, mb: 2, bgcolor: 'background.default' }}>
         <Stack spacing={2}>
-          <Typography variant="subtitle2" fontWeight={600}>
-            {t('c.filters') || 'Filters'}
-          </Typography>
+          <Stack direction="row" alignItems="center" justifyContent="space-between">
+            <Typography variant="subtitle2" fontWeight={600}>
+              {t('c.filters') || 'Filters'}
+            </Typography>
+            <Stack direction="row" spacing={1} alignItems="center">
+              {(filterType.length > 0 || filterKeyActivity || filterStatus || filterCustomer || filterOwner.length > 0) && (
+                filterType.map(type => <Chip key={type} label={type} onDelete={() => setFilterType(filterType.filter(t => t !== type))} size="small" />)
+              )}
+              {filterKeyActivity && <Chip label={`Key: ${filterKeyActivity}`} onDelete={() => setFilterKeyActivity('')} size="small" />}
+              {filterStatus && <Chip label={`Status: ${filterStatus}`} onDelete={() => setFilterStatus('')} size="small" />}
+              {filterCustomer && <Chip label={`Customer: ${filterCustomer}`} onDelete={() => setFilterCustomer('')} size="small" />}
+              {filterOwner.length > 0 && <Chip label={`Owner: ${filterOwner.length}`} onDelete={() => setFilterOwner([])} size="small" />}
+            </Stack>
+          </Stack>
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems="flex-end" flexWrap="wrap" useFlexGap>
+            {/* Type Filter */}
+            <FormControl size="small" sx={{ minWidth: 140 }}>
+              <InputLabel>Type</InputLabel>
+              <Select
+                multiple
+                value={filterType}
+                onChange={(e) => setFilterType(typeof e.target.value === 'string' ? e.target.value.split(',') : e.target.value)}
+                input={<OutlinedInput label="Type" />}
+                renderValue={(selected) => selected.length === 0 ? 'Select' : `${selected.length} selected`}
+              >
+                {activityTypes.map(type => (
+                  <MenuItem key={type} value={type}>
+                    <Checkbox checked={filterType.includes(type)} />
+                    <ListItemText primary={type} />
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
+            {/* Key Activity Filter */}
+            <TextField
+              select
+              size="small"
+              label="Key Activity"
+              value={filterKeyActivity}
+              onChange={(e) => setFilterKeyActivity(e.target.value)}
+              sx={{ minWidth: 140 }}
+            >
+              <MenuItem value="">All</MenuItem>
+              {keyActivities.map(ka => <MenuItem key={ka} value={ka}>{ka}</MenuItem>)}
+            </TextField>
+
+            {/* Status Filter */}
+            <TextField
+              select
+              size="small"
+              label="Status"
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value)}
+              sx={{ minWidth: 140 }}
+            >
+              <MenuItem value="">All</MenuItem>
+              {statuses.map(status => <MenuItem key={status} value={status}>{status}</MenuItem>)}
+            </TextField>
+
+            {/* Customer Filter */}
             <TextField
               size="small"
-              type="date"
-              label={t('c.dateFrom') || 'Date From'}
-              value={filterDateFrom}
-              onChange={(e) => setFilterDateFrom(e.target.value)}
-              InputLabelProps={{ shrink: true }}
-              sx={{ minWidth: 160 }}
+              label="Customer"
+              placeholder="Search..."
+              value={filterCustomer}
+              onChange={(e) => setFilterCustomer(e.target.value)}
+              sx={{ minWidth: 140 }}
             />
-            <TextField
-              size="small"
-              type="date"
-              label={t('c.dateTo') || 'Date To'}
-              value={filterDateTo}
-              onChange={(e) => setFilterDateTo(e.target.value)}
-              InputLabelProps={{ shrink: true }}
-              sx={{ minWidth: 160 }}
-            />
-            {hasFilters && (
+
+            {/* Owner Filter */}
+            <FormControl size="small" sx={{ minWidth: 140 }}>
+              <InputLabel>Owner</InputLabel>
+              <Select
+                multiple
+                value={filterOwner}
+                onChange={(e) => setFilterOwner(typeof e.target.value === 'string' ? e.target.value.split(',') : e.target.value)}
+                input={<OutlinedInput label="Owner" />}
+                renderValue={(selected) => selected.length === 0 ? 'Select' : `${selected.length} selected`}
+              >
+                {owners.map(owner => (
+                  <MenuItem key={owner.id} value={owner.id}>
+                    <Checkbox checked={filterOwner.includes(owner.id)} />
+                    <ListItemText primary={owner.name} />
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
+            {hasAnyFilters && (
               <Button size="small" variant="outlined" onClick={resetFilters}>
-                {t('c.reset') || 'Reset'}
+                {t('c.reset') || 'Clear All'}
               </Button>
             )}
             <Box sx={{ flexGrow: 1 }} />
