@@ -3,7 +3,7 @@ import {
   Alert, Box, Button, Checkbox, Chip, CircularProgress, Dialog, DialogActions, DialogContent,
   DialogTitle, Divider, FormControl, FormControlLabel, InputLabel, LinearProgress,
   MenuItem, Paper, Select, Stack, Switch, Table, TableBody, TableCell, TableHead,
-  TableRow, TextField, Tooltip, Typography,
+  TableRow, TextField, Tooltip, Typography, Autocomplete,
 } from '@mui/material';
 import { Download, Phone, SwapHoriz } from '@mui/icons-material';
 import AddIcon from '@mui/icons-material/Add';
@@ -62,17 +62,40 @@ export default function PlansPage() {
   const tableRef = useRef<HTMLDivElement>(null);
 
   const ACTION_TYPES = [
-    { value: 'visit', label: t('pl.actionVisit') },
-    { value: 'call', label: t('pl.actionCall') },
-    { value: 'invite', label: t('pl.actionInvite') },
-    { value: 'orientation', label: t('pl.actionOrientation') },
-    { value: 'customer', label: t('pl.actionCustomer') },
-    { value: 'followup_hold', label: t('pl.actionFollowupHold') },
-    { value: 'followup_customer', label: t('pl.actionFollowupCustomer') },
-    { value: 'delivery', label: t('pl.actionDelivery') },
-    { value: 'event', label: t('pl.actionEvent') },
-    { value: 'launch', label: t('pl.actionLaunch') },
-    { value: 'rental', label: t('pl.actionRental') },
+    { value: 'AG Bring Customer', label: 'AG Bring Customer' },
+    { value: 'Agency Sign VIP', label: 'Agency Sign VIP' },
+    { value: 'Call Agency', label: 'Call Agency' },
+    { value: 'Call for NEW PROJECT', label: 'Call for NEW PROJECT' },
+    { value: 'Come Open house', label: 'Come Open house' },
+    { value: 'Come to Party', label: 'Come to Party' },
+    { value: 'Customer Registration by Agency Record', label: 'Customer Registration by Agency Record' },
+    { value: 'Follow-up Deposit', label: 'Follow-up Deposit' },
+    { value: 'Follow-up Holding Unit', label: 'Follow-up Holding Unit' },
+    { value: 'Follow-up Reservation', label: 'Follow-up Reservation' },
+    { value: 'Found New Agency', label: 'Found New Agency' },
+    { value: 'Impress Villa', label: 'Impress Villa' },
+    { value: 'Internal Training', label: 'Internal Training' },
+    { value: 'Invitation to opening house', label: 'Invitation to opening house' },
+    { value: 'Invitation to Party', label: 'Invitation to Party' },
+    { value: 'Make Photo&VDO', label: 'Make Photo&VDO' },
+    { value: 'Managment Internal Meeting', label: 'Managment Internal Meeting' },
+    { value: 'Meet Management', label: 'Meet Management' },
+    { value: 'Meeting for new Projects', label: 'Meeting for new Projects' },
+    { value: 'Old Customer', label: 'Old Customer' },
+    { value: 'Online Customer', label: 'Online Customer' },
+    { value: 'Orientation', label: 'Orientation' },
+    { value: 'Orientation New Agency Only', label: 'Orientation New Agency Only' },
+    { value: 'Pick up-Drop Customer', label: 'Pick up-Drop Customer' },
+    { value: 'Repeat Customer', label: 'Repeat Customer' },
+    { value: 'Sale Support - Admin', label: 'Sale Support - Admin' },
+    { value: 'Sales Team Morning Meetings Points', label: 'Sales Team Morning Meetings Points' },
+    { value: 'Show units', label: 'Show units' },
+    { value: 'Sign Agency Agreement', label: 'Sign Agency Agreement' },
+    { value: 'VDO Call / Meeting', label: 'VDO Call / Meeting' },
+    { value: 'Visit Agency Office', label: 'Visit Agency Office' },
+    { value: 'Visit Booth', label: 'Visit Booth' },
+    { value: 'Walk In Agency', label: 'Walk In Agency' },
+    { value: 'Walk In Customer', label: 'Walk In Customer' },
   ];
 
   const CALL_RESULTS = [
@@ -105,9 +128,10 @@ export default function PlansPage() {
   const [openAdd, setOpenAdd] = useState(false);
   const [form, setForm] = useState({
     agencyId: '', employeeId: '', date: todayStr(), note: '',
-    actionType: 'visit', requestDetails: '', priority: 'medium',
+    actionType: 'AG Bring Customer', requestDetails: '', priority: 'medium',
     isRecurring: false, recurringFreq: 'monthly', recurringUntil: '',
   });
+  const [agencySearch, setAgencySearch] = useState('');
   const [error, setError] = useState('');
   const [createLoading, setCreateLoading] = useState(false);
 
@@ -123,7 +147,7 @@ export default function PlansPage() {
   const [bulkOpen, setBulkOpen] = useState(false);
   const [bulkAgencySearch, setBulkAgencySearch] = useState('');
   const [bulkSelected, setBulkSelected] = useState<string[]>([]);
-  const [bulkForm, setBulkForm] = useState({ employeeId: '', date: todayStr(), actionType: 'visit', priority: 'medium', note: '' });
+  const [bulkForm, setBulkForm] = useState({ employeeId: '', date: todayStr(), actionType: 'AG Bring Customer', priority: 'medium', note: '' });
   const [bulkLoading, setBulkLoading] = useState(false);
   const [bulkMsg, setBulkMsg] = useState('');
 
@@ -194,7 +218,8 @@ export default function PlansPage() {
         recurringUntil: form.isRecurring ? form.recurringUntil : undefined,
       });
       setOpenAdd(false);
-      setForm({ agencyId: '', employeeId: '', date: todayStr(), note: '', actionType: 'visit', requestDetails: '', priority: 'medium', isRecurring: false, recurringFreq: 'monthly', recurringUntil: '' });
+      setForm({ agencyId: '', employeeId: '', date: todayStr(), note: '', actionType: 'AG Bring Customer', requestDetails: '', priority: 'medium', isRecurring: false, recurringFreq: 'monthly', recurringUntil: '' });
+      setAgencySearch('');
       setError('');
       loadPlans();
     } catch (e) {
@@ -686,12 +711,17 @@ export default function PlansPage() {
         <DialogContent>
           <Stack spacing={2} mt={1}>
             {error && <Alert severity="error">{error}</Alert>}
-            <TextField select label="Agency" value={form.agencyId}
-              onChange={(e) => setForm({ ...form, agencyId: e.target.value })} size="small" fullWidth>
-              {agencies.map((a) => (
-                <MenuItem key={a.id} value={a.id}>{a.code} — {a.name}</MenuItem>
-              ))}
-            </TextField>
+            <Autocomplete
+              size="small"
+              options={agencies}
+              getOptionLabel={(option) => `${option.code} — ${option.name}`}
+              value={agencies.find(a => a.id === form.agencyId) || null}
+              onChange={(_event, value) => setForm({ ...form, agencyId: value?.id || '' })}
+              inputValue={agencySearch}
+              onInputChange={(_event, value) => setAgencySearch(value)}
+              isOptionEqualToValue={(option, value) => option.id === value.id}
+              renderInput={(params) => <TextField {...params} label="Agency" placeholder="Search agency..." />}
+            />
             <TextField select label={t('c.seller')} value={form.employeeId}
               onChange={(e) => setForm({ ...form, employeeId: e.target.value })} size="small" fullWidth>
               {employees.map((e) => (
