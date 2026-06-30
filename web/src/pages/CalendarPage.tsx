@@ -457,12 +457,10 @@ export default function CalendarPage() {
             <ToggleButton value="biweek">{t('cal.biweek')}</ToggleButton>
             <ToggleButton value="month">{t('cal.month')}</ToggleButton>
           </ToggleButtonGroup>
-          {!isSales && (
-            <TextField select size="small" label={t('c.seller')} value={empId} onChange={(e) => setEmpId(e.target.value)} sx={{ minWidth: 150 }}>
-              <MenuItem value="">{t('cal.allCompanyHol')}</MenuItem>
-              {data.sales.map((s) => <MenuItem key={s.id} value={s.id}>{s.name}</MenuItem>)}
-            </TextField>
-          )}
+          <TextField select size="small" label={t('c.seller')} value={empId} onChange={(e) => setEmpId(e.target.value)} sx={{ minWidth: 150 }}>
+            <MenuItem value="">{t('cal.allCompanyHol')}</MenuItem>
+            {data.sales.map((s) => <MenuItem key={s.id} value={s.id}>{s.name}</MenuItem>)}
+          </TextField>
           {!isSales && (
             <Chip size="small" label={rangeMode ? 'Date Range' : 'Monthly'}
               color={rangeMode ? 'primary' : 'default'} clickable onClick={() => setRangeMode((v) => !v)} />
