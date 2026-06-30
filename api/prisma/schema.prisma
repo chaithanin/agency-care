@@ -170,6 +170,10 @@ model User {
   meetingReports       MeetingReport[]
   leadsRecorded        AgencyLead[]        @relation("LeadRecordedBy")
   depositTransactions  DepositTransaction[]
+  calendarEvents       CalendarEvent[]
+  calendarFilters      CalendarFilter[]
+  calendarEventVersions CalendarEventVersion[]
+  calendarAuditLogs    CalendarAuditLog[]
 
   @@map("users")
 }
@@ -207,6 +211,8 @@ model Employee {
   leaveRequests  LeaveRequest[]
   notificationLogs NotificationLog[]
   responsiblePRs PurchaseRequest[]   @relation("PrResponsible")
+  calendarEvents CalendarEvent[]
+  goFiveAppointments GoFiveAppointment[]
   documents DocumentRecord[]
   expenses      ExpenseReport[]
   trainings     TrainingRecord[]
@@ -325,6 +331,7 @@ model Agency {
   planVersionItems PlanVersionItem[]
   scores        AgencyScore[]
   appointments  Appointment[]
+  calendarEvents CalendarEvent[]
   commissions   AgencyCommission[]
 
   @@index([zone])
@@ -1945,6 +1952,9 @@ model GoFiveCustomer {
 
   createdAt         DateTime @default(now()) @map("created_at")
   updatedAt         DateTime @updatedAt @map("updated_at")
+
+  orders            GoFiveOrder[]
+  appointments      GoFiveAppointment[]
 
   @@index([customerId])
   @@index([customerCode])
