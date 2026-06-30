@@ -6,6 +6,7 @@ import {
 import LinkIcon from '@mui/icons-material/Link';
 import LinkOffIcon from '@mui/icons-material/LinkOff';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
+import RefreshIcon from '@mui/icons-material/Refresh';
 import PersonIcon from '@mui/icons-material/Person';
 import { useAuth } from '../auth/AuthContext';
 import { api, errMsg } from '../api/client';
@@ -41,7 +42,7 @@ export default function ProfilePage() {
       // เปิด LIFF URL ในแท็บใหม่ / LINE in-app browser
       window.open(r.data.liffUrl, '_blank');
       setMsg('LINE opened. Please return to this app after linking is complete.');
-      // poll ทุก 3 วินาทีเป็นเวลา 2 นาที เพื่อ detect เมื่อ link สำเร็จ
+      // poll ทุก 2 วินาทีเป็นเวลา 5 นาที เพื่อ detect เมื่อ link สำเร็จ
       let tries = 0;
       const timer = setInterval(async () => {
         tries++;
@@ -51,10 +52,22 @@ export default function ProfilePage() {
           setMe(fresh.data);
           setMsg('LINE account linked successfully!');
         }
-        if (tries >= 40) clearInterval(timer);
-      }, 3000);
+        if (tries >= 150) clearInterval(timer);
+      }, 2000);
     } catch (e) { setErr(errMsg(e)); }
     setLinking(false);
+  };
+
+  const handleRefreshLineStatus = async () => {
+    try {
+      const fresh = await api.get<MeData>('/auth/me');
+      setMe(fresh.data);
+      if (fresh.data?.employee?.lineUserId) {
+        setMsg('LINE account is connected!');
+      } else {
+        setErr('LINE account not found. Please try linking again.');
+      }
+    } catch (e) { setErr(errMsg(e)); }
   };
 
   const handleUnlinkLine = async () => {
@@ -147,6 +160,11 @@ export default function ProfilePage() {
               >
                 Change LINE Account
               </Button>
+              <Tooltip title="Refresh Status">
+                <IconButton color="primary" onClick={handleRefreshLineStatus} size="small">
+                  <RefreshIcon />
+                </IconButton>
+              </Tooltip>
               <Tooltip title="Unlink LINE">
                 <IconButton color="error" onClick={handleUnlinkLine}><LinkOffIcon /></IconButton>
               </Tooltip>
