@@ -27,7 +27,7 @@ export class GoFiveApiClient {
         params: { skip, take },
       }),
     );
-    return response.data;
+    return (response as any).data;
   }
 
   async getCustomerById(customerId: string) {
@@ -36,7 +36,7 @@ export class GoFiveApiClient {
         headers: this.getHeaders(),
       }),
     );
-    return response.data;
+    return (response as any).data;
   }
 
   async getProducts(skip: number = 0, take: number = 50) {
@@ -46,7 +46,7 @@ export class GoFiveApiClient {
         params: { skip, take },
       }),
     );
-    return response.data;
+    return (response as any).data;
   }
 
   async getOrders(customerId?: string) {
@@ -56,7 +56,7 @@ export class GoFiveApiClient {
         params: customerId ? { customerId } : {},
       }),
     );
-    return response.data;
+    return (response as any).data;
   }
 
   async getAppointments(startDate: string, endDate: string) {
@@ -66,6 +66,6 @@ export class GoFiveApiClient {
         params: { startDate, endDate },
       }),
     );
-    return response.data;
+    return (response as any).data;
   }
 }

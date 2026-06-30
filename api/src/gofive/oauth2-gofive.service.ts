@@ -29,10 +29,11 @@ export class GoFiveAuthService {
       }),
     );
 
+    const data = (response as any).data;
     return {
-      accessToken: response.data.access_token,
-      refreshToken: response.data.refresh_token,
-      expiresIn: response.data.expires_in,
+      accessToken: data.access_token,
+      refreshToken: data.refresh_token,
+      expiresIn: data.expires_in,
     };
   }
 
@@ -46,9 +47,10 @@ export class GoFiveAuthService {
       }),
     );
 
+    const data = (response as any).data;
     return {
-      accessToken: response.data.access_token,
-      expiresIn: response.data.expires_in,
+      accessToken: data.access_token,
+      expiresIn: data.expires_in,
     };
   }
 
