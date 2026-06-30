@@ -49,6 +49,7 @@ import AgencyScorePage from './pages/AgencyScorePage';
 import EvaluationPage from './pages/EvaluationPage';
 import ProfilePage from './pages/ProfilePage';
 import LineLinkPage from './pages/LineLinkPage';
+import LineConnectionPage from './pages/LineConnectionPage';
 import BroadcastPage from './pages/BroadcastPage';
 import AppointmentPage from './pages/AppointmentPage';
 import AiRiskPage from './pages/AiRiskPage';
@@ -153,6 +154,7 @@ export default function App() {
         <Route path="/notifications" element={<NotificationsPage />} />
         <Route path="/visits/:id" element={<VisitDetailPage />} />
         <Route path="/profile" element={<ProfilePage />} />
+        <Route path="/line-connection" element={<LineConnectionPage />} />
         <Route path="/broadcast" element={<BroadcastPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

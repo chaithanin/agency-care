@@ -451,7 +451,11 @@ export default function Layout({ children }: { children: ReactNode }) {
               </Tooltip>
               <Menu anchorEl={profileMenuAnchor} open={Boolean(profileMenuAnchor)} onClose={() => setProfileMenuAnchor(null)}>
                 <MenuItem onClick={() => { setProfileMenuAnchor(null); navigate('/profile'); }} sx={{ gap: 1 }}>
-                  <AccountCircleRoundedIcon fontSize="small" /> Profile & LINE Link
+                  <AccountCircleRoundedIcon fontSize="small" /> Profile
+                </MenuItem>
+                <MenuItem onClick={() => { setProfileMenuAnchor(null); navigate('/line-connection'); }} sx={{ gap: 1 }}>
+                  <Box sx={{ width: 16, height: 16, borderRadius: '3px', bgcolor: '#06C755', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', color: 'white', fontWeight: 'bold' }}>L</Box>
+                  LINE Connection
                 </MenuItem>
                 <Divider />
                 <MenuItem onClick={() => { setProfileMenuAnchor(null); logout(); }} sx={{ gap: 1, color: 'error.main' }}>
