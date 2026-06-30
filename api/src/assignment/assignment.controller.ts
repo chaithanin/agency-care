@@ -98,4 +98,54 @@ export class AssignmentController {
   ) {
     return this.service.getQuotaStatus(employeeId, month);
   }
+
+  // ═══════════════════════════════════════════════════════════════
+  // PHASE 2: Agency Assignment Engine Endpoints
+  // ═══════════════════════════════════════════════════════════════
+
+  @Roles('admin', 'closer', 'sales')
+  @Get('agencies/scored')
+  getAgenciesByScore(
+    @Query('employeeId') employeeId: string,
+    @Query('date') date: string,
+    @Query('zone') zone?: string,
+  ) {
+    return this.service.getAgenciesByScore(employeeId, date, zone);
+  }
+
+  @Roles('admin', 'closer', 'sales')
+  @Get('optimal-assignments')
+  getOptimalAssignments(
+    @Query('employeeId') employeeId: string,
+    @Query('date') date: string,
+    @Query('count') count: number = 3,
+  ) {
+    return this.service.getOptimalAssignments(employeeId, date, count);
+  }
+
+  @Roles('admin', 'closer', 'sales')
+  @Get('backup-agencies')
+  getBackupAgencies(
+    @Query('employeeId') employeeId: string,
+    @Query('date') date: string,
+    @Query('zone') zone?: string,
+    @Query('excludeIds') excludeIds?: string,
+  ) {
+    const ids = excludeIds ? excludeIds.split(',') : [];
+    return this.service.getBackupAgencies(employeeId, date, zone, ids);
+  }
+
+  @Roles('admin', 'closer', 'sales')
+  @Get('check-consecutive')
+  checkConsecutive(
+    @Query('employeeId') employeeId: string,
+    @Query('agencyId') agencyId: string,
+    @Query('date') date: string,
+  ) {
+    return this.service.checkConsecutiveAssignments(
+      employeeId,
+      agencyId,
+      date,
+    );
+  }
 }

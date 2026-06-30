@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { WorkingDaysCalculator } from './working-days.calculator';
+import { AgencyAssignmentEngine } from './agency-assignment.engine';
 
 @Injectable()
 export class AssignmentService {
@@ -10,6 +11,7 @@ export class AssignmentService {
   constructor(
     private prisma: PrismaService,
     private workingDaysCalc: WorkingDaysCalculator,
+    private agencyEngine: AgencyAssignmentEngine,
   ) {}
 
   // มอบหมาย agency ให้ employee (upsert: ถ้าเคยมีแล้ว set active)
@@ -225,5 +227,63 @@ export class AssignmentService {
       remaining: Math.max(0, target - completed),
       percentComplete: Math.min(100, (completed / target) * 100),
     };
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // PHASE 2: Agency Assignment Engine Integration
+  // ═══════════════════════════════════════════════════════════════
+
+  /**
+   * Get scored and ranked agencies for assignment
+   */
+  async getAgenciesByScore(
+    employeeId: string,
+    date: string,
+    zone?: string,
+  ) {
+    return this.agencyEngine.scoreAgencies(employeeId, date, zone);
+  }
+
+  /**
+   * Get optimal 3 agencies to visit on a specific date
+   */
+  async getOptimalAssignments(
+    employeeId: string,
+    date: string,
+    count: number = 3,
+  ) {
+    return this.agencyEngine.getOptimalAssignments(employeeId, date, count);
+  }
+
+  /**
+   * Get backup agencies if primary can't go
+   */
+  async getBackupAgencies(
+    employeeId: string,
+    date: string,
+    zone?: string,
+    excludeIds: string[] = [],
+  ) {
+    return this.agencyEngine.getBackupAgencies(
+      employeeId,
+      date,
+      zone,
+      excludeIds,
+    );
+  }
+
+  /**
+   * Check if same agency on consecutive days
+   */
+  async checkConsecutiveAssignments(
+    employeeId: string,
+    agencyId: string,
+    date: string,
+  ) {
+    return this.agencyEngine.checkConsecutiveAssignments(
+      employeeId,
+      agencyId,
+      date,
+    );
   }
 }
