@@ -76,8 +76,44 @@ export default function CalendarPage() {
 
   const activityTypes = ['Activity', 'Conversation', 'Task', 'Birthday'];
   const statuses = ['Active', 'Pending', 'Completed', 'Cancelled'];
-  const keyActivities = ['Follow-up', 'Meeting', 'Proposal', 'Contract', 'Demo'];
+  const keyActivities = [
+    'AG Bring Customer',
+    'Agency Sign VIP',
+    'Call Agency',
+    'Call for NEW PROJECT',
+    'Come Open house',
+    'Come to Party',
+    'Customer Registration by Agency Record',
+    'Follow-up Deposit',
+    'Follow-up Holding Unit',
+    'Follow-up Reservation',
+    'Found New Agency',
+    'Impress Villa',
+    'Internal Training',
+    'Invitation to opening house',
+    'Invitation to Party',
+    'Make Photo&VDO',
+    'Managment Internal Meeting',
+    'Meet Management',
+    'Meeting for new Projects',
+    'Old Customer',
+    'Online Customer',
+    'Orientation',
+    'Orientation New Agency Only',
+    'Pick up-Drop Customer',
+    'Repeat Customer',
+    'Sale Support - Admin',
+    'Sales Team Morning Meetings Points',
+    'Show units',
+    'Sign Agency Agreement',
+    'VDO Call / Meeting',
+    'Visit Agency Office',
+    'Visit Booth',
+    'Walk In Agency',
+    'Walk In Customer',
+  ];
   const owners = data?.sales ?? [];
+  const [agencySearch, setAgencySearch] = useState('');
 
   const exportCsv = () => {
     if (!data) return;
@@ -289,9 +325,10 @@ export default function CalendarPage() {
     setFilterStatus('');
     setFilterCustomer('');
     setFilterOwner([]);
+    setAgencySearch('');
   };
 
-  const hasAnyFilters = filterDateFrom || filterDateTo || filterType.length > 0 || filterKeyActivity || filterStatus || filterCustomer || filterOwner.length > 0;
+  const hasAnyFilters = filterDateFrom || filterDateTo || filterType.length > 0 || filterKeyActivity || filterStatus || filterCustomer || filterOwner.length > 0 || agencySearch;
 
   return (
     <Box>
@@ -310,6 +347,7 @@ export default function CalendarPage() {
               {filterStatus && <Chip label={`Status: ${filterStatus}`} onDelete={() => setFilterStatus('')} size="small" />}
               {filterCustomer && <Chip label={`Customer: ${filterCustomer}`} onDelete={() => setFilterCustomer('')} size="small" />}
               {filterOwner.length > 0 && <Chip label={`Owner: ${filterOwner.length}`} onDelete={() => setFilterOwner([])} size="small" />}
+            {agencySearch && <Chip label={`Agency: ${agencySearch}`} onDelete={() => setAgencySearch('')} size="small" />}
             </Stack>
           </Stack>
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems="flex-end" flexWrap="wrap" useFlexGap>
@@ -366,6 +404,16 @@ export default function CalendarPage() {
               value={filterCustomer}
               onChange={(e) => setFilterCustomer(e.target.value)}
               sx={{ minWidth: 140 }}
+            />
+
+            {/* Agency Search Filter */}
+            <TextField
+              size="small"
+              label="Agency"
+              placeholder="Search agency..."
+              value={agencySearch}
+              onChange={(e) => setAgencySearch(e.target.value)}
+              sx={{ minWidth: 160 }}
             />
 
             {/* Owner Filter */}
