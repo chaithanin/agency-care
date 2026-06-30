@@ -1,13 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
-interface AgencyWithScore {
+export interface AgencyWithScore {
   id: string;
   code: string;
   name: string;
-  zone?: string;
+  zone: string | null;
   level: string;
-  tier?: string;
+  tier: string;
   daysSinceVisit: number;
   isNew: boolean;
   score: number;
