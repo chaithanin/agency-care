@@ -6,12 +6,11 @@ interface AgencyWithScore {
   code: string;
   name: string;
   zone?: string;
-  vipLevel: number;
-  riskScore: number;
+  level: string;
+  tier?: string;
   daysSinceVisit: number;
   isNew: boolean;
   score: number;
-  priority: number; // 1=highest, 10=lowest
 }
 
 @Injectable()
@@ -24,28 +23,16 @@ export class AgencyAssignmentEngine {
    */
   async scoreAgencies(
     employeeId: string,
-    date: string, // YYYY-MM-DD (the day to assign)
-    zone?: string, // Filter by zone (geographic clustering)
+    date: string,
+    zone?: string,
   ): Promise<AgencyWithScore[]> {
     // Get all active agencies assigned to this employee
     const assignments = await this.prisma.agencyAssignment.findMany({
       where: { employeeId, isActive: true },
-      include: {
-        agency: {
-          select: {
-            id: true,
-            code: true,
-            name: true,
-            zone: true,
-            vipLevel: true,
-            aiRiskScore: true,
-            tier: true,
-          },
-        },
-      },
+      include: { agency: true },
     });
 
-    // Filter by zone if provided (geographic clustering)
+    // Filter by zone if provided
     let agencies = assignments.map(a => a.agency);
     if (zone) {
       agencies = agencies.filter(a => a.zone === zone);
@@ -70,119 +57,76 @@ export class AgencyAssignmentEngine {
               (new Date(date).getTime() - new Date(lastVisit.planDate).getTime()) /
               (1000 * 60 * 60 * 24),
             )
-          : 999; // New agency
+          : 999;
 
         const isNew = daysSinceVisit > 365;
-        const riskScore = agency.aiRiskScore || 0;
 
-        // SCORING ALGORITHM (0-100 points total)
+        // SCORING (0-100 points)
         let score = 0;
 
-        // 1. Days Since Last Visit (0-25 points)
-        // VIP: 8/month = 3.75 days ideal, score decreases if overdue
-        // A: 4/month = 7.5 days
-        // B: 2/month = 15 days
-        // C: 1/month = 30 days
-        // D: 1/3months = 90 days
-        const visitFrequencyDays = this.getVisitFrequencyDays(agency.vipLevel);
-        const daysSinceScore = Math.min(
-          25,
-          (daysSinceVisit / visitFrequencyDays) * 25,
-        );
+        // 1. Days since visit (0-25 points)
+        const visitFrequency = this.getVisitFrequency(agency.level);
+        const daysSinceScore = Math.min(25, (daysSinceVisit / visitFrequency) * 25);
         score += daysSinceScore;
 
-        // 2. VIP Level (0-20 points)
-        // VIP = 20, A = 15, B = 10, C = 5, D = 0
-        const vipScore = this.getVIPScore(agency.vipLevel);
-        score += vipScore;
+        // 2. Agency level (0-20 points)
+        score += this.getLevelScore(agency.level);
 
-        // 3. AI Risk Score (0-20 points)
-        // Higher risk = higher priority
-        const riskScorePoints = (riskScore / 100) * 20;
-        score += riskScorePoints;
+        // 3. Tier (0-10 points)
+        score += this.getTierScore(agency.tier);
 
-        // 4. New Agency (0-15 points)
-        // Prioritize new agencies to get them in rotation
-        if (isNew) {
-          score += 15;
-        }
+        // 4. New agency bonus (0-15 points)
+        if (isNew) score += 15;
 
-        // 5. Tier/Category (0-10 points)
-        const tierScore = this.getTierScore(agency.tier);
-        score += tierScore;
-
-        // 6. Geographic bonus (0-10 points)
-        // Same zone bonus for route clustering
-        if (zone && agency.zone === zone) {
-          score += 5;
-        }
+        // 5. Geography bonus (0-10 points)
+        if (zone && agency.zone === zone) score += 10;
 
         return {
           id: agency.id,
           code: agency.code,
           name: agency.name,
           zone: agency.zone,
-          vipLevel: agency.vipLevel,
-          riskScore,
+          level: agency.level,
+          tier: agency.tier,
           daysSinceVisit,
           isNew,
           score: Math.round(score),
-          priority: 0, // Will be set after sorting
         };
       }),
     );
 
-    // Sort by score (highest first)
     scored.sort((a, b) => b.score - a.score);
-
-    // Assign priority (1=highest)
-    scored.forEach((a, i) => {
-      a.priority = i + 1;
-    });
-
     return scored;
   }
 
   /**
-   * Get optimal agencies to visit for a specific date
-   * Returns 3 agencies sorted by route (geographic clustering)
+   * Get optimal 3 agencies for a date
    */
   async getOptimalAssignments(
     employeeId: string,
     date: string,
     count: number = 3,
   ): Promise<AgencyWithScore[]> {
-    // Score all agencies
     const scored = await this.scoreAgencies(employeeId, date);
-
-    if (scored.length === 0) {
-      throw new Error('No agencies assigned to this employee');
-    }
-
-    // Take top N by score
-    const top = scored.slice(0, count);
-
-    // If we got fewer than requested, fill with next highest
-    if (top.length < count) {
-      top.push(...scored.slice(count, count * 2));
-    }
-
-    // TODO: Phase 3 - Route optimization
-    // For now, just sort by priority within same zone
-    top.sort((a, b) => {
-      // Prefer same zone grouping
-      if (a.zone && b.zone && a.zone !== b.zone) {
-        return a.zone.localeCompare(b.zone);
-      }
-      // Then by priority
-      return a.priority - b.priority;
-    });
-
-    return top;
+    if (scored.length === 0) throw new Error('No agencies assigned');
+    return scored.slice(0, Math.min(count, scored.length));
   }
 
   /**
-   * Check if assigning same agency on consecutive days
+   * Get backup agencies
+   */
+  async getBackupAgencies(
+    employeeId: string,
+    date: string,
+    zone?: string,
+    excludeIds: string[] = [],
+  ): Promise<AgencyWithScore[]> {
+    const all = await this.scoreAgencies(employeeId, date, zone);
+    return all.filter(a => !excludeIds.includes(a.id)).slice(0, 5);
+  }
+
+  /**
+   * Check consecutive assignment
    */
   async checkConsecutiveAssignments(
     employeeId: string,
@@ -194,55 +138,24 @@ export class AgencyAssignmentEngine {
     const nextDateStr = nextDay.toISOString().split('T')[0];
 
     const nextDayPlan = await this.prisma.visitPlan.findFirst({
-      where: {
-        employeeId,
-        agencyId,
-        planDate: nextDateStr,
-      },
+      where: { employeeId, agencyId, planDate: nextDateStr },
     });
 
-    if (nextDayPlan) {
-      return { consecutive: true, lastDate: nextDateStr };
-    }
-
-    return { consecutive: false };
+    return nextDayPlan ? { consecutive: true, lastDate: nextDateStr } : { consecutive: false };
   }
 
-  /**
-   * Suggest backup agencies if primary can't go
-   */
-  async getBackupAgencies(
-    employeeId: string,
-    date: string,
-    zone?: string,
-    excludeIds: string[] = [],
-  ): Promise<AgencyWithScore[]> {
-    const all = await this.scoreAgencies(employeeId, date, zone);
-
-    // Exclude already assigned + primary agencies
-    return all
-      .filter(a => !excludeIds.includes(a.id))
-      .slice(0, 5);
-  }
-
-  // ═══════════════════════════════════════════════════════════════
-  // HELPER METHODS
-  // ═══════════════════════════════════════════════════════════════
-
-  private getVisitFrequencyDays(vipLevel: string | number): number {
-    const level = typeof vipLevel === 'string' ? vipLevel : String.fromCharCode(65 + vipLevel);
+  private getVisitFrequency(level: string): number {
     const freq: Record<string, number> = {
-      VIP: 4, // 8 times/month ≈ 3.75 days
-      A: 8, // 4 times/month ≈ 7.5 days
-      B: 15, // 2 times/month ≈ 15 days
-      C: 30, // 1 time/month
-      D: 90, // 1 time/3 months
+      VIP: 4,
+      A: 8,
+      B: 15,
+      C: 30,
+      D: 90,
     };
     return freq[level] || 30;
   }
 
-  private getVIPScore(vipLevel: string | number): number {
-    const level = typeof vipLevel === 'string' ? vipLevel : String.fromCharCode(65 + vipLevel);
+  private getLevelScore(level: string): number {
     const scores: Record<string, number> = {
       VIP: 20,
       A: 15,
@@ -255,10 +168,12 @@ export class AgencyAssignmentEngine {
 
   private getTierScore(tier?: string): number {
     const scores: Record<string, number> = {
-      standard: 0,
-      premium: 5,
-      vip: 10,
+      platinum: 10,
+      gold: 7,
+      silver: 5,
+      bronze: 2,
+      new: 0,
     };
-    return scores[tier?.toLowerCase() || 'standard'] || 0;
+    return scores[tier?.toLowerCase() || 'bronze'] || 0;
   }
 }
