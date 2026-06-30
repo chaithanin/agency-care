@@ -63,49 +63,53 @@ export class AppointmentController {
     @Query('saleId') saleId?: string,
     @Query('meetingType') meetingType?: string,
   ) {
-    const fromDate = from ? new Date(from) : new Date(new Date().getFullYear(), new Date().getMonth(), 1);
-    const toDate = to ? new Date(to) : new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0);
-    // extend to cover full days in Bangkok time
-    const toDateEnd = new Date(toDate);
-    toDateEnd.setHours(23, 59, 59);
+    try {
+      const fromDate = from ? new Date(from) : new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+      const toDate = to ? new Date(to) : new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0);
+      const toDateEnd = new Date(toDate);
+      toDateEnd.setHours(23, 59, 59);
 
-    // Build where clause with filters
-    const apptWhere: any = { apptDate: { gte: fromDate, lte: toDateEnd }, status: { not: 'cancelled' } };
-    if (saleId) apptWhere.saleId = saleId;
-    if (meetingType) apptWhere.meetingType = meetingType;
-    if (search) apptWhere.agency = { name: { contains: search, mode: 'insensitive' } };
+      const [appts, visits] = await Promise.all([
+        this.db.appointment.findMany({
+          where: { apptDate: { gte: fromDate, lte: toDateEnd }, status: { not: 'cancelled' } },
+          include: {
+            agency: { select: { id: true, name: true } },
+            sale: { select: { id: true, name: true } },
+            closer: { select: { id: true, name: true } },
+          },
+          orderBy: { startTime: 'asc' },
+        }),
+        this.db.visitPlan.findMany({
+          where: { planDate: { gte: fromDate, lte: toDateEnd } },
+          include: {
+            agency: { select: { id: true, name: true } },
+            employee: { include: { user: { select: { id: true, name: true } } } },
+          },
+          orderBy: { planDate: 'asc' },
+        }),
+      ]);
 
-    const visitWhere: any = { planDate: { gte: fromDate, lte: toDateEnd } };
-    if (saleId) visitWhere.employeeId = saleId;
-    if (search) visitWhere.agency = { name: { contains: search, mode: 'insensitive' } };
+      // Filter in code (more reliable than complex Prisma filters)
+      const filteredAppts = appts.filter(a => {
+        if (saleId && a.saleId !== saleId) return false;
+        if (meetingType && a.meetingType !== meetingType) return false;
+        if (search && !a.agency.name.toLowerCase().includes(search.toLowerCase())) return false;
+        return true;
+      });
 
-    const [appts, visits] = await Promise.all([
-      this.db.appointment.findMany({
-        where: apptWhere,
-        include: {
-          agency: { select: { id: true, name: true } },
-          sale: { select: { id: true, name: true } },
-          closer: { select: { id: true, name: true } },
-        },
-        orderBy: { startTime: 'asc' },
-      }),
-      this.db.visitPlan.findMany({
-        where: visitWhere,
-        include: {
-          agency: { select: { id: true, name: true } },
-          employee: { include: { user: { select: { id: true, name: true } } } },
-        },
-        orderBy: { planDate: 'asc' },
-      }),
-    ]);
+      const filteredVisits = visits.filter(v => {
+        if (saleId && v.employeeId !== saleId) return false;
+        if (search && !v.agency.name.toLowerCase().includes(search.toLowerCase())) return false;
+        return true;
+      });
 
-    const toBKKDate = (dt: Date) =>
-      dt.toLocaleDateString('sv-SE', { timeZone: 'Asia/Bangkok' });
-    const toBKKTime = (dt: Date) =>
-      dt.toLocaleTimeString('sv-SE', { timeZone: 'Asia/Bangkok', hour: '2-digit', minute: '2-digit' });
+      const toBKKDate = (dt: Date) =>
+        dt.toLocaleDateString('sv-SE', { timeZone: 'Asia/Bangkok' });
+      const toBKKTime = (dt: Date) =>
+        dt.toLocaleTimeString('sv-SE', { timeZone: 'Asia/Bangkok', hour: '2-digit', minute: '2-digit' });
 
-    return [
-      ...appts.map(a => ({
+      return [
+        ...filteredAppts.map(a => ({
         id: a.id,
         sourceType: 'appointment',
         title: a.agency.name,
@@ -124,26 +128,30 @@ export class AppointmentController {
         color: apptColor(a.apptType, a.meetingType),
         apptNo: a.apptNo,
         meetingRoom: a.meetingRoom,
-      })),
-      ...visits
-        .filter(v => v.status !== 'cancelled')
-        .map(v => ({
-          id: v.id,
-          sourceType: 'site_visit',
-          title: v.agency.name,
-          date: toBKKDate(v.planDate),
-          startTime: undefined,
-          endTime: undefined,
-          status: v.status,
-          apptType: 'site_visit',
-          meetingType: v.actionType ?? undefined,
-          agencyId: v.agencyId,
-          agencyName: v.agency.name,
-          saleId: v.employee?.userId,
-          saleName: v.employee?.user?.name,
-          color: '#16A34A',
         })),
-    ];
+        ...filteredVisits
+          .filter(v => v.status !== 'cancelled')
+          .map(v => ({
+            id: v.id,
+            sourceType: 'site_visit',
+            title: v.agency.name,
+            date: toBKKDate(v.planDate),
+            startTime: undefined,
+            endTime: undefined,
+            status: v.status,
+            apptType: 'site_visit',
+            meetingType: v.actionType ?? undefined,
+            agencyId: v.agencyId,
+            agencyName: v.agency.name,
+            saleId: v.employee?.userId,
+            saleName: v.employee?.user?.name,
+            color: '#16A34A',
+          })),
+      ];
+    } catch (error) {
+      console.error('Calendar endpoint error:', error);
+      return [];
+    }
   }
 
   @Get()
