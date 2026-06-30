@@ -1,4 +1,4 @@
-﻿import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Box, Typography, Paper, Stack, TextField, MenuItem, LinearProgress, Chip, Tooltip,
   ToggleButton, ToggleButtonGroup, IconButton, Button,
@@ -13,6 +13,7 @@ import { api } from '../api/client';
 import { exportElementToPdf } from '../utils/pdf';
 import { useAuth } from '../auth/AuthContext';
 import { useT } from '../i18n';
+import { ExportPdfButton } from '../components/ExportPdfButton';
 
 interface DayVisit { agencyName: string; status: string; employeeName: string }
 interface CalData {
@@ -62,6 +63,10 @@ export default function CalendarPage() {
   const [rangeMode, setRangeMode] = useState(false);
   const [rangeFrom, setRangeFrom] = useState(todayStr2());
   const [rangeTo, setRangeTo] = useState(todayStr2());
+
+  // Filter state
+  const [filterDateFrom, setFilterDateFrom] = useState('');
+  const [filterDateTo, setFilterDateTo] = useState('');
 
   const exportCsv = () => {
     if (!data) return;
@@ -158,7 +163,40 @@ export default function CalendarPage() {
     [y, m, daysInMonth],
   );
 
-  if (!data) return <LinearProgress />;
+  // Check if any filters are active
+  const hasFilters = filterDateFrom || filterDateTo;
+
+  // Filter data based on date range
+  const filteredData = useMemo(() => {
+    if (!data) return null;
+    if (!hasFilters) return data;
+
+    const filtered: CalData = {
+      ...data,
+      days: {},
+    };
+
+    for (const [date, visits] of Object.entries(data.days)) {
+      let include = true;
+
+      if (filterDateFrom && date < filterDateFrom) include = false;
+      if (filterDateTo && date > filterDateTo) include = false;
+
+      if (include) {
+        filtered.days[date] = visits;
+      }
+    }
+
+    return filtered;
+  }, [data, filterDateFrom, filterDateTo, hasFilters]);
+
+  // Calculate result count
+  const resultCount = useMemo(() => {
+    if (!filteredData) return 0;
+    return Object.values(filteredData.days).reduce((sum, visits) => sum + visits.length, 0);
+  }, [filteredData]);
+
+  if (!data || !filteredData) return <LinearProgress />;
   const holidaySet = new Set(data.holidays);
   const empHolSet = new Set(data.empHolidays);
   const todayStr = new Date().toISOString().slice(0, 10);
@@ -166,7 +204,7 @@ export default function CalendarPage() {
 
   const renderDayCard = (d: Date) => {
     const ds = fmt(d);
-    const visits = data.days[ds] ?? [];
+    const visits = filteredData.days[ds] ?? [];
     const isHoliday = holidaySet.has(ds);
     const isEmpHol = empHolSet.has(ds);
     const isToday = ds === todayStr;
@@ -232,8 +270,51 @@ export default function CalendarPage() {
 
   const maxAnchor = Math.max(0, Math.ceil(daysInMonth / winSize) - 1);
 
+  const resetFilters = () => {
+    setFilterDateFrom('');
+    setFilterDateTo('');
+  };
+
   return (
     <Box>
+      {/* Filter Section */}
+      <Paper sx={{ p: 2, mb: 2, bgcolor: 'background.default' }}>
+        <Stack spacing={2}>
+          <Typography variant="subtitle2" fontWeight={600}>
+            {t('c.filters') || 'Filters'}
+          </Typography>
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems="flex-end" flexWrap="wrap" useFlexGap>
+            <TextField
+              size="small"
+              type="date"
+              label={t('c.dateFrom') || 'Date From'}
+              value={filterDateFrom}
+              onChange={(e) => setFilterDateFrom(e.target.value)}
+              InputLabelProps={{ shrink: true }}
+              sx={{ minWidth: 160 }}
+            />
+            <TextField
+              size="small"
+              type="date"
+              label={t('c.dateTo') || 'Date To'}
+              value={filterDateTo}
+              onChange={(e) => setFilterDateTo(e.target.value)}
+              InputLabelProps={{ shrink: true }}
+              sx={{ minWidth: 160 }}
+            />
+            {hasFilters && (
+              <Button size="small" variant="outlined" onClick={resetFilters}>
+                {t('c.reset') || 'Reset'}
+              </Button>
+            )}
+            <Box sx={{ flexGrow: 1 }} />
+            <Typography variant="caption" color="text.secondary" fontWeight={500}>
+              {resultCount} {resultCount === 1 ? 'visit' : 'visits'}
+            </Typography>
+          </Stack>
+        </Stack>
+      </Paper>
+
       <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2} flexWrap="wrap" gap={1}>
         <Typography variant="h5" fontWeight={700}>{t('cal.title')}</Typography>
         <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
@@ -250,14 +331,14 @@ export default function CalendarPage() {
             </TextField>
           )}
           {!isSales && (
-            <Chip size="small" label={rangeMode ? 'ช่วงวันที่' : 'รายเดือน'}
+            <Chip size="small" label={rangeMode ? 'Date Range' : 'Monthly'}
               color={rangeMode ? 'primary' : 'default'} clickable onClick={() => setRangeMode((v) => !v)} />
           )}
           {rangeMode && !isSales ? (
             <>
-              <TextField size="small" type="date" label="จาก" value={rangeFrom}
+              <TextField size="small" type="date" label="From" value={rangeFrom}
                 onChange={(e) => setRangeFrom(e.target.value)} InputLabelProps={{ shrink: true }} sx={{ width: 155 }} />
-              <TextField size="small" type="date" label="ถึง" value={rangeTo}
+              <TextField size="small" type="date" label="To" value={rangeTo}
                 onChange={(e) => setRangeTo(e.target.value)} InputLabelProps={{ shrink: true }} sx={{ width: 155 }} />
             </>
           ) : (
@@ -274,6 +355,7 @@ export default function CalendarPage() {
               {t('cal.pdfAll')}
             </Button>
           )}
+          <ExportPdfButton tableId="calendar-table" filename="calendar" title="Calendar" size="small" />
         </Stack>
       </Stack>
 
@@ -285,7 +367,7 @@ export default function CalendarPage() {
         </Stack>
       )}
 
-      <Paper sx={{ p: 1.5 }} ref={pdfRef}>{content}</Paper>
+      <Paper id="calendar-table" sx={{ p: 1.5 }} ref={pdfRef}>{content}</Paper>
 
       <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
         {t('cal.hintMain')}

@@ -13,9 +13,9 @@ interface Employee { id: string; name: string; code: string }
 interface User { id: string; name: string }
 interface PrItem { id?: string; name: string; detail?: string; qty: number; unit: string; budget?: number; neededBy?: string }
 
-const DEPARTMENTS = ['IT', 'การตลาด', 'ขาย', 'HR', 'การเงิน', 'บัญชี', 'ปฏิบัติการ', 'จัดซื้อ', 'อื่นๆ'];
-const PR_TYPES = ['ซื้อสินค้า', 'บริการ', 'ซ่อมแซม', 'เช่า', 'อบรม', 'โฆษณา', 'เทคโนโลยี', 'อื่นๆ'];
-const UNITS = ['ชิ้น', 'ชุด', 'กล่อง', 'ใบ', 'ครั้ง', 'เดือน', 'ปี', 'อื่นๆ'];
+const DEPARTMENTS = ['IT', 'Marketing', 'Sales', 'HR', 'Finance', 'Accounting', 'Operations', 'Procurement', 'Other'];
+const PR_TYPES = ['Goods Purchase', 'Service', 'Repair', 'Rental', 'Training', 'Advertising', 'Technology', 'Other'];
+const UNITS = ['Piece', 'Set', 'Box', 'Sheet', 'Time', 'Month', 'Year', 'Other'];
 
 export default function PrFormPage() {
   const { t } = useT();
@@ -41,7 +41,7 @@ export default function PrFormPage() {
     approverId: '',
   });
 
-  const [items, setItems] = useState<PrItem[]>([{ name: '', qty: 1, unit: 'ชิ้น' }]);
+  const [items, setItems] = useState<PrItem[]>([{ name: '', qty: 1, unit: 'Piece' }]);
 
   useEffect(() => {
     fetchEmployees();
@@ -79,8 +79,8 @@ export default function PrFormPage() {
         responsibleId: pr.responsibleId ?? '',
         approverId: pr.approverId ?? '',
       });
-      setItems(pr.items.length ? pr.items.map((i) => ({ ...i, qty: Number(i.qty), budget: i.budget ? Number(i.budget) : undefined })) : [{ name: '', qty: 1, unit: 'ชิ้น' }]);
-    } catch { setError('โหลดข้อมูลไม่สำเร็จ'); }
+      setItems(pr.items.length ? pr.items.map((i) => ({ ...i, qty: Number(i.qty), budget: i.budget ? Number(i.budget) : undefined })) : [{ name: '', qty: 1, unit: 'Piece' }]);
+    } catch { setError('Failed to load data'); }
   };
 
   const setF = (key: string, val: string) => setForm((p) => ({ ...p, [key]: val }));
@@ -88,12 +88,12 @@ export default function PrFormPage() {
   const setItem = (i: number, key: keyof PrItem, val: string | number) =>
     setItems((prev) => prev.map((item, idx) => idx === i ? { ...item, [key]: val } : item));
 
-  const addItem = () => setItems((p) => [...p, { name: '', qty: 1, unit: 'ชิ้น' }]);
+  const addItem = () => setItems((p) => [...p, { name: '', qty: 1, unit: 'Piece' }]);
   const removeItem = (i: number) => setItems((p) => p.filter((_, idx) => idx !== i));
 
   const handleSubmit = async () => {
     if (!form.department || !form.prType || !form.title) {
-      setError('กรุณากรอกข้อมูลที่จำเป็น'); return;
+      setError('Please fill in all required fields'); return;
     }
     setSaving(true);
     setError('');
@@ -134,7 +134,7 @@ export default function PrFormPage() {
 
       {/* General Info */}
       <Paper sx={{ p: 3, mb: 2 }}>
-        <Typography variant="subtitle1" fontWeight={700} mb={2}>ข้อมูลทั่วไป</Typography>
+        <Typography variant="subtitle1" fontWeight={700} mb={2}>General Information</Typography>
         <Grid container spacing={2}>
           <Grid item xs={12} sm={6}>
             <TextField label={t('prt.title')} value={form.title} onChange={(e) => setF('title', e.target.value)} fullWidth required />
@@ -170,13 +170,13 @@ export default function PrFormPage() {
             <TextField label={t('prt.dueDate')} type="date" value={form.dueDate} onChange={(e) => setF('dueDate', e.target.value)} fullWidth InputLabelProps={{ shrink: true }} />
           </Grid>
           <Grid item xs={12} sm={3}>
-            <TextField label={`${t('prt.budget')} (รวม)`} type="number" value={form.budgetTotal} onChange={(e) => setF('budgetTotal', e.target.value)} fullWidth InputProps={{ inputProps: { min: 0 } }} />
+            <TextField label={`${t('prt.budget')} (Total)`} type="number" value={form.budgetTotal} onChange={(e) => setF('budgetTotal', e.target.value)} fullWidth InputProps={{ inputProps: { min: 0 } }} />
           </Grid>
           <Grid item xs={12} sm={3}>
             <FormControl fullWidth>
               <InputLabel>{t('prt.responsible')}</InputLabel>
               <Select value={form.responsibleId} label={t('prt.responsible')} onChange={(e) => setF('responsibleId', e.target.value)}>
-                <MenuItem value="">— ไม่ระบุ —</MenuItem>
+                <MenuItem value="">— Not specified —</MenuItem>
                 {employees.map((e) => <MenuItem key={e.id} value={e.id}>{e.name} ({e.code})</MenuItem>)}
               </Select>
             </FormControl>
@@ -185,7 +185,7 @@ export default function PrFormPage() {
             <FormControl fullWidth>
               <InputLabel>{t('prt.approver')}</InputLabel>
               <Select value={form.approverId} label={t('prt.approver')} onChange={(e) => setF('approverId', e.target.value)}>
-                <MenuItem value="">— ไม่ระบุ —</MenuItem>
+                <MenuItem value="">— Not specified —</MenuItem>
                 {users.map((u) => <MenuItem key={u.id} value={u.id}>{u.name}</MenuItem>)}
               </Select>
             </FormControl>
@@ -209,7 +209,7 @@ export default function PrFormPage() {
           <TableHead>
             <TableRow sx={{ bgcolor: '#F8FAFC' }}>
               <TableCell sx={{ width: '30%' }}>{t('prt.itemName')}</TableCell>
-              <TableCell>รายละเอียด</TableCell>
+              <TableCell>Details</TableCell>
               <TableCell sx={{ width: 80 }}>{t('prt.qty')}</TableCell>
               <TableCell sx={{ width: 100 }}>{t('prt.unit')}</TableCell>
               <TableCell sx={{ width: 130 }}>{t('prt.itemBudget')} (฿)</TableCell>
@@ -220,7 +220,7 @@ export default function PrFormPage() {
           <TableBody>
             {items.map((item, i) => (
               <TableRow key={i}>
-                <TableCell><TextField size="small" fullWidth value={item.name} onChange={(e) => setItem(i, 'name', e.target.value)} placeholder="ชื่อรายการ *" /></TableCell>
+                <TableCell><TextField size="small" fullWidth value={item.name} onChange={(e) => setItem(i, 'name', e.target.value)} placeholder="Item name *" /></TableCell>
                 <TableCell><TextField size="small" fullWidth value={item.detail ?? ''} onChange={(e) => setItem(i, 'detail', e.target.value)} /></TableCell>
                 <TableCell><TextField size="small" type="number" value={item.qty} onChange={(e) => setItem(i, 'qty', Number(e.target.value))} inputProps={{ min: 0.01, step: 0.01 }} /></TableCell>
                 <TableCell>
@@ -238,7 +238,7 @@ export default function PrFormPage() {
         {totalBudget > 0 && (
           <Box mt={1} textAlign="right">
             <Typography variant="body2" color="text.secondary">
-              รวมงบประมาณรายการ: <strong>{new Intl.NumberFormat('th-TH', { style: 'currency', currency: 'THB', minimumFractionDigits: 0 }).format(totalBudget)}</strong>
+              Total item budget: <strong>{new Intl.NumberFormat('th-TH', { style: 'currency', currency: 'THB', minimumFractionDigits: 0 }).format(totalBudget)}</strong>
             </Typography>
           </Box>
         )}
@@ -246,9 +246,9 @@ export default function PrFormPage() {
 
       {/* Actions */}
       <Box display="flex" gap={2} justifyContent="flex-end">
-        <Button variant="outlined" onClick={() => navigate('/pr')}>ยกเลิก</Button>
+        <Button variant="outlined" onClick={() => navigate('/pr')}>Cancel</Button>
         <Button variant="contained" startIcon={saving ? <CircularProgress size={16} color="inherit" /> : <Save />} onClick={handleSubmit} disabled={saving}>
-          {saving ? 'กำลังบันทึก…' : 'บันทึก'}
+          {saving ? 'Saving...' : 'Save'}
         </Button>
       </Box>
     </Box>

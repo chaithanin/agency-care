@@ -2,7 +2,7 @@ import { IsArray, IsBoolean, IsEmail, IsEnum, IsOptional, IsString, MinLength } 
 import { UserRole } from '@prisma/client';
 
 export class CreateUserDto {
-  @IsEmail()
+  @IsString()
   email!: string;
 
   @IsString()

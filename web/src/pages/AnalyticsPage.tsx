@@ -12,6 +12,7 @@ import {
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import { api, errMsg } from '../api/client';
 import { useT } from '../i18n';
+import { ExportPdfButton } from '../components/ExportPdfButton';
 
 interface Insight {
   title: string;
@@ -53,14 +54,23 @@ export default function AnalyticsPage() {
         <Typography variant="h5" fontWeight={700}>
           {t('an.title')}
         </Typography>
-        <Button
-          variant="contained"
-          startIcon={<AutoAwesomeIcon />}
-          onClick={run}
-          disabled={loading}
-        >
-          {loading ? t('an.running') : t('an.run')}
-        </Button>
+        <Stack direction="row" gap={1}>
+          <ExportPdfButton
+            tableId="analytics-table"
+            filename="analytics"
+            title="Analytics"
+            size="small"
+            variant="outlined"
+          />
+          <Button
+            variant="contained"
+            startIcon={<AutoAwesomeIcon />}
+            onClick={run}
+            disabled={loading}
+          >
+            {loading ? t('an.running') : t('an.run')}
+          </Button>
+        </Stack>
       </Stack>
 
       <Typography variant="body2" color="text.secondary" mb={2}>
@@ -80,7 +90,7 @@ export default function AnalyticsPage() {
         </Typography>
       )}
 
-      <Stack spacing={1.5} mt={1}>
+      <Stack spacing={1.5} mt={1} id="analytics-table">
         {insights?.map((ins, i) => (
           <Paper key={i} sx={{ p: 2, borderLeft: 4, borderColor: `${sevColor[ins.severity]}.main` }}>
             <Stack direction="row" justifyContent="space-between" alignItems="flex-start">

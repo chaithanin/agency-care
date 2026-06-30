@@ -42,6 +42,7 @@ import MonetizationOnIcon from '@mui/icons-material/MonetizationOn';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
 import { api, errMsg } from '../api/client';
 import { useT } from '../i18n';
+import { ExportPdfButton } from '../components/ExportPdfButton';
 
 interface Agency {
   id: string;
@@ -131,37 +132,37 @@ function CommissionDialog({ agency, onClose }: { agency: Agency; onClose: () => 
 
   return (
     <Dialog open onClose={onClose} fullWidth maxWidth="sm">
-      <DialogTitle>ค่าคอมมิชชั่น / โบนัส — {agency.name}</DialogTitle>
+      <DialogTitle>Commission / Bonus — {agency.name}</DialogTitle>
       <DialogContent>
         <Stack direction="row" spacing={2} mb={2}>
           <Paper variant="outlined" sx={{ p: 1.5, flex: 1, textAlign: 'center' }}>
-            <Typography variant="caption" color="text.secondary">คอมมิชชั่นรวม</Typography>
+            <Typography variant="caption" color="text.secondary">Total Commission</Typography>
             <Typography variant="h6" fontWeight={700} color="success.main">{totalComm.toLocaleString()} ฿</Typography>
           </Paper>
           <Paper variant="outlined" sx={{ p: 1.5, flex: 1, textAlign: 'center' }}>
-            <Typography variant="caption" color="text.secondary">โบนัสรวม</Typography>
+            <Typography variant="caption" color="text.secondary">Total Bonus</Typography>
             <Typography variant="h6" fontWeight={700} color="warning.main">{totalBonus.toLocaleString()} ฿</Typography>
           </Paper>
         </Stack>
 
         <Stack spacing={1.5} mb={2}>
           <Stack direction="row" spacing={1}>
-            <TextField select size="small" label="ประเภท" value={form.type}
+            <TextField select size="small" label="Type" value={form.type}
               onChange={(e) => setForm((f) => ({ ...f, type: e.target.value }))} sx={{ minWidth: 130 }}>
               <MenuItem value="commission">Commission</MenuItem>
               <MenuItem value="bonus">Bonus</MenuItem>
             </TextField>
-            <TextField size="small" label="จำนวน (฿)" type="number" value={form.amount}
+            <TextField size="small" label="Amount (฿)" type="number" value={form.amount}
               onChange={(e) => setForm((f) => ({ ...f, amount: e.target.value }))} sx={{ flex: 1 }} />
-            <TextField size="small" type="date" label="งวด" value={form.periodDate}
+            <TextField size="small" type="date" label="Period" value={form.periodDate}
               onChange={(e) => setForm((f) => ({ ...f, periodDate: e.target.value }))}
               InputLabelProps={{ shrink: true }} />
           </Stack>
-          <TextField size="small" label="หมายเหตุ" value={form.description}
+          <TextField size="small" label="Remarks" value={form.description}
             onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} />
           {err && <Alert severity="error" sx={{ py: 0 }}>{err}</Alert>}
           <Button variant="contained" size="small" onClick={save} disabled={saving || !form.amount}>
-            บันทึก
+            Save
           </Button>
         </Stack>
 
@@ -170,10 +171,10 @@ function CommissionDialog({ agency, onClose }: { agency: Agency; onClose: () => 
         <Table size="small">
           <TableHead>
             <TableRow>
-              <TableCell>งวด</TableCell>
-              <TableCell>ประเภท</TableCell>
-              <TableCell align="right">จำนวน (฿)</TableCell>
-              <TableCell>หมายเหตุ</TableCell>
+              <TableCell>Period</TableCell>
+              <TableCell>Type</TableCell>
+              <TableCell align="right">Amount (฿)</TableCell>
+              <TableCell>Remarks</TableCell>
               <TableCell />
             </TableRow>
           </TableHead>
@@ -192,13 +193,13 @@ function CommissionDialog({ agency, onClose }: { agency: Agency; onClose: () => 
               </TableRow>
             ))}
             {records.length === 0 && !loading && (
-              <TableRow><TableCell colSpan={5} align="center" sx={{ color: 'text.secondary' }}>ยังไม่มีรายการ</TableCell></TableRow>
+              <TableRow><TableCell colSpan={5} align="center" sx={{ color: 'text.secondary' }}>No records found</TableCell></TableRow>
             )}
           </TableBody>
         </Table>
       </DialogContent>
       <DialogActions>
-        <Button onClick={onClose}>ปิด</Button>
+        <Button onClick={onClose}>Close</Button>
       </DialogActions>
     </Dialog>
   );
@@ -347,7 +348,7 @@ export default function AgenciesPage() {
   const [rows, setRows] = useState<Agency[]>([]);
   const [employees, setEmployees] = useState<EmpOpt[]>([]);
   const [open, setOpen] = useState(false);
-  const [editFor, setEditFor] = useState<Agency | null>(null); // null = สร้างใหม่
+  const [editFor, setEditFor] = useState<Agency | null>(null); // null = create new
   // assign dialog
   const [assignFor, setAssignFor] = useState<Agency | null>(null);
   const [assignEmp, setAssignEmp] = useState('');
@@ -465,7 +466,7 @@ export default function AgenciesPage() {
     reader.onload = (ev) => {
       const text = ev.target?.result as string;
       const lines = text.replace(/\r/g, '').split('\n').filter(Boolean);
-      if (lines.length < 2) { setImportErr('ไฟล์ว่างหรือไม่มี header'); return; }
+      if (lines.length < 2) { setImportErr('File is empty or missing a header row'); return; }
       const headers = lines[0].split(',').map((h) => h.trim().replace(/^"(.*)"$/, '$1'));
       const parsed = lines.slice(1).map((line) => {
         const cols = line.split(',').map((c) => c.trim().replace(/^"(.*)"$/, '$1'));
@@ -482,7 +483,7 @@ export default function AgenciesPage() {
     setImportLoading(true); setImportErr(''); setImportMsg('');
     try {
       const { data } = await api.post('/agencies/bulk-import', { rows: importRows });
-      setImportMsg(`นำเข้าสำเร็จ ${data.created} รายการ${data.skipped ? ` · ข้าม ${data.skipped}` : ''}`);
+      setImportMsg(`Import successful: ${data.created} record(s)${data.skipped ? ` · skipped ${data.skipped}` : ''}`);
       load();
     } catch (e) { setImportErr(errMsg(e)); }
     setImportLoading(false);
@@ -564,8 +565,9 @@ export default function AgenciesPage() {
             {geocoding ? t('ag.geocoding') : t('ag.geocode')}
           </Button>
           <Button variant="outlined" startIcon={<UploadFileIcon />} onClick={() => { setImportMsg(''); setImportErr(''); setImportRows([]); setImportOpen(true); }}>
-            นำเข้า CSV
+            Import CSV
           </Button>
+          <ExportPdfButton tableId="agencies-table" filename="agencies" title="Agencies" size="small" variant="outlined" />
           <Button variant="contained" onClick={openCreate}>{t('ag.add')}</Button>
         </Stack>
       </Stack>
@@ -621,7 +623,7 @@ export default function AgenciesPage() {
         </Stack>
       </Paper>
 
-      <Paper sx={{ overflow: 'auto' }}>
+      <Paper sx={{ overflow: 'auto' }} id="agencies-table">
         <Table size="small" sx={{ minWidth: 900 }}>
           <TableHead>
             <TableRow>
@@ -640,7 +642,7 @@ export default function AgenciesPage() {
               <TableCell sx={{ minWidth: 100 }}>{t('ag.lastVisit')}</TableCell>
               <TableCell align="center" sx={{ minWidth: 60 }}>{t('ag.visits')}</TableCell>
               <TableCell align="center" sx={{ minWidth: 60 }}>{t('ag.calls')}</TableCell>
-              <TableCell align="center" sx={{ minWidth: 70 }}>ลูกค้า</TableCell>
+              <TableCell align="center" sx={{ minWidth: 70 }}>Clients</TableCell>
               <TableCell align="right" sx={{ minWidth: 110 }}>Commission</TableCell>
               <TableCell sx={{ minWidth: 150 }}>{t('ag.colTierStage')}</TableCell>
               <TableCell sx={{ minWidth: 100 }}>{t('c.zone')}</TableCell>
@@ -697,7 +699,7 @@ export default function AgenciesPage() {
                     <Typography variant="caption" fontWeight={600}>{a.callCount ?? 0}</Typography>
                   </TableCell>
                   <TableCell align="center">
-                    <Tooltip title="จำนวนลูกค้าที่พามา (นัดเข้าโชว์รูม)">
+                    <Tooltip title="Number of clients brought in (showroom appointments)">
                       <Typography variant="caption" fontWeight={600} color={(a.appointmentCount ?? 0) > 0 ? 'success.main' : 'text.secondary'}>
                         {a.appointmentCount ?? 0}
                       </Typography>
@@ -764,7 +766,7 @@ export default function AgenciesPage() {
                       <Button size="small" onClick={() => { setAssignFor(a); setAssignEmp(''); }}>
                         {t('ag.addSeller')}
                       </Button>
-                      <Tooltip title={a.automationPaused ? 'เปิด Automation' : 'หยุด Automation'}>
+                      <Tooltip title={a.automationPaused ? 'Enable Automation' : 'Pause Automation'}>
                         <Chip
                           size="small"
                           label={a.automationPaused ? '⏸ Paused' : '▶ Auto'}
@@ -850,7 +852,7 @@ export default function AgenciesPage() {
         onSaved={() => { load(); }}
       />
 
-      {/* ─── มอบหมายเซลส์ ─── */}
+      {/* ─── Assign Sales ─── */}
       <Dialog open={!!assignFor} onClose={() => setAssignFor(null)} fullWidth maxWidth="xs">
         <DialogTitle>{t('ag.assignTitle')} — {assignFor?.name}</DialogTitle>
         <DialogContent>
@@ -867,7 +869,7 @@ export default function AgenciesPage() {
         </DialogActions>
       </Dialog>
 
-      {/* ─── ตั้งพิกัด GPS (quick dialog) ─── */}
+      {/* ─── Set GPS Coordinates (quick dialog) ─── */}
       <Dialog open={!!gpsFor} onClose={() => setGpsFor(null)} fullWidth maxWidth="sm">
         <DialogTitle>{t('ag.gpsTitle')} — {gpsFor?.name}</DialogTitle>
         <DialogContent>
@@ -929,19 +931,19 @@ export default function AgenciesPage() {
       )}
       {/* ─── CSV Import ─── */}
       <Dialog open={importOpen} onClose={() => setImportOpen(false)} maxWidth="md" fullWidth>
-        <DialogTitle>นำเข้า Agency จาก CSV</DialogTitle>
+        <DialogTitle>Import Agencies from CSV</DialogTitle>
         <DialogContent>
           <Stack spacing={2} mt={1}>
             <Alert severity="info" sx={{ py: 0.5 }}>
-              ไฟล์ CSV ต้องมี header row: <b>code, name, zone, province, address, phone, email, ownerName, managerName, level, source</b> (ข้ามฟิลด์ที่ไม่มีได้)
+              CSV file must have a header row: <b>code, name, zone, province, address, phone, email, ownerName, managerName, level, source</b> (unused fields can be omitted)
             </Alert>
             <Button component="label" variant="outlined" startIcon={<UploadFileIcon />} sx={{ alignSelf: 'flex-start' }}>
-              เลือกไฟล์ CSV
+              Select CSV File
               <input type="file" accept=".csv,text/csv" hidden onChange={handleImportFile} />
             </Button>
             {importRows.length > 0 && (
               <Alert severity="success" sx={{ py: 0.5 }}>
-                พบข้อมูล <b>{importRows.length}</b> รายการ พร้อมนำเข้า
+                Found <b>{importRows.length}</b> record(s) ready to import
               </Alert>
             )}
             {importMsg && <Alert severity="success" sx={{ py: 0.5 }}>{importMsg}</Alert>}
@@ -967,7 +969,7 @@ export default function AgenciesPage() {
                     {importRows.length > 5 && (
                       <TableRow>
                         <TableCell colSpan={6} sx={{ color: 'text.secondary', fontStyle: 'italic' }}>
-                          … และอีก {importRows.length - 5} รายการ
+                          … and {importRows.length - 5} more record(s)
                         </TableCell>
                       </TableRow>
                     )}
@@ -978,9 +980,9 @@ export default function AgenciesPage() {
           </Stack>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setImportOpen(false)}>ปิด</Button>
+          <Button onClick={() => setImportOpen(false)}>Close</Button>
           <Button variant="contained" disabled={!importRows.length || importLoading} onClick={doImport}>
-            {importLoading ? 'กำลังนำเข้า…' : `นำเข้า ${importRows.length} รายการ`}
+            {importLoading ? 'Importing…' : `Import ${importRows.length} record(s)`}
           </Button>
         </DialogActions>
       </Dialog>

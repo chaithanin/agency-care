@@ -6,17 +6,18 @@ import {
 } from '@mui/material';
 import { Search, Download, Refresh, Security, ManageAccounts, Edit, Login } from '@mui/icons-material';
 import { api, errMsg } from '../api/client';
+import { ExportPdfButton } from '../components/ExportPdfButton';
 
 const ACTION_LABELS: Record<string, { label: string; color: string }> = {
-  create: { label: 'สร้าง', color: '#16A34A' },
-  update: { label: 'แก้ไข', color: '#2563EB' },
-  delete: { label: 'ลบ', color: '#DC2626' },
+  create: { label: 'Create', color: '#16A34A' },
+  update: { label: 'Edit', color: '#2563EB' },
+  delete: { label: 'Delete', color: '#DC2626' },
   login: { label: 'Login', color: '#7C3AED' },
   logout: { label: 'Logout', color: '#6B7280' },
-  approve: { label: 'อนุมัติ', color: '#16A34A' },
-  reject: { label: 'ปฏิเสธ', color: '#DC2626' },
-  status_change: { label: 'เปลี่ยนสถานะ', color: '#D97706' },
-  sign: { label: 'ลงนาม', color: '#4F46E5' },
+  approve: { label: 'Approved', color: '#16A34A' },
+  reject: { label: 'Rejected', color: '#DC2626' },
+  status_change: { label: 'Status Changed', color: '#D97706' },
+  sign: { label: 'Signed', color: '#4F46E5' },
 };
 
 interface AuditLog {
@@ -62,9 +63,9 @@ export default function AuditPage() {
   useEffect(() => { load(); }, [page, filterAction, filterEntity]);
 
   const exportCsv = () => {
-    const headers = ['วันที่เวลา', 'ผู้ดำเนินการ', 'การกระทำ', 'Entity', 'Entity ID', 'รายละเอียด', 'IP'];
+    const headers = ['Date/Time', 'Actor', 'Action', 'Entity Type', 'ID', 'Details', 'IP'];
     const rows = logs.map(l => [
-      new Date(l.createdAt).toLocaleString('th-TH'),
+      new Date(l.createdAt).toLocaleString('en-US'),
       l.actor?.name ?? l.actorId ?? '—',
       l.action,
       l.entity,
@@ -84,9 +85,10 @@ export default function AuditPage() {
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
         <Box>
           <Typography variant="h5" fontWeight={700}>Audit & Security</Typography>
-          <Typography variant="body2" color="text.secondary">บันทึกการใช้งาน {total.toLocaleString()} รายการ</Typography>
+          <Typography variant="body2" color="text.secondary">Activity log: {total.toLocaleString()} records</Typography>
         </Box>
         <Box display="flex" gap={1}>
+          <ExportPdfButton tableId="audit-table" filename="audit-log" title="Audit" size="small" />
           <Button startIcon={<Download />} variant="outlined" size="small" onClick={exportCsv}>Export CSV</Button>
           <IconButton onClick={load}><Refresh /></IconButton>
         </Box>
@@ -95,10 +97,10 @@ export default function AuditPage() {
       {/* Quick stats */}
       <Grid container spacing={2} mb={2}>
         {([
-          ['ทั้งหมด', total, <Security />, '#4F46E5'],
-          ['Login', logs.filter(l => l.action === 'login').length, <Login />, '#7C3AED'],
-          ['แก้ไขข้อมูล', logs.filter(l => l.action === 'update').length, <Edit />, '#2563EB'],
-          ['อนุมัติ', logs.filter(l => l.action === 'approve').length, <ManageAccounts />, '#16A34A'],
+          ['Total', total, <Security />, '#4F46E5'],
+          ['Logins', logs.filter(l => l.action === 'login').length, <Login />, '#7C3AED'],
+          ['Edits', logs.filter(l => l.action === 'update').length, <Edit />, '#2563EB'],
+          ['Approvals', logs.filter(l => l.action === 'approve').length, <ManageAccounts />, '#16A34A'],
         ] as [string, number, React.ReactNode, string][]).map(([label, val, icon, color]) => (
           <Grid item xs={6} sm={3} key={String(label)}>
             <Card variant="outlined" sx={{ borderTop: `3px solid ${color}` }}>
@@ -119,22 +121,22 @@ export default function AuditPage() {
       {/* Filters */}
       <Paper sx={{ p: 2, mb: 2 }}>
         <Box display="flex" flexWrap="wrap" gap={1.5} alignItems="center">
-          <TextField size="small" placeholder="ค้นหา..." value={search}
+          <TextField size="small" placeholder="Search..." value={search}
             onChange={e => setSearch(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && load()}
             InputProps={{ startAdornment: <Search sx={{ mr: 0.5, fontSize: 18, color: 'text.secondary' }} /> }}
             sx={{ minWidth: 200 }} />
           <FormControl size="small" sx={{ minWidth: 140 }}>
-            <InputLabel>การกระทำ</InputLabel>
-            <Select value={filterAction} label="การกระทำ" onChange={e => setFilterAction(e.target.value)}>
-              <MenuItem value="">ทั้งหมด</MenuItem>
+            <InputLabel>Action</InputLabel>
+            <Select value={filterAction} label="Action" onChange={e => setFilterAction(e.target.value)}>
+              <MenuItem value="">All</MenuItem>
               {Object.entries(ACTION_LABELS).map(([k, v]) => <MenuItem key={k} value={k}>{v.label}</MenuItem>)}
             </Select>
           </FormControl>
           <FormControl size="small" sx={{ minWidth: 140 }}>
-            <InputLabel>Entity</InputLabel>
-            <Select value={filterEntity} label="Entity" onChange={e => setFilterEntity(e.target.value)}>
-              <MenuItem value="">ทั้งหมด</MenuItem>
+            <InputLabel>Entity Type</InputLabel>
+            <Select value={filterEntity} label="Entity Type" onChange={e => setFilterEntity(e.target.value)}>
+              <MenuItem value="">All</MenuItem>
               {['agency','employee','user','pr','document','leave','task','kpi','expense'].map(e => (
                 <MenuItem key={e} value={e}>{e}</MenuItem>
               ))}
@@ -144,12 +146,12 @@ export default function AuditPage() {
         </Box>
       </Paper>
 
-      <Paper>
+      <Paper id="audit-table">
         {loading ? <Box p={6} textAlign="center"><CircularProgress /></Box> : (
           <Table size="small">
             <TableHead>
               <TableRow sx={{ bgcolor: '#F8FAFC' }}>
-                {['วันที่เวลา', 'ผู้ดำเนินการ', 'การกระทำ', 'Entity', 'รายละเอียด', 'IP'].map(h => (
+                {['Date/Time', 'Actor', 'Action', 'Entity Type', 'Details', 'IP'].map(h => (
                   <TableCell key={h} sx={{ fontWeight: 700 }}>{h}</TableCell>
                 ))}
               </TableRow>
@@ -157,14 +159,14 @@ export default function AuditPage() {
             <TableBody>
               {logs.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} align="center" sx={{ py: 6, color: 'text.secondary' }}>ไม่มีข้อมูล Audit Log</TableCell>
+                  <TableCell colSpan={6} align="center" sx={{ py: 6, color: 'text.secondary' }}>No activity log data</TableCell>
                 </TableRow>
               ) : logs.map(log => {
                 const ac = ACTION_LABELS[log.action] ?? { label: log.action, color: '#6B7280' };
                 return (
                   <TableRow key={log.id} hover>
                     <TableCell>
-                      <Typography variant="caption">{new Date(log.createdAt).toLocaleString('th-TH')}</Typography>
+                      <Typography variant="caption">{new Date(log.createdAt).toLocaleString('en-US')}</Typography>
                     </TableCell>
                     <TableCell>
                       <Typography variant="body2">{log.actor?.name ?? '—'}</Typography>
@@ -193,10 +195,10 @@ export default function AuditPage() {
         )}
         {/* Pagination */}
         <Box display="flex" justifyContent="space-between" alignItems="center" px={2} py={1}>
-          <Typography variant="caption" color="text.secondary">แสดง {logs.length} / {total} รายการ</Typography>
+          <Typography variant="caption" color="text.secondary">Showing {logs.length} / {total} records</Typography>
           <Box display="flex" gap={1}>
-            <Button size="small" disabled={page === 0} onClick={() => setPage(p => p - 1)}>ก่อนหน้า</Button>
-            <Button size="small" disabled={(page + 1) * LIMIT >= total} onClick={() => setPage(p => p + 1)}>ถัดไป</Button>
+            <Button size="small" disabled={page === 0} onClick={() => setPage(p => p - 1)}>Previous</Button>
+            <Button size="small" disabled={(page + 1) * LIMIT >= total} onClick={() => setPage(p => p + 1)}>Next</Button>
           </Box>
         </Box>
       </Paper>

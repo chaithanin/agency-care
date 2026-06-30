@@ -40,7 +40,7 @@ export default function ProfilePage() {
       const r = await api.get<{ liffUrl: string; alreadyLinked: boolean }>('/auth/line-link-token');
       // เปิด LIFF URL ในแท็บใหม่ / LINE in-app browser
       window.open(r.data.liffUrl, '_blank');
-      setMsg('เปิด LINE แล้ว กรุณากลับมายืนยันที่แอปนี้หลังผูกเสร็จ');
+      setMsg('LINE opened. Please return to this app after linking is complete.');
       // poll ทุก 3 วินาทีเป็นเวลา 2 นาที เพื่อ detect เมื่อ link สำเร็จ
       let tries = 0;
       const timer = setInterval(async () => {
@@ -49,7 +49,7 @@ export default function ProfilePage() {
         if (fresh?.data?.employee?.lineUserId) {
           clearInterval(timer);
           setMe(fresh.data);
-          setMsg('ผูกบัญชี LINE สำเร็จ!');
+          setMsg('LINE account linked successfully!');
         }
         if (tries >= 40) clearInterval(timer);
       }, 3000);
@@ -58,11 +58,11 @@ export default function ProfilePage() {
   };
 
   const handleUnlinkLine = async () => {
-    if (!confirm('ยกเลิกการผูกบัญชี LINE?')) return;
+    if (!confirm('Unlink LINE account?')) return;
     setErr(''); setMsg('');
     try {
       await api.delete('/auth/unlink-line');
-      setMsg('ยกเลิกการผูก LINE สำเร็จ');
+      setMsg('LINE account unlinked successfully.');
       load();
     } catch (e) { setErr(errMsg(e)); }
   };
@@ -113,16 +113,16 @@ export default function ProfilePage() {
               <path d="M46 25.6C46 17.6 38.8 11 28 11C17.2 11 10 17.6 10 25.6C10 32.8 16.4 38.8 25.2 39.8L25.6 43.6C25.6 44 26 44.2 26.4 44L31.2 41.2C32.4 41 33.6 40.6 34.8 40.2C41.6 38.2 46 32.4 46 25.6Z" fill="white"/>
             </svg>
           </Box>
-          <Typography variant="subtitle1" fontWeight={700}>LINE Notification</Typography>
+          <Typography variant="subtitle1" fontWeight={700}>LINE Notifications</Typography>
           {isLinked
-            ? <Chip label="เชื่อมต่อแล้ว" size="small" color="success" sx={{ ml: 'auto' }} />
-            : <Chip label="ยังไม่เชื่อมต่อ" size="small" color="default" sx={{ ml: 'auto' }} />}
+            ? <Chip label="Connected" size="small" color="success" sx={{ ml: 'auto' }} />
+            : <Chip label="Not Connected" size="small" color="default" sx={{ ml: 'auto' }} />}
         </Stack>
 
         <Typography variant="body2" color="text.secondary" mb={2}>
           {isLinked
-            ? `ผูกบัญชีกับ LINE UID: ${me?.employee?.lineUserId?.slice(0, 12)}... แล้ว`
-            : 'ผูกบัญชีเพื่อรับการแจ้งเตือนจาก Agency Care Bot บน LINE'}
+            ? `Linked to LINE UID: ${me?.employee?.lineUserId?.slice(0, 12)}...`
+            : 'Link your account to receive notifications from Agency Care Bot on LINE.'}
         </Typography>
 
         <Divider sx={{ mb: 2 }} />
@@ -136,7 +136,7 @@ export default function ProfilePage() {
               disabled={linking || !me?.employee}
               sx={{ bgcolor: '#06C755', '&:hover': { bgcolor: '#00A846' } }}
             >
-              ผูกบัญชี LINE
+              Link LINE Account
             </Button>
           ) : (
             <>
@@ -145,14 +145,14 @@ export default function ProfilePage() {
                 onClick={handleLinkLine} disabled={linking}
                 sx={{ color: '#06C755', borderColor: '#06C755' }}
               >
-                เปลี่ยน LINE Account
+                Change LINE Account
               </Button>
-              <Tooltip title="ยกเลิกการผูก LINE">
+              <Tooltip title="Unlink LINE">
                 <IconButton color="error" onClick={handleUnlinkLine}><LinkOffIcon /></IconButton>
               </Tooltip>
             </>
           )}
-          <Tooltip title="เปิด LINE OA">
+          <Tooltip title="Open LINE OA">
             <IconButton onClick={() => window.open('https://lin.ee/agency-care', '_blank')}>
               <OpenInNewIcon fontSize="small" />
             </IconButton>
@@ -161,7 +161,7 @@ export default function ProfilePage() {
 
         {!me?.employee && (
           <Alert severity="info" sx={{ mt: 2 }} icon={false}>
-            บัญชีนี้ยังไม่ได้เชื่อมกับข้อมูลพนักงาน — กรุณาติดต่อ Admin เพื่อสร้างข้อมูลพนักงาน
+            This account is not linked to an employee record — please contact Admin to create an employee profile.
           </Alert>
         )}
       </Paper>

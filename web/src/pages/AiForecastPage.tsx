@@ -1,9 +1,9 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import {
   Box, Typography, Tabs, Tab, Card, CardContent, Stack, Table,
   TableHead, TableRow, TableCell, TableBody, TableContainer, Paper,
   Chip, LinearProgress, CircularProgress, Alert, Grid,
-  IconButton, Tooltip, Slider,
+  IconButton, Tooltip, Slider, TextField, Button,
 } from '@mui/material';
 import TrendingUpRoundedIcon from '@mui/icons-material/TrendingUpRounded';
 import TrendingDownRoundedIcon from '@mui/icons-material/TrendingDownRounded';
@@ -12,7 +12,9 @@ import RefreshRoundedIcon from '@mui/icons-material/RefreshRounded';
 import WarningAmberRoundedIcon from '@mui/icons-material/WarningAmberRounded';
 import ArrowUpwardRoundedIcon from '@mui/icons-material/ArrowUpwardRounded';
 import ArrowDownwardRoundedIcon from '@mui/icons-material/ArrowDownwardRounded';
+import ClearRoundedIcon from '@mui/icons-material/ClearRounded';
 import { api } from '../api/client';
+import { ExportPdfButton } from '../components/ExportPdfButton';
 
 interface GrowthItem {
   id: string; name: string; code: string;
@@ -31,7 +33,7 @@ const TIER_COLOR: Record<string, string> = {
   platinum: '#6366F1', gold: '#D97706', silver: '#6B7280', bronze: '#92400E', at_risk: '#DC2626',
 };
 const TIER_LABEL_TH: Record<string, string> = {
-  platinum: 'Platinum', gold: 'Gold', silver: 'Silver', bronze: 'Bronze', at_risk: 'เสี่ยง',
+  platinum: 'Platinum', gold: 'Gold', silver: 'Silver', bronze: 'Bronze', at_risk: 'At Risk',
 };
 
 type RiskStatus = 'on_track' | 'at_risk' | 'critical' | 'unknown';
@@ -77,7 +79,7 @@ const STATUS_COLOR: Record<RiskStatus, string> = {
   on_track: '#16A34A', at_risk: '#D97706', critical: '#DC2626', unknown: '#6B7280',
 };
 const STATUS_LABEL: Record<RiskStatus, string> = {
-  on_track: 'ตามเป้า', at_risk: 'เสี่ยง', critical: 'วิกฤต', unknown: 'ไม่มีข้อมูล',
+  on_track: 'On Track', at_risk: 'At Risk', critical: 'Critical', unknown: 'No Data',
 };
 
 function StatusChip({ status }: { status: RiskStatus }) {
@@ -137,7 +139,7 @@ function KpiRow({ item }: { item: KpiItem }) {
         <Box>
           <Stack direction="row" alignItems="center" spacing={0.5}>
             <Typography variant="caption" fontWeight={700}>{cp.visitActual}/{cp.visitTarget}</Typography>
-            <Typography variant="caption" color="text.secondary">→ คาด {cp.visitProjected}</Typography>
+            <Typography variant="caption" color="text.secondary">→ Est. {cp.visitProjected}</Typography>
           </Stack>
           <MiniBar value={cp.visitActual} max={cp.visitTarget} color={STATUS_COLOR[item.riskStatus]} />
         </Box>
@@ -169,6 +171,10 @@ export default function AiForecastPage() {
   const [addSales, setAddSales] = useState(0);
   const [visitDelta, setVisitDelta] = useState(0);
   const [scenarioLoading, setScenarioLoading] = useState(false);
+  // Filter states for KPI tab
+  const [searchText, setSearchText] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -185,7 +191,7 @@ export default function AiForecastPage() {
       setWorkload(workRes.data);
       setGrowth(growthRes.data);
     } catch {
-      setError('ไม่สามารถโหลดข้อมูล Forecast ได้');
+      setError('Unable to load Forecast data');
     } finally {
       setLoading(false);
     }
@@ -210,8 +216,49 @@ export default function AiForecastPage() {
 
   const periodLabel = (p: string) => {
     const [y, m] = p.split('-');
-    const months = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     return `${months[parseInt(m) - 1]} ${y}`;
+  };
+
+  // Filter logic for KPI items
+  const filteredKpiItems = useMemo(() => {
+    return kpiItems.filter(item => {
+      // Search filter (name, role, zone, region)
+      if (searchText.trim()) {
+        const lowerSearch = searchText.toLowerCase();
+        const matchesSearch =
+          item.name.toLowerCase().includes(lowerSearch) ||
+          item.role.toLowerCase().includes(lowerSearch) ||
+          (item.zone?.toLowerCase().includes(lowerSearch) || false) ||
+          (item.region?.toLowerCase().includes(lowerSearch) || false);
+        if (!matchesSearch) return false;
+      }
+
+      // Date range filter (based on currentPeriod)
+      if (startDate || endDate) {
+        const itemDate = new Date(`${item.currentPeriod.period}-01`);
+        if (startDate) {
+          const start = new Date(startDate);
+          if (itemDate < start) return false;
+        }
+        if (endDate) {
+          const end = new Date(endDate);
+          end.setMonth(end.getMonth() + 1);
+          if (itemDate >= end) return false;
+        }
+      }
+
+      return true;
+    });
+  }, [kpiItems, searchText, startDate, endDate]);
+
+  // Check if any filters are active
+  const hasActiveFilters = searchText.trim() !== '' || startDate !== '' || endDate !== '';
+
+  const handleClearFilters = () => {
+    setSearchText('');
+    setStartDate('');
+    setEndDate('');
   };
 
   return (
@@ -221,7 +268,7 @@ export default function AiForecastPage() {
           <TrendingUpRoundedIcon sx={{ color: '#6366F1', fontSize: 28 }} />
           <Box>
             <Typography variant="h5" fontWeight={800}>AI Forecast</Typography>
-            <Typography variant="caption" color="text.secondary">พยากรณ์ KPI, Workload และ Scenario อัตโนมัติ</Typography>
+            <Typography variant="caption" color="text.secondary">Automated KPI, Workload and Scenario forecasting</Typography>
           </Box>
         </Stack>
         <Tooltip title="Refresh">
@@ -232,11 +279,11 @@ export default function AiForecastPage() {
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
       <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ mb: 2, borderBottom: '1px solid #E5E7EB' }}>
-        <Tab label="Dashboard" />
+        <Tab label="Overview" />
         <Tab label="KPI Forecast" />
         <Tab label="Workload" />
         <Tab label="Agency Growth" />
-        <Tab label="Scenario" />
+        <Tab label="What-If Scenario" />
       </Tabs>
 
       {loading && !dashboard ? (
@@ -250,10 +297,10 @@ export default function AiForecastPage() {
             <Box>
               <Grid container spacing={2} sx={{ mb: 3 }}>
                 {[
-                  { label: 'KPI ตามเป้า', value: dashboard.summary.onTrack, color: '#16A34A', sub: 'Sale' },
-                  { label: 'เสี่ยงไม่ถึงเป้า', value: dashboard.summary.atRisk, color: '#D97706', sub: 'Sale' },
-                  { label: 'วิกฤต', value: dashboard.summary.critical, color: '#DC2626', sub: 'Sale' },
-                  { label: 'Achievement เฉลี่ย', value: `${dashboard.summary.avgVisitProjRate}%`, color: '#6366F1', sub: 'คาดการณ์สิ้นเดือน' },
+                  { label: 'KPI On Track', value: dashboard.summary.onTrack, color: '#16A34A', sub: 'Sales' },
+                  { label: 'At Risk', value: dashboard.summary.atRisk, color: '#D97706', sub: 'Sales' },
+                  { label: 'Critical', value: dashboard.summary.critical, color: '#DC2626', sub: 'Sales' },
+                  { label: 'Avg. Achievement', value: `${dashboard.summary.avgVisitProjRate}%`, color: '#6366F1', sub: 'Projected end-of-month' },
                 ].map(card => (
                   <Grid item xs={6} md={3} key={card.label}>
                     <Card>
@@ -289,22 +336,22 @@ export default function AiForecastPage() {
               <Grid container spacing={2}>
                 <Grid item xs={12} md={6}>
                   <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1 }}>
-                    Forecast เดือนหน้า ({periodLabel(dashboard.nextPeriod)})
+                    Next Month Forecast ({periodLabel(dashboard.nextPeriod)})
                   </Typography>
                   <Card>
                     <CardContent>
                       <Stack spacing={1.5}>
                         <Box>
                           <Stack direction="row" justifyContent="space-between">
-                            <Typography variant="body2" color="text.secondary">Site Visit เฉลี่ย/Sale</Typography>
+                            <Typography variant="body2" color="text.secondary">Avg. visits / sales</Typography>
                             <Typography variant="body2" fontWeight={700} sx={{ color: '#6366F1' }}>
-                              {dashboard.summary.avgVisitForecast} ครั้ง
+                              {dashboard.summary.avgVisitForecast} visits
                             </Typography>
                           </Stack>
                         </Box>
                         <Box>
                           <Stack direction="row" justifyContent="space-between">
-                            <Typography variant="body2" color="text.secondary">Task คาดสร้าง</Typography>
+                            <Typography variant="body2" color="text.secondary">Estimated tasks</Typography>
                             <Typography variant="body2" fontWeight={700}>
                               {dashboard.workload.taskForecast}
                               <Box component="span" sx={{ ml: 0.5, fontSize: 11, color: dashboard.workload.taskTrend > 5 ? '#DC2626' : dashboard.workload.taskTrend < -5 ? '#16A34A' : '#6B7280' }}>
@@ -333,7 +380,7 @@ export default function AiForecastPage() {
                   </Card>
                 </Grid>
                 <Grid item xs={12} md={6}>
-                  <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1 }}>Sale ที่ต้องเฝ้าระวัง</Typography>
+                  <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1 }}>Sales to Watch</Typography>
                   <Stack spacing={1}>
                     {dashboard.topAtRisk.slice(0, 5).map(item => (
                       <Box key={item.employeeId} sx={{ p: 1.5, border: '1px solid', borderColor: STATUS_COLOR[item.riskStatus] + '40', borderRadius: 2, bgcolor: item.riskStatus === 'critical' ? '#FEF2F2' : '#FEFCE8' }}>
@@ -341,7 +388,7 @@ export default function AiForecastPage() {
                           <Box>
                             <Typography variant="body2" fontWeight={700}>{item.name}</Typography>
                             <Typography variant="caption" color="text.secondary">
-                              Visit {item.currentPeriod.visitActual}/{item.currentPeriod.visitTarget} · คาดสิ้นเดือน {item.currentPeriod.visitProjected}
+                              Visit {item.currentPeriod.visitActual}/{item.currentPeriod.visitTarget} · Est. end-of-month {item.currentPeriod.visitProjected}
                             </Typography>
                           </Box>
                           <StatusChip status={item.riskStatus} />
@@ -356,27 +403,139 @@ export default function AiForecastPage() {
 
           {/* KPI Forecast Tab */}
           {tab === 1 && (
-            <TableContainer component={Paper} elevation={0} sx={{ border: '1px solid #E5E7EB', borderRadius: 2 }}>
-              <Table size="small">
-                <TableHead sx={{ bgcolor: '#F9FAFB' }}>
-                  <TableRow>
-                    <TableCell sx={{ fontWeight: 700 }}>Sale</TableCell>
-                    <TableCell sx={{ fontWeight: 700 }}>สถานะ</TableCell>
-                    <TableCell sx={{ fontWeight: 700, minWidth: 160 }}>เดือนนี้ (Visit)</TableCell>
-                    <TableCell sx={{ fontWeight: 700 }}>Forecast เดือนหน้า</TableCell>
-                    <TableCell sx={{ fontWeight: 700 }}>Trend 3 เดือน</TableCell>
-                    <TableCell sx={{ fontWeight: 700 }}>เดือนผ่านมา</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {kpiItems.length === 0 ? (
-                    <TableRow><TableCell colSpan={6} align="center" sx={{ py: 4, color: 'text.secondary' }}>ไม่พบข้อมูล KPI</TableCell></TableRow>
-                  ) : (
-                    kpiItems.map(item => <KpiRow key={item.employeeId} item={item} />)
-                  )}
-                </TableBody>
-              </Table>
-            </TableContainer>
+            <Box>
+              {/* Filter Section */}
+              <Card sx={{ mb: 2, bgcolor: '#FAFBFC', border: '1px solid #E5E7EB' }}>
+                <CardContent>
+                  <Stack spacing={2}>
+                    {/* Filter Controls */}
+                    <Grid container spacing={2} alignItems="flex-end">
+                      <Grid item xs={12} md={4}>
+                        <TextField
+                          fullWidth
+                          size="small"
+                          placeholder="Search by name, role, zone..."
+                          value={searchText}
+                          onChange={(e) => setSearchText(e.target.value)}
+                          variant="outlined"
+                          slotProps={{
+                            input: { sx: { bgcolor: '#fff' } }
+                          }}
+                        />
+                      </Grid>
+                      <Grid item xs={12} sm={6} md={3}>
+                        <TextField
+                          fullWidth
+                          size="small"
+                          label="Start Period"
+                          type="month"
+                          value={startDate}
+                          onChange={(e) => setStartDate(e.target.value)}
+                          variant="outlined"
+                          slotProps={{
+                            input: { sx: { bgcolor: '#fff' } }
+                          }}
+                          InputLabelProps={{ shrink: true }}
+                        />
+                      </Grid>
+                      <Grid item xs={12} sm={6} md={3}>
+                        <TextField
+                          fullWidth
+                          size="small"
+                          label="End Period"
+                          type="month"
+                          value={endDate}
+                          onChange={(e) => setEndDate(e.target.value)}
+                          variant="outlined"
+                          slotProps={{
+                            input: { sx: { bgcolor: '#fff' } }
+                          }}
+                          InputLabelProps={{ shrink: true }}
+                        />
+                      </Grid>
+                      <Grid item xs={12} md={2}>
+                        {hasActiveFilters && (
+                          <Button
+                            fullWidth
+                            size="small"
+                            variant="outlined"
+                            startIcon={<ClearRoundedIcon />}
+                            onClick={handleClearFilters}
+                            sx={{ textTransform: 'none' }}
+                          >
+                            Clear
+                          </Button>
+                        )}
+                      </Grid>
+                    </Grid>
+
+                    {/* Filter Info */}
+                    <Stack direction="row" alignItems="center" justifyContent="space-between">
+                      <Typography variant="caption" color="text.secondary">
+                        {filteredKpiItems.length} of {kpiItems.length} results
+                        {hasActiveFilters && ' (filtered)'}
+                      </Typography>
+                      {hasActiveFilters && (
+                        <Stack direction="row" spacing={1}>
+                          {searchText && (
+                            <Chip
+                              size="small"
+                              label={`Search: "${searchText}"`}
+                              onDelete={() => setSearchText('')}
+                              variant="outlined"
+                            />
+                          )}
+                          {startDate && (
+                            <Chip
+                              size="small"
+                              label={`From: ${startDate}`}
+                              onDelete={() => setStartDate('')}
+                              variant="outlined"
+                            />
+                          )}
+                          {endDate && (
+                            <Chip
+                              size="small"
+                              label={`To: ${endDate}`}
+                              onDelete={() => setEndDate('')}
+                              variant="outlined"
+                            />
+                          )}
+                        </Stack>
+                      )}
+                    </Stack>
+                  </Stack>
+                </CardContent>
+              </Card>
+
+              {/* KPI Table */}
+              <Stack direction="row" justifyContent="flex-end" sx={{ mb: 1.5 }}>
+                <ExportPdfButton tableId="ai-forecast-table" filename="ai-forecast" title="AI Forecast - KPI" size="small" />
+              </Stack>
+              <TableContainer id="ai-forecast-table" component={Paper} elevation={0} sx={{ border: '1px solid #E5E7EB', borderRadius: 2 }}>
+                <Table size="small">
+                  <TableHead sx={{ bgcolor: '#F9FAFB' }}>
+                    <TableRow>
+                      <TableCell sx={{ fontWeight: 700 }}>Sales</TableCell>
+                      <TableCell sx={{ fontWeight: 700 }}>Status</TableCell>
+                      <TableCell sx={{ fontWeight: 700, minWidth: 160 }}>This Month (Visits)</TableCell>
+                      <TableCell sx={{ fontWeight: 700 }}>Next Month Forecast</TableCell>
+                      <TableCell sx={{ fontWeight: 700 }}>3-Month Trend</TableCell>
+                      <TableCell sx={{ fontWeight: 700 }}>Previous Month</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {filteredKpiItems.length === 0 ? (
+                      <TableRow><TableCell colSpan={6} align="center" sx={{ py: 4, color: 'text.secondary' }}>
+                        {hasActiveFilters ? 'No results match your filters' : 'No KPI data found'}
+                      </TableCell></TableRow>
+                    ) : (
+                      filteredKpiItems.map(item => <KpiRow key={item.employeeId} item={item} />)
+                    )}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            </Box>
           )}
 
           {/* Workload Tab */}
@@ -384,9 +543,9 @@ export default function AiForecastPage() {
             <Box>
               <Grid container spacing={2} sx={{ mb: 3 }}>
                 {[
-                  { label: 'Task เปิดอยู่', value: workload.snapshot.openTasks, color: '#6366F1' },
-                  { label: 'Task ค้าง', value: workload.snapshot.overdueTasks, color: '#DC2626' },
-                  { label: 'Sale ทั้งหมด', value: workload.activeSales, color: '#16A34A' },
+                  { label: 'Open Tasks', value: workload.snapshot.openTasks, color: '#6366F1' },
+                  { label: 'Overdue Tasks', value: workload.snapshot.overdueTasks, color: '#DC2626' },
+                  { label: 'Total Sales', value: workload.activeSales, color: '#16A34A' },
                 ].map(c => (
                   <Grid item xs={6} md={4} key={c.label}>
                     <Card>
@@ -402,18 +561,18 @@ export default function AiForecastPage() {
               <Card sx={{ mb: 3 }}>
                 <CardContent>
                   <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 2 }}>
-                    Forecast เดือนหน้า ({periodLabel(workload.nextPeriod)})
+                    Next Month Forecast ({periodLabel(workload.nextPeriod)})
                   </Typography>
                   <Grid container spacing={2}>
                     <Grid item xs={12} md={4}>
-                      <Typography variant="caption" color="text.secondary">Task คาดสร้าง</Typography>
+                      <Typography variant="caption" color="text.secondary">Estimated tasks</Typography>
                       <Stack direction="row" alignItems="center" spacing={0.5}>
                         <Typography variant="h5" fontWeight={800} sx={{ color: '#6366F1' }}>{workload.forecast.taskForecast}</Typography>
                         <TrendIcon pct={workload.forecast.taskTrend} />
                       </Stack>
                     </Grid>
                     <Grid item xs={12} md={4}>
-                      <Typography variant="caption" color="text.secondary">Site Visit คาด</Typography>
+                      <Typography variant="caption" color="text.secondary">Field visits (estimated)</Typography>
                       <Stack direction="row" alignItems="center" spacing={0.5}>
                         <Typography variant="h5" fontWeight={800} sx={{ color: '#6366F1' }}>{workload.forecast.visitForecast}</Typography>
                         <TrendIcon pct={workload.forecast.visitTrend} />
@@ -425,24 +584,27 @@ export default function AiForecastPage() {
                         {workload.forecast.capacityPct !== null ? `${workload.forecast.capacityPct}%` : '—'}
                       </Typography>
                       <Typography variant="caption" color="text.secondary">
-                        จาก {workload.forecast.visitCapacity} capacity
+                        of {workload.forecast.visitCapacity} capacity
                       </Typography>
                     </Grid>
                   </Grid>
                 </CardContent>
               </Card>
 
-              <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1.5 }}>ประวัติ 3 เดือน</Typography>
-              <TableContainer component={Paper} elevation={0} sx={{ border: '1px solid #E5E7EB', borderRadius: 2 }}>
+              <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1.5 }}>
+                <Typography variant="subtitle2" fontWeight={700}>3-Month History</Typography>
+                <ExportPdfButton tableId="workload-history-table" filename="workload-history" title="Workload History" size="small" />
+              </Stack>
+              <TableContainer id="workload-history-table" component={Paper} elevation={0} sx={{ border: '1px solid #E5E7EB', borderRadius: 2 }}>
                 <Table size="small">
                   <TableHead sx={{ bgcolor: '#F9FAFB' }}>
                     <TableRow>
-                      <TableCell sx={{ fontWeight: 700 }}>เดือน</TableCell>
-                      <TableCell sx={{ fontWeight: 700 }}>Task สร้าง</TableCell>
-                      <TableCell sx={{ fontWeight: 700 }}>Task เสร็จ</TableCell>
-                      <TableCell sx={{ fontWeight: 700 }}>Visit แผน</TableCell>
-                      <TableCell sx={{ fontWeight: 700 }}>Visit เสร็จ</TableCell>
-                      <TableCell sx={{ fontWeight: 700 }}>อัตราทำ Visit</TableCell>
+                      <TableCell sx={{ fontWeight: 700 }}>Month</TableCell>
+                      <TableCell sx={{ fontWeight: 700 }}>Tasks Created</TableCell>
+                      <TableCell sx={{ fontWeight: 700 }}>Tasks Completed</TableCell>
+                      <TableCell sx={{ fontWeight: 700 }}>Visits Planned</TableCell>
+                      <TableCell sx={{ fontWeight: 700 }}>Visits Done</TableCell>
+                      <TableCell sx={{ fontWeight: 700 }}>Visit Rate</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
@@ -475,11 +637,11 @@ export default function AiForecastPage() {
                   <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1.5 }}>
                     <ArrowUpwardRoundedIcon sx={{ color: '#16A34A', fontSize: 20 }} />
                     <Typography variant="subtitle2" fontWeight={700} sx={{ color: '#16A34A' }}>
-                      Agency คาดว่าจะ Upgrade ({growth.upgrades.length} ราย)
+                      Agency Likely to Upgrade ({growth.upgrades.length})
                     </Typography>
                   </Stack>
                   {growth.upgrades.length === 0 ? (
-                    <Typography variant="body2" color="text.secondary">ไม่มี</Typography>
+                    <Typography variant="body2" color="text.secondary">None</Typography>
                   ) : (
                     <Stack spacing={1}>
                       {growth.upgrades.slice(0, 10).map(a => (
@@ -496,7 +658,7 @@ export default function AiForecastPage() {
                             </Stack>
                           </Stack>
                           <Stack direction="row" justifyContent="space-between" sx={{ mt: 0.5 }}>
-                            <Typography variant="caption" color="text.secondary">คะแนนปัจจุบัน: {a.currentScore}</Typography>
+                            <Typography variant="caption" color="text.secondary">Current score: {a.currentScore}</Typography>
                             <Typography variant="caption" fontWeight={700} sx={{ color: '#16A34A' }}>+{a.scoreDelta} → {a.forecastScore}</Typography>
                           </Stack>
                         </Box>
@@ -508,11 +670,11 @@ export default function AiForecastPage() {
                   <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1.5 }}>
                     <ArrowDownwardRoundedIcon sx={{ color: '#DC2626', fontSize: 20 }} />
                     <Typography variant="subtitle2" fontWeight={700} sx={{ color: '#DC2626' }}>
-                      Agency เสี่ยง Downgrade ({growth.downgrades.length} ราย)
+                      Agency at Risk of Downgrade ({growth.downgrades.length})
                     </Typography>
                   </Stack>
                   {growth.downgrades.length === 0 ? (
-                    <Typography variant="body2" color="text.secondary">ไม่มี</Typography>
+                    <Typography variant="body2" color="text.secondary">None</Typography>
                   ) : (
                     <Stack spacing={1}>
                       {growth.downgrades.slice(0, 10).map(a => (
@@ -529,7 +691,7 @@ export default function AiForecastPage() {
                             </Stack>
                           </Stack>
                           <Stack direction="row" justifyContent="space-between" sx={{ mt: 0.5 }}>
-                            <Typography variant="caption" color="text.secondary">คะแนนปัจจุบัน: {a.currentScore}</Typography>
+                            <Typography variant="caption" color="text.secondary">Current score: {a.currentScore}</Typography>
                             <Typography variant="caption" fontWeight={700} sx={{ color: '#DC2626' }}>{a.scoreDelta} → {a.forecastScore}</Typography>
                           </Stack>
                         </Box>
@@ -546,10 +708,10 @@ export default function AiForecastPage() {
             <Box>
               <Card sx={{ mb: 3 }}>
                 <CardContent>
-                  <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 2 }}>ปรับ Scenario</Typography>
+                  <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 2 }}>Adjust Scenario</Typography>
                   <Grid container spacing={3}>
                     <Grid item xs={12} md={6}>
-                      <Typography variant="body2" gutterBottom>เพิ่ม/ลด Sale: <strong>{addSales > 0 ? '+' : ''}{addSales} คน</strong></Typography>
+                      <Typography variant="body2" gutterBottom>Add / Remove Sales: <strong>{addSales > 0 ? '+' : ''}{addSales} people</strong></Typography>
                       <Slider
                         value={addSales}
                         onChange={(_, v) => setAddSales(v as number)}
@@ -559,7 +721,7 @@ export default function AiForecastPage() {
                     </Grid>
                     <Grid item xs={12} md={6}>
                       <Typography variant="body2" gutterBottom>
-                        เปลี่ยนเป้า Visit: <strong>{visitDelta > 0 ? '+' : ''}{visitDelta}%</strong>
+                        Change Visit Target: <strong>{visitDelta > 0 ? '+' : ''}{visitDelta}%</strong>
                       </Typography>
                       <Slider
                         value={visitDelta}
@@ -577,8 +739,8 @@ export default function AiForecastPage() {
               ) : scenario && (
                 <Grid container spacing={2}>
                   {[
-                    { title: 'Base (ปัจจุบัน)', data: scenario.base, color: '#6B7280' },
-                    { title: `Scenario (+${addSales} Sale, ${visitDelta > 0 ? '+' : ''}${visitDelta}% Visit)`, data: scenario.scenario, color: '#6366F1' },
+                    { title: 'Base (Current)', data: scenario.base, color: '#6B7280' },
+                    { title: `Scenario (+${addSales} sales, ${visitDelta > 0 ? '+' : ''}${visitDelta}% visits)`, data: scenario.scenario, color: '#6366F1' },
                   ].map(col => (
                     <Grid item xs={12} md={6} key={col.title}>
                       <Card sx={{ border: `2px solid ${col.color}20`, height: '100%' }}>
@@ -586,10 +748,10 @@ export default function AiForecastPage() {
                           <Typography variant="subtitle2" fontWeight={700} sx={{ color: col.color, mb: 2 }}>{col.title}</Typography>
                           <Stack spacing={1.5}>
                             {[
-                              { label: 'จำนวน Sale', value: `${col.data.sales} คน` },
-                              { label: 'Visit คาดเดือนหน้า', value: `${col.data.visitForecast} ครั้ง` },
-                              { label: 'Capacity', value: `${col.data.capacity} ครั้ง` },
-                              { label: 'อัตราใช้ Capacity', value: col.data.capacityPct !== null ? `${col.data.capacityPct}%` : '—' },
+                              { label: 'Sales headcount', value: `${col.data.sales} people` },
+                              { label: 'Visits forecast (next month)', value: `${col.data.visitForecast} visits` },
+                              { label: 'Capacity', value: `${col.data.capacity} visits` },
+                              { label: 'Capacity utilization', value: col.data.capacityPct !== null ? `${col.data.capacityPct}%` : '—' },
                             ].map(row => (
                               <Stack key={row.label} direction="row" justifyContent="space-between">
                                 <Typography variant="body2" color="text.secondary">{row.label}</Typography>
@@ -612,9 +774,9 @@ export default function AiForecastPage() {
                   {scenario.delta.capacityGainPct !== null && (
                     <Grid item xs={12}>
                       <Alert severity={scenario.delta.capacityGainPct > 0 ? 'success' : 'info'} icon={<TrendingUpRoundedIcon />}>
-                        Capacity ลดลง <strong>{Math.abs(scenario.delta.capacityGainPct)}%</strong>
-                        {scenario.delta.salesDelta > 0 && ` จากการเพิ่ม ${scenario.delta.salesDelta} Sale`}
-                        {scenario.delta.visitTargetChangePct !== 0 && ` + ปรับเป้า ${scenario.delta.visitTargetChangePct > 0 ? '+' : ''}${scenario.delta.visitTargetChangePct}% Visit`}
+                        Capacity reduced by <strong>{Math.abs(scenario.delta.capacityGainPct)}%</strong>
+                        {scenario.delta.salesDelta > 0 && ` from adding ${scenario.delta.salesDelta} sales`}
+                        {scenario.delta.visitTargetChangePct !== 0 && ` + target adjusted ${scenario.delta.visitTargetChangePct > 0 ? '+' : ''}${scenario.delta.visitTargetChangePct}% visits`}
                       </Alert>
                     </Grid>
                   )}

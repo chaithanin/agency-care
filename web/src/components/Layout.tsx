@@ -21,11 +21,14 @@ import {
   Button,
   Chip,
 } from '@mui/material';
-import { useTheme } from '@mui/material/styles';
+import { useTheme as useMuiTheme } from '@mui/material/styles';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import MenuRoundedIcon from '@mui/icons-material/MenuRounded';
 import LogoutRoundedIcon from '@mui/icons-material/LogoutRounded';
 import TranslateRoundedIcon from '@mui/icons-material/TranslateRounded';
+import DarkModeRoundedIcon from '@mui/icons-material/DarkModeRounded';
+import LightModeRoundedIcon from '@mui/icons-material/LightModeRounded';
+import { useTheme as useThemeMode } from '../theme/ThemeContext';
 import DashboardRoundedIcon from '@mui/icons-material/DashboardRounded';
 import StorefrontRoundedIcon from '@mui/icons-material/StorefrontRounded';
 import EventNoteRoundedIcon from '@mui/icons-material/EventNoteRounded';
@@ -54,6 +57,7 @@ import StorageRoundedIcon from '@mui/icons-material/StorageRounded';
 import WarningAmberRoundedIcon from '@mui/icons-material/WarningAmberRounded';
 import TrendingUpRoundedIcon from '@mui/icons-material/TrendingUpRounded';
 import AccountCircleRoundedIcon from '@mui/icons-material/AccountCircleRounded';
+import PersonSearchRoundedIcon from '@mui/icons-material/PersonSearchRounded';
 import { useAuth, type Role } from '../auth/AuthContext';
 import { useT } from '../i18n';
 import { api } from '../api/client';
@@ -80,8 +84,9 @@ export default function Layout({ children }: { children: ReactNode }) {
   const [profileMenuAnchor, setProfileMenuAnchor] = useState<null | HTMLElement>(null);
   const { t, lang, setLang } = useT();
   const loc = useLocation();
-  const theme = useTheme();
+  const theme = useMuiTheme();
   const mdUp = useMediaQuery(theme.breakpoints.up('md'));
+  const { mode, toggleTheme } = useThemeMode();
 
   const isAdmin = ['manager', 'super_admin', 'admin'].includes(user?.activeRole ?? '');
   const isCloser = user?.activeRole === 'closer';
@@ -133,8 +138,8 @@ export default function Layout({ children }: { children: ReactNode }) {
   const managerNav = [
     { to: '/', label: 'Dashboard', icon: <DashboardRoundedIcon /> },
     { to: '/agencies', label: 'Agency', icon: <StorefrontRoundedIcon /> },
-    { to: '/auto-assign', label: 'Monthly Planning', icon: <EventNoteRoundedIcon /> },
-    { to: '/quick-assign', label: 'Auto Assignment', icon: <AutoAwesomeRoundedIcon /> },
+    { to: '/agency-acquisition', label: 'New Agency Acquisition', icon: <PersonSearchRoundedIcon /> },
+    { to: '/assignments', label: 'Assignments', icon: <EventNoteRoundedIcon /> },
     { to: '/plans', label: 'Site Visit', icon: <DirectionsWalkRoundedIcon /> },
     { to: '/appointments', label: 'Activity Calendar', icon: <CalendarMonthRoundedIcon /> },
     { to: '/site-visit-report', label: 'Site Visit Report', icon: <SummarizeRoundedIcon /> },
@@ -423,6 +428,19 @@ export default function Layout({ children }: { children: ReactNode }) {
                   <Typography variant="caption" fontWeight={700}>{lang === 'th' ? 'TH' : 'EN'}</Typography>
                 </IconButton>
               </Tooltip>
+
+              <Tooltip title={mode === 'light' ? 'Dark Mode' : 'Light Mode'}>
+                <IconButton
+                  onClick={toggleTheme}
+                  sx={{
+                    color: 'text.secondary', border: '1px solid rgba(255,255,255,0.08)',
+                    borderRadius: 2.5, px: 1,
+                  }}
+                >
+                  {mode === 'light' ? <DarkModeRoundedIcon fontSize="small" /> : <LightModeRoundedIcon fontSize="small" />}
+                </IconButton>
+              </Tooltip>
+
               <Tooltip title="Profile">
                 <Avatar
                   sx={{ width: 38, height: 38, bgcolor: 'primary.main', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}

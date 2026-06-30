@@ -8,12 +8,13 @@ import {
 import { Add, Search, Description, Assignment, Assessment, Refresh } from '@mui/icons-material';
 import { api } from '../api/client';
 import { useAuth } from '../auth/AuthContext';
+import { ExportPdfButton } from '../components/ExportPdfButton';
 
 const DOC_TYPES = [
-  { key: 'all', label: 'ทั้งหมด', icon: null },
-  { key: 'sva', label: 'Site Visit Assignment', icon: <Assignment /> },
-  { key: 'svr', label: 'Completion Report', icon: <Description /> },
-  { key: 'mpa', label: 'Performance Acknowledgement', icon: <Assessment /> },
+  { key: 'all', label: 'All', icon: null },
+  { key: 'sva', label: 'Visit Assignment', icon: <Assignment /> },
+  { key: 'svr', label: 'Visit Summary Report', icon: <Description /> },
+  { key: 'mpa', label: 'Monthly Performance', icon: <Assessment /> },
 ];
 
 const STATUS_COLORS: Record<string, string> = {
@@ -21,8 +22,8 @@ const STATUS_COLORS: Record<string, string> = {
   approved: '#34D399', signing: '#818CF8', completed: '#22C55E', cancelled: '#EF4444',
 };
 const STATUS_LABELS: Record<string, string> = {
-  draft: 'ร่าง', pending_review: 'รอ Closer', pending_approval: 'รออนุมัติ',
-  approved: 'อนุมัติแล้ว', signing: 'รอลงนาม', completed: 'เสร็จสิ้น', cancelled: 'ยกเลิก',
+  draft: 'Draft', pending_review: 'Pending Closer', pending_approval: 'Pending Approval',
+  approved: 'Approved', signing: 'Pending Signature', completed: 'Completed', cancelled: 'Cancelled',
 };
 
 const MONTH_TH = ['','ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
@@ -78,15 +79,15 @@ export default function DocsPage() {
       const res = await api.get<{ total: number; items: DocItem[] }>(`/docs?${params}`);
       setItems(res.data.items);
       setTotal(res.data.total);
-    } catch { setError('โหลดข้อมูลไม่สำเร็จ'); }
+    } catch { setError('Failed to load data'); }
     finally { setLoading(false); }
   };
 
   const kpiCards = dashboard ? [
-    { label: 'เอกสารทั้งหมด', value: dashboard.total, color: '#4F46E5' },
-    { label: 'รอลงนาม', value: dashboard.signing, color: '#7C3AED' },
-    { label: 'เสร็จสิ้น', value: dashboard.completed, color: '#16A34A' },
-    { label: 'ยกเลิก', value: dashboard.cancelled, color: '#DC2626' },
+    { label: 'Total Documents', value: dashboard.total, color: '#4F46E5' },
+    { label: 'Pending Signature', value: dashboard.signing, color: '#7C3AED' },
+    { label: 'Completed', value: dashboard.completed, color: '#16A34A' },
+    { label: 'Cancelled', value: dashboard.cancelled, color: '#DC2626' },
   ] : [];
 
 
@@ -95,11 +96,11 @@ export default function DocsPage() {
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
         <Box>
           <Typography variant="h5" fontWeight={700}>Document Center</Typography>
-          <Typography variant="body2" color="text.secondary">SVA · SVR · MPA — {total} เอกสาร</Typography>
+          <Typography variant="body2" color="text.secondary">SVA · SVR · MPA — {total} documents</Typography>
         </Box>
         <Box display="flex" gap={1}>
-          <Button variant="outlined" size="small" onClick={() => navigate('/docs/new?type=sva')} startIcon={<Add />}>Site Visit Assignment</Button>
-          <Button variant="outlined" size="small" onClick={() => navigate('/docs/new?type=svr')} startIcon={<Add />}>Site Visit Report</Button>
+          <Button variant="outlined" size="small" onClick={() => navigate('/docs/new?type=sva')} startIcon={<Add />}>Visit Assignment</Button>
+          <Button variant="outlined" size="small" onClick={() => navigate('/docs/new?type=svr')} startIcon={<Add />}>Visit Report</Button>
           <Button variant="contained" size="small" onClick={() => navigate('/docs/new?type=mpa')} startIcon={<Add />}>Monthly Performance</Button>
         </Box>
       </Box>
@@ -128,24 +129,25 @@ export default function DocsPage() {
 
         {/* Filters */}
         <Box display="flex" flexWrap="wrap" gap={1.5} p={2} alignItems="center">
-          <TextField size="small" placeholder="ค้นหา..." value={search}
+          <TextField size="small" placeholder="Search..." value={search}
             onChange={(e) => setSearch(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && fetchList()}
             InputProps={{ startAdornment: <Search sx={{ mr: 0.5, fontSize: 18, color: 'text.secondary' }} /> }}
             sx={{ minWidth: 200 }} />
           <FormControl size="small" sx={{ minWidth: 160 }}>
-            <InputLabel>สถานะ</InputLabel>
-            <Select value={filterStatus} label="สถานะ" onChange={(e) => setFilterStatus(e.target.value)}>
-              <MenuItem value="">ทั้งหมด</MenuItem>
+            <InputLabel>Status</InputLabel>
+            <Select value={filterStatus} label="Status" onChange={(e) => setFilterStatus(e.target.value)}>
+              <MenuItem value="">All</MenuItem>
               {Object.entries(STATUS_LABELS).map(([k, v]) => (
                 <MenuItem key={k} value={k}><Chip label={v} size="small" sx={{ bgcolor: STATUS_COLORS[k], color: '#fff' }} /></MenuItem>
               ))}
             </Select>
           </FormControl>
-          <TextField size="small" label="ปี" type="number" value={filterYear}
+          <TextField size="small" label="Year" type="number" value={filterYear}
             onChange={(e) => setFilterYear(e.target.value)} sx={{ width: 100 }} />
           <Button size="small" variant="contained" onClick={fetchList}><Search /></Button>
-          <Tooltip title="รีเฟรช"><IconButton size="small" onClick={() => { fetchList(); fetchDashboard(); }}><Refresh /></IconButton></Tooltip>
+          <ExportPdfButton tableId="docs-table" filename="documents" title="Documents" size="small" />
+          <Tooltip title="Refresh"><IconButton size="small" onClick={() => { fetchList(); fetchDashboard(); }}><Refresh /></IconButton></Tooltip>
         </Box>
       </Paper>
 
@@ -154,17 +156,17 @@ export default function DocsPage() {
       {/* Table */}
       <Paper>
         {loading ? <Box p={6} textAlign="center"><CircularProgress /></Box> : (
-          <Table size="small">
+          <Table id="docs-table" size="small">
             <TableHead>
               <TableRow sx={{ bgcolor: '#F8FAFC' }}>
-                {['เลขที่', 'ประเภท', 'เดือน', 'พนักงาน', 'Version', 'สถานะ', 'ลงนาม', 'สร้างเมื่อ'].map((h) => (
+                {['Doc No.', 'Type', 'Month', 'Employee', 'Version', 'Status', 'Signatures', 'Created'].map((h) => (
                   <TableCell key={h} sx={{ fontWeight: 700 }}>{h}</TableCell>
                 ))}
               </TableRow>
             </TableHead>
             <TableBody>
               {items.length === 0 ? (
-                <TableRow><TableCell colSpan={8} align="center" sx={{ py: 6, color: 'text.secondary' }}>ไม่มีเอกสาร</TableCell></TableRow>
+                <TableRow><TableCell colSpan={8} align="center" sx={{ py: 6, color: 'text.secondary' }}>No documents</TableCell></TableRow>
               ) : items.map((doc) => {
                 const signedTypes = new Set(doc.signatures.map(s => s.signerType));
                 return (

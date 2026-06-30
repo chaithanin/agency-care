@@ -168,6 +168,8 @@ model User {
   apptsAsCloser        Appointment[]       @relation("ApptCloser")
   apptsCreated         Appointment[]       @relation("ApptCreator")
   meetingReports       MeetingReport[]
+  leadsRecorded        AgencyLead[]        @relation("LeadRecordedBy")
+  depositTransactions  DepositTransaction[]
 
   @@map("users")
 }
@@ -210,6 +212,7 @@ model Employee {
   trainings     TrainingRecord[]
   evaluations          EmployeeEvaluation[]
   broadcastRecipients  BroadcastRecipient[]
+  leadsAssigned        AgencyLead[]        @relation("LeadAssignedTo")
 
   @@index([zone])
   @@index([teamId])
@@ -1597,4 +1600,215 @@ model ApptAttachment {
   uploadedById  String?     @map("uploaded_by_id")
   createdAt     DateTime    @default(now()) @map("created_at")
   @@map("appt_attachments")
+}
+
+// ============================================================
+// Agency Acquisition Workflow (New Lead → Active Agency)
+// ============================================================
+
+model AgencyLead {
+  id            String   @id @default(cuid())
+  // Step 1: Lead info
+  agencyName    String   @map("agency_name")
+  contactPerson String   @map("contact_person")
+  phone         String
+  email         String?
+  province      String?
+  facebook      String?
+  website       String?
+  source        String   @default("walk_in")
+  notes         String?
+
+  status        String   @default("new_lead")
+
+  // Assignment (Step 2)
+  assignedToId  String?  @map("assigned_to_id")
+  assignedAt    DateTime? @map("assigned_at")
+
+  // Qualification (Step 3)
+  qualResult      String?  @map("qual_result")
+  qualHasOffice   Boolean? @map("qual_has_office")
+  qualAgentCount  Int?     @map("qual_agent_count")
+  qualPropertyType String? @map("qual_property_type")
+  qualDoesMarketing Boolean? @map("qual_does_marketing")
+  qualHasPotential  Boolean? @map("qual_has_potential")
+  qualServiceArea   String?  @map("qual_service_area")
+  qualNotes         String?  @map("qual_notes")
+  qualifiedAt       DateTime? @map("qualified_at")
+
+  // Evaluation (Step 7)
+  evalRelationship      Int? @map("eval_relationship")
+  evalBusinessPotential Int? @map("eval_business_potential")
+  evalMarketing         Int? @map("eval_marketing")
+  evalLocation          Int? @map("eval_location")
+  evalSalesTeam         Int? @map("eval_sales_team")
+  evalFinancial         Int? @map("eval_financial")
+  evalCompetition       Int? @map("eval_competition")
+  evalTotalScore        Int? @map("eval_total_score")
+  evalNotes             String? @map("eval_notes")
+  evaluatedAt           DateTime? @map("evaluated_at")
+
+  // Approval (Step 8)
+  approvalDecision String?  @map("approval_decision")
+  approvalNotes    String?  @map("approval_notes")
+  approvedById     String?  @map("approved_by_id")
+  approvedAt       DateTime? @map("approved_at")
+  rejectReason     String?  @map("reject_reason")
+
+  // Agreement (Step 9)
+  agreementNo     String?  @map("agreement_no")
+  agreementStart  DateTime? @map("agreement_start") @db.Date
+  agreementEnd    DateTime? @map("agreement_end") @db.Date
+  agreementUrl    String?  @map("agreement_url")
+  agreementSigned Boolean  @default(false) @map("agreement_signed")
+
+  // Onboarding (Step 10)
+  onboardingChecklist Json? @map("onboarding_checklist")
+  onboardingDoneAt    DateTime? @map("onboarding_done_at")
+
+  // Training (Step 11)
+  trainingDate     DateTime? @map("training_date")
+  trainingTopics   String?  @map("training_topics")
+  trainingTrainer  String?  @map("training_trainer")
+  trainingScore    Int?     @map("training_score")
+  trainingCertified Boolean @default(false) @map("training_certified")
+
+  // First Sale (Step 13)
+  firstSaleDate    DateTime? @map("first_sale_date") @db.Date
+  firstSaleProject String?  @map("first_sale_project")
+  firstSaleUnits   Int?     @map("first_sale_units")
+  firstSaleValue   Decimal? @map("first_sale_value") @db.Decimal(14,2)
+
+  isDuplicate   Boolean  @default(false) @map("is_duplicate")
+  aiScore       Int?     @map("ai_score")
+
+  recordedById  String   @map("recorded_by_id")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  assignedTo     Employee? @relation("LeadAssignedTo", fields: [assignedToId], references: [id], onDelete: SetNull)
+  recordedBy     User      @relation("LeadRecordedBy", fields: [recordedById], references: [id])
+  contacts       LeadContact[]
+  appointments   LeadAppointmentEntry[]
+  siteVisits     LeadSiteVisit[]
+  marketingItems LeadMarketingItem[]
+  deposit        AgencyDeposit?
+
+  @@index([status])
+  @@index([assignedToId])
+  @@index([recordedById])
+  @@map("agency_leads")
+}
+
+model LeadContact {
+  id          String     @id @default(cuid())
+  leadId      String     @map("lead_id")
+  lead        AgencyLead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  contactDate DateTime   @map("contact_date")
+  result      String
+  contactedBy String?    @map("contacted_by")
+  notes       String?
+  createdAt   DateTime   @default(now()) @map("created_at")
+
+  @@index([leadId])
+  @@map("lead_contacts")
+}
+
+model LeadAppointmentEntry {
+  id        String     @id @default(cuid())
+  leadId    String     @map("lead_id")
+  lead      AgencyLead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  type      String
+  apptDate  DateTime   @map("appt_date")
+  location  String?
+  attendees String?
+  notes     String?
+  createdAt DateTime   @default(now()) @map("created_at")
+
+  @@index([leadId])
+  @@map("lead_appointment_entries")
+}
+
+model LeadSiteVisit {
+  id        String     @id @default(cuid())
+  leadId    String     @map("lead_id")
+  lead      AgencyLead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  visitedAt DateTime?  @map("visited_at")
+  latitude  Float?
+  longitude Float?
+  report    String?
+  aiSummary String?    @map("ai_summary")
+  createdAt DateTime   @default(now()) @map("created_at")
+
+  @@index([leadId])
+  @@map("lead_site_visits")
+}
+
+model LeadMarketingItem {
+  id          String     @id @default(cuid())
+  leadId      String     @map("lead_id")
+  lead        AgencyLead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  type        String
+  quantity    Int?
+  notes       String?
+  deliveredAt DateTime?  @map("delivered_at")
+  createdAt   DateTime   @default(now()) @map("created_at")
+
+  @@index([leadId])
+  @@map("lead_marketing_items")
+}
+
+model AgencyDeposit {
+  id                String                   @id @default(cuid())
+  leadId            String                   @unique @map("lead_id")
+  lead              AgencyLead               @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  depositAmount     Decimal                  @db.Decimal(14, 2) @map("deposit_amount")
+  depositCurrency   String                   @default("THB") @map("deposit_currency")
+  depositDate       DateTime?                @db.Date @map("deposit_date")
+  depositStatus     String                   @default("pending") @map("deposit_status")
+
+  paymentMethod     String? @map("payment_method")
+  bankAccount       String? @map("bank_account")
+  transferReference String? @map("transfer_reference")
+
+  refundAmount      Decimal? @db.Decimal(14, 2) @map("refund_amount")
+  refundDate        DateTime? @db.Date @map("refund_date")
+  refundReason      String? @map("refund_reason")
+
+  agreementNo       String? @map("agreement_no")
+  releasedAt        DateTime? @map("released_at")
+
+  aiRiskScore       Int? @default(0) @map("ai_risk_score")
+  lastFollowupDate  DateTime? @map("last_followup_date")
+
+  createdAt         DateTime   @default(now()) @map("created_at")
+  updatedAt         DateTime   @updatedAt @map("updated_at")
+
+  transactions      DepositTransaction[]
+
+  @@index([leadId])
+  @@index([depositStatus])
+  @@index([depositDate])
+  @@map("agency_deposits")
+}
+
+model DepositTransaction {
+  id                String          @id @default(cuid())
+  depositId         String          @map("deposit_id")
+  deposit           AgencyDeposit   @relation(fields: [depositId], references: [id], onDelete: Cascade)
+
+  transactionType   String          @map("transaction_type")
+  amount            Decimal         @db.Decimal(14, 2)
+  transactionDate   DateTime        @map("transaction_date")
+  reference         String?
+  notes             String?
+
+  recordedById      String          @map("recorded_by_id")
+  recordedBy        User            @relation(fields: [recordedById], references: [id])
+
+  createdAt         DateTime        @default(now()) @map("created_at")
+
+  @@index([depositId])
+  @@map("deposit_transactions")
 }

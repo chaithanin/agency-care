@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, useMemo } from 'react';
 import {
   Box,
   Typography,
@@ -13,9 +13,12 @@ import {
   TableRow,
   TableCell,
   TableBody,
+  TextField,
+  Button,
 } from '@mui/material';
 import { api } from '../api/client';
 import { PdfExportButton } from '../utils/pdf';
+import { ExportPdfButton } from '../components/ExportPdfButton';
 import { useT } from '../i18n';
 
 interface Seller {
@@ -71,6 +74,9 @@ export default function SellerPerformancePage() {
   const [data, setData] = useState<Perf | null>(null);
   const [selId, setSelId] = useState<string | undefined>();
   const pdfRef = useRef<HTMLDivElement>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
 
   const load = useCallback(async (id?: string) => {
     const r = await api.get('/scheduling/seller-performance', { params: { employeeId: id } });
@@ -80,6 +86,36 @@ export default function SellerPerformancePage() {
   useEffect(() => {
     load(selId);
   }, [load, selId]);
+
+  // Filter leaderboard data
+  const filteredLeaderboard = useMemo(() => {
+    if (!data?.leaderboard) return [];
+
+    let result = [...data.leaderboard];
+
+    // Text search filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      result = result.filter((r) => r.name.toLowerCase().includes(query));
+    }
+
+    // Date range filter - placeholder for future enhancement
+    // Note: leaderboard doesn't have date info currently
+    // In production, you'd filter based on actual date fields in LbRow
+    if (startDate && endDate) {
+      // TODO: Implement date-based filtering when data includes timestamps
+    }
+
+    return result;
+  }, [data?.leaderboard, searchQuery, startDate, endDate]);
+
+  const hasActiveFilters = searchQuery.trim() !== '' || startDate !== '' || endDate !== '';
+
+  const handleResetFilters = () => {
+    setSearchQuery('');
+    setStartDate('');
+    setEndDate('');
+  };
 
   if (!data) return <LinearProgress />;
   if (!data.selected) return <Typography>{t('sp.noSeller')}</Typography>;
@@ -207,12 +243,63 @@ export default function SellerPerformancePage() {
         </Grid>
       </Grid>
 
-      {/* leaderboard */}
+      {/* leaderboard with filters */}
       <Paper sx={{ mt: 2 }}>
-        <Typography variant="subtitle1" fontWeight={700} sx={{ p: 2, pb: 1 }}>
-          {t('sp.leaderboard')}
-        </Typography>
-        <Table size="small">
+        <Box sx={{ p: 2, pb: 0 }}>
+          <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2}>
+            <Typography variant="subtitle1" fontWeight={700}>
+              {t('sp.leaderboard')}
+            </Typography>
+            <Stack direction="row" spacing={1}>
+              {hasActiveFilters && (
+                <Button
+                  size="small"
+                  variant="outlined"
+                  onClick={handleResetFilters}
+                >
+                  Clear Filters
+                </Button>
+              )}
+              <ExportPdfButton tableId="seller-perf-table" filename="seller-performance" title="Seller Performance" />
+            </Stack>
+          </Stack>
+
+          {/* Filter controls */}
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} mb={2}>
+            <TextField
+              size="small"
+              placeholder="Search seller name..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              sx={{ flex: 1, minWidth: 200 }}
+            />
+            <TextField
+              size="small"
+              type="date"
+              label="Start Date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              InputLabelProps={{ shrink: true }}
+              sx={{ minWidth: 150 }}
+            />
+            <TextField
+              size="small"
+              type="date"
+              label="End Date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              InputLabelProps={{ shrink: true }}
+              sx={{ minWidth: 150 }}
+            />
+          </Stack>
+
+          {/* Result count */}
+          <Typography variant="caption" color="text.secondary" sx={{ mb: 1.5, display: 'block' }}>
+            Showing {filteredLeaderboard.length} of {data.leaderboard.length} results
+          </Typography>
+        </Box>
+
+        <Table id="seller-perf-table" size="small">
           <TableHead>
             <TableRow>
               <TableCell>#</TableCell>
@@ -223,20 +310,28 @@ export default function SellerPerformancePage() {
             </TableRow>
           </TableHead>
           <TableBody>
-            {data.leaderboard.map((r) => (
-              <TableRow key={r.employeeId} sx={{ bgcolor: r.me ? 'primary.50' : undefined }}>
-                <TableCell sx={{ fontWeight: 700, color: 'primary.main' }}>{r.rank}</TableCell>
-                <TableCell>
-                  <Stack direction="row" alignItems="center" spacing={1}>
-                    <Avatar sx={{ width: 24, height: 24, fontSize: 11 }}>{initials(r.name)}</Avatar>
-                    <span>{r.name}{r.me ? ` (${t('sp.you')})` : ''}</span>
-                  </Stack>
+            {filteredLeaderboard.length > 0 ? (
+              filteredLeaderboard.map((r) => (
+                <TableRow key={r.employeeId} sx={{ bgcolor: r.me ? 'primary.50' : undefined }}>
+                  <TableCell sx={{ fontWeight: 700, color: 'primary.main' }}>{r.rank}</TableCell>
+                  <TableCell>
+                    <Stack direction="row" alignItems="center" spacing={1}>
+                      <Avatar sx={{ width: 24, height: 24, fontSize: 11 }}>{initials(r.name)}</Avatar>
+                      <span>{r.name}{r.me ? ` (${t('sp.you')})` : ''}</span>
+                    </Stack>
+                  </TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 700 }}>{r.visitsDone}</TableCell>
+                  <TableCell align="right">{r.agencies}</TableCell>
+                  <TableCell align="right">{r.newAgencies}</TableCell>
+                </TableRow>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell colSpan={5} sx={{ textAlign: 'center', py: 3 }}>
+                  <Typography color="text.secondary">No results found</Typography>
                 </TableCell>
-                <TableCell align="right" sx={{ fontWeight: 700 }}>{r.visitsDone}</TableCell>
-                <TableCell align="right">{r.agencies}</TableCell>
-                <TableCell align="right">{r.newAgencies}</TableCell>
               </TableRow>
-            ))}
+            )}
           </TableBody>
         </Table>
       </Paper>

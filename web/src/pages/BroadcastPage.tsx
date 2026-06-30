@@ -14,6 +14,7 @@ import {
 } from '@mui/icons-material';
 import { api, errMsg } from '../api/client';
 import { useAuth } from '../auth/AuthContext';
+import { ExportPdfButton } from '../components/ExportPdfButton';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -40,18 +41,19 @@ const TYPES = ['news', 'announcement', 'promotion', 'hr', 'it', 'training', 'eme
 const PRIORITIES = ['low', 'normal', 'high', 'critical'];
 
 const TYPE_LABEL: Record<string, string> = {
-  news: 'ข่าวสาร', announcement: 'ประกาศ', promotion: 'โปรโมชั่น',
-  hr: 'HR', it: 'IT', training: 'อบรม', emergency: 'ฉุกเฉิน',
+  news: 'News', announcement: 'Announcement', promotion: 'Promotion',
+  hr: 'HR', it: 'IT', training: 'Training', emergency: 'Emergency',
 };
 const STATUS_COLOR: Record<string, 'default' | 'info' | 'success' | 'error' | 'warning'> = {
   draft: 'default', pending_approval: 'warning', approved: 'info',
   scheduled: 'info', sending: 'warning', sent: 'success', failed: 'error', cancelled: 'default',
 };
 const STATUS_TH: Record<string, string> = {
-  draft: 'Draft', pending_approval: 'รออนุมัติ', approved: 'อนุมัติแล้ว',
-  scheduled: 'กำหนดเวลา', sending: 'กำลังส่ง', sent: 'ส่งแล้ว', failed: 'ล้มเหลว', cancelled: 'ยกเลิก',
+  draft: 'Draft', pending_approval: 'Pending Approval', approved: 'Approved',
+  scheduled: 'Scheduled', sending: 'Sending', sent: 'Sent', failed: 'Failed', cancelled: 'Cancelled',
 };
 const PRIORITY_EMOJI: Record<string, string> = { low: '🔵', normal: '📢', high: '🔴', critical: '🚨' };
+const PRIORITY_LABEL_TH: Record<string, string> = { low: 'Low', normal: 'Normal', high: 'High', critical: 'Urgent' };
 
 const EMPTY_FORM = {
   title: '', type: 'news', priority: 'normal', content: '',
@@ -71,7 +73,7 @@ function LinePreview({ title, content, priority, buttons }: {
   return (
     <Box sx={{ maxWidth: 300, mx: 'auto' }}>
       <Typography variant="caption" color="text.secondary" align="center" display="block" mb={1}>
-        ตัวอย่างใน LINE OA
+        LINE OA Preview
       </Typography>
       <Box sx={{
         bgcolor: '#06C755', borderRadius: 3, p: 2,
@@ -85,10 +87,10 @@ function LinePreview({ title, content, priority, buttons }: {
         </Stack>
         <Box sx={{ bgcolor: '#fff', borderRadius: 2, p: 1.5 }}>
           <Typography variant="body2" fontWeight={700} mb={0.5}>
-            {emoji} {title || 'หัวข้อข่าว'}
+            {emoji} {title || 'Message Title'}
           </Typography>
           <Typography variant="caption" color="text.secondary" sx={{ whiteSpace: 'pre-line' }}>
-            {(content || 'เนื้อหาข่าว...').slice(0, 200)}
+            {(content || 'Message content...').slice(0, 200)}
           </Typography>
           {buttons.length > 0 && (
             <Stack spacing={0.5} mt={1}>
@@ -194,7 +196,7 @@ export default function BroadcastPage() {
   };
 
   const save = async (): Promise<string | null> => {
-    if (!form.title || !form.content) { flash('กรุณาใส่หัวข้อและเนื้อหา', true); return null; }
+    if (!form.title || !form.content) { flash('Please enter a title and content', true); return null; }
     try {
       const payload = {
         ...form,
@@ -226,22 +228,22 @@ export default function BroadcastPage() {
       setLoading(true);
       const r = await api.post<{ ok: boolean; sentCount: number; failedCount: number }>(`/broadcasts/${id}/send`);
       if (r.data.sentCount > 0) {
-        flash(`ส่งสำเร็จ ${r.data.sentCount} ราย${r.data.failedCount > 0 ? ` (ล้มเหลว ${r.data.failedCount} ราย)` : ''}`);
+        flash(`Sent successfully to ${r.data.sentCount} recipient(s)${r.data.failedCount > 0 ? ` (${r.data.failedCount} failed)` : ''}`);
       } else {
-        flash(`ไม่มีผู้รับที่มี LINE ID — ส่งได้ 0 ราย (ตรวจสอบ LINE User ID ของพนักงาน)`, true);
+        flash(`No recipients with a LINE ID — 0 sent (please check employee LINE User IDs)`, true);
       }
       loadAll();
     } catch (e) { flash(errMsg(e), true); } finally { setLoading(false); }
   };
 
   const approve = async (id: string) => {
-    try { await api.post(`/broadcasts/${id}/approve`); flash('อนุมัติสำเร็จ'); loadAll(); }
+    try { await api.post(`/broadcasts/${id}/approve`); flash('Approved successfully'); loadAll(); }
     catch (e) { flash(errMsg(e), true); }
   };
 
   const remove = async (id: string) => {
-    if (!confirm('ลบ Broadcast นี้?')) return;
-    try { await api.delete(`/broadcasts/${id}`); flash('ลบแล้ว'); loadAll(); }
+    if (!confirm('Delete this item?')) return;
+    try { await api.delete(`/broadcasts/${id}`); flash('Deleted'); loadAll(); }
     catch (e) { flash(errMsg(e), true); }
   };
 
@@ -253,12 +255,12 @@ export default function BroadcastPage() {
 
   // ─── AI Draft ─────────────────────────────────────────────────
   const aiDraft = async () => {
-    if (!form.title) { flash('ใส่หัวข้อก่อน แล้วกด AI', true); return; }
+    if (!form.title) { flash('Enter a title first, then click AI', true); return; }
     try {
       const prompt = `เขียนข่าวประกาศสำหรับ LINE OA เรื่อง "${form.title}" ประเภท ${TYPE_LABEL[form.type] ?? form.type} ให้กระชับ ชัดเจน ไม่เกิน 200 คำ`;
       const r = await api.post('/analytics/ai-chat', { message: prompt });
       setForm(f => ({ ...f, content: r.data?.reply ?? r.data?.message ?? '' }));
-    } catch { flash('AI ไม่พร้อมใช้งาน', true); }
+    } catch { flash('AI is not available', true); }
   };
 
   // ─── Read rate bar ────────────────────────────────────────────
@@ -275,14 +277,14 @@ export default function BroadcastPage() {
             <Campaign sx={{ color: '#06C755', fontSize: 28 }} />
             <Typography variant="h5" fontWeight={700}>LINE Broadcast Center</Typography>
           </Stack>
-          <Typography variant="body2" color="text.secondary">ส่งข่าวสารผ่าน LINE OA ถึงพนักงาน</Typography>
+          <Typography variant="body2" color="text.secondary">Send messages via LINE OA to employees</Typography>
         </Box>
         <Stack direction="row" spacing={1}>
           <IconButton onClick={loadAll}><Refresh /></IconButton>
           {isManager && (
             <Button startIcon={<Add />} variant="contained" onClick={openCreate}
               sx={{ bgcolor: '#06C755', '&:hover': { bgcolor: '#00A846' } }}>
-              สร้าง Broadcast
+              New Announcement
             </Button>
           )}
         </Stack>
@@ -292,8 +294,8 @@ export default function BroadcastPage() {
       {error && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')}>{error}</Alert>}
 
       <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ mb: 2 }}>
-        <Tab icon={<Dashboard fontSize="small" />} label="Dashboard" iconPosition="start" />
-        <Tab icon={<History fontSize="small" />} label="ประวัติการส่ง" iconPosition="start" />
+        <Tab icon={<Dashboard fontSize="small" />} label="Overview" iconPosition="start" />
+        <Tab icon={<History fontSize="small" />} label="Send History" iconPosition="start" />
         <Tab icon={<Article fontSize="small" />} label="Templates" iconPosition="start" />
         <Tab icon={<Analytics fontSize="small" />} label="Analytics" iconPosition="start" />
       </Tabs>
@@ -304,12 +306,12 @@ export default function BroadcastPage() {
           {/* Stats */}
           <Grid container spacing={2} mb={3}>
             {[
-              { label: 'ข่าวทั้งหมด', value: stats?.total ?? '—', color: '#4F46E5' },
+              { label: 'Total', value: stats?.total ?? '—', color: '#4F46E5' },
               { label: 'Draft', value: stats?.draft ?? '—', color: '#6B7280' },
               { label: 'Scheduled', value: stats?.scheduled ?? '—', color: '#2563EB' },
               { label: 'Sent', value: stats?.sent ?? '—', color: '#16A34A' },
               { label: 'Failed', value: stats?.failed ?? '—', color: '#DC2626' },
-              { label: 'Avg Read Rate', value: stats ? `${stats.avgReadRate}%` : '—', color: '#D97706' },
+              { label: 'Avg. Read Rate', value: stats ? `${stats.avgReadRate}%` : '—', color: '#D97706' },
             ].map((c) => (
               <Grid item xs={6} sm={4} md={2} key={c.label}>
                 <Card variant="outlined" sx={{ borderTop: `3px solid ${c.color}`, textAlign: 'center' }}>
@@ -323,7 +325,7 @@ export default function BroadcastPage() {
           </Grid>
 
           {/* Recent broadcasts */}
-          <Typography variant="subtitle1" fontWeight={700} mb={1}>ล่าสุด</Typography>
+          <Typography variant="subtitle1" fontWeight={700} mb={1}>Recent</Typography>
           {loading ? <Box textAlign="center" p={4}><CircularProgress /></Box> : (
             <Stack spacing={1.5}>
               {broadcasts.slice(0, 6).map((b) => (
@@ -338,14 +340,14 @@ export default function BroadcastPage() {
                         <Chip label={TYPE_LABEL[b.type] ?? b.type} size="small" variant="outlined" />
                       </Stack>
                       <Typography variant="caption" color="text.secondary">
-                        โดย {b.createdBy?.name} · {new Date(b.createdAt).toLocaleDateString('th-TH')}
-                        {b.sentAt && ` · ส่งแล้ว ${b.sentCount} ราย`}
+                        By {b.createdBy?.name} · {new Date(b.createdAt).toLocaleDateString('en-GB')}
+                        {b.sentAt && ` · Sent to ${b.sentCount} recipient(s)`}
                       </Typography>
                       {b.sentCount > 0 && (
                         <Box mt={0.5}>
                           <Stack direction="row" spacing={1} alignItems="center">
                             <Typography variant="caption" color="text.secondary" sx={{ minWidth: 60 }}>
-                              อ่าน {readRate(b)}%
+                              Read {readRate(b)}%
                             </Typography>
                             <LinearProgress variant="determinate" value={readRate(b)}
                               sx={{ flex: 1, height: 4, borderRadius: 2, bgcolor: '#E2E8F0',
@@ -356,21 +358,21 @@ export default function BroadcastPage() {
                     </Box>
                     <Stack direction="row" spacing={0.5}>
                       {['draft', 'approved'].includes(b.status) && isManager && (
-                        <Tooltip title="ส่งเดี๋ยวนี้">
+                        <Tooltip title="Send Now">
                           <IconButton size="small" color="success" onClick={(e) => { e.stopPropagation(); sendNow(b.id); }}>
                             <Send fontSize="small" />
                           </IconButton>
                         </Tooltip>
                       )}
                       {b.status === 'pending_approval' && isAdmin && (
-                        <Tooltip title="อนุมัติ">
+                        <Tooltip title="Approve">
                           <IconButton size="small" color="success" onClick={(e) => { e.stopPropagation(); approve(b.id); }}>
                             <CheckCircle fontSize="small" />
                           </IconButton>
                         </Tooltip>
                       )}
                       {['draft', 'pending_approval'].includes(b.status) && isManager && (
-                        <Tooltip title="แก้ไข">
+                        <Tooltip title="Edit">
                           <IconButton size="small" onClick={(e) => { e.stopPropagation(); openEdit(b); }}>
                             <Edit fontSize="small" />
                           </IconButton>
@@ -385,23 +387,24 @@ export default function BroadcastPage() {
         </>
       )}
 
-      {/* ── Tab 1: ประวัติ ── */}
+      {/* ── Tab 1: History ── */}
       {tab === 1 && (
         <>
-          <Stack direction="row" spacing={2} mb={2} flexWrap="wrap">
+          <Stack direction="row" spacing={2} mb={2} flexWrap="wrap" alignItems="center">
             <FormControl size="small" sx={{ minWidth: 150 }}>
-              <InputLabel>สถานะ</InputLabel>
-              <Select value={filterStatus} label="สถานะ" onChange={e => setFilterStatus(e.target.value)}>
-                <MenuItem value="">ทั้งหมด</MenuItem>
+              <InputLabel>Status</InputLabel>
+              <Select value={filterStatus} label="Status" onChange={e => setFilterStatus(e.target.value)}>
+                <MenuItem value="">All</MenuItem>
                 {Object.entries(STATUS_TH).map(([k, v]) => <MenuItem key={k} value={k}>{v}</MenuItem>)}
               </Select>
             </FormControl>
+            <ExportPdfButton tableId="broadcast-table" filename="broadcasts" title="Broadcast" size="small" />
           </Stack>
-          <Paper>
+          <Paper id="broadcast-table">
             <Table size="small">
               <TableHead>
                 <TableRow sx={{ bgcolor: '#F8FAFC' }}>
-                  {['วันที่', 'หัวข้อ', 'ประเภท', 'ผู้ส่ง', 'ผู้รับ', 'ส่งสำเร็จ', 'อ่าน', 'สถานะ', ''].map(h => (
+                  {['Date', 'Title', 'Type', 'Sender', 'Recipients', 'Sent', 'Read', 'Status', ''].map(h => (
                     <TableCell key={h} sx={{ fontWeight: 700 }}>{h}</TableCell>
                   ))}
                 </TableRow>
@@ -410,11 +413,11 @@ export default function BroadcastPage() {
                 {loading ? (
                   <TableRow><TableCell colSpan={9} align="center"><CircularProgress size={24} /></TableCell></TableRow>
                 ) : broadcasts.length === 0 ? (
-                  <TableRow><TableCell colSpan={9} align="center" sx={{ py: 4, color: 'text.secondary' }}>ไม่มีข้อมูล</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={9} align="center" sx={{ py: 4, color: 'text.secondary' }}>No data</TableCell></TableRow>
                 ) : broadcasts.map(b => (
                   <TableRow key={b.id} hover sx={{ cursor: 'pointer' }} onClick={() => loadDetail(b.id)}>
                     <TableCell sx={{ whiteSpace: 'nowrap' }}>
-                      {new Date(b.createdAt).toLocaleDateString('th-TH')}
+                      {new Date(b.createdAt).toLocaleDateString('en-GB')}
                     </TableCell>
                     <TableCell>
                       <Typography variant="body2" fontWeight={600}>{b.title}</Typography>
@@ -439,14 +442,14 @@ export default function BroadcastPage() {
                     <TableCell onClick={e => e.stopPropagation()}>
                       <Stack direction="row" spacing={0.5}>
                         {['draft', 'approved'].includes(b.status) && isManager && (
-                          <Tooltip title="ส่ง">
+                          <Tooltip title="Send">
                             <IconButton size="small" color="success" onClick={() => sendNow(b.id)}>
                               <Send fontSize="small" />
                             </IconButton>
                           </Tooltip>
                         )}
                         {b.status === 'pending_approval' && isAdmin && (
-                          <Tooltip title="อนุมัติ">
+                          <Tooltip title="Approve">
                             <IconButton size="small" color="success" onClick={() => approve(b.id)}>
                               <CheckCircle fontSize="small" />
                             </IconButton>
@@ -486,14 +489,14 @@ export default function BroadcastPage() {
                 <Box px={2} pb={2}>
                   <Button size="small" startIcon={<ContentCopy />}
                     onClick={() => { setForm(f => ({ ...f, type: t.type, content: t.content })); setTab(0); openCreate(); }}>
-                    ใช้ Template นี้
+                    Use This Template
                   </Button>
                 </Box>
               </Card>
             </Grid>
           ))}
           {templates.length === 0 && (
-            <Grid item xs={12}><Typography color="text.secondary" align="center" py={4}>ยังไม่มี Template</Typography></Grid>
+            <Grid item xs={12}><Typography color="text.secondary" align="center" py={4}>No templates yet</Typography></Grid>
           )}
         </Grid>
       )}
@@ -522,7 +525,7 @@ export default function BroadcastPage() {
               </Grid>
 
               <Paper sx={{ p: 2 }}>
-                <Typography variant="subtitle2" fontWeight={700} mb={2}>Open Rate ย้อนหลัง 30 วัน</Typography>
+                <Typography variant="subtitle2" fontWeight={700} mb={2}>Read Rate — Last 30 Days</Typography>
                 <Stack spacing={1}>
                   {(analytics.series ?? []).slice(-14).map((s: any) => (
                     <Stack key={s.date} direction="row" alignItems="center" spacing={1}>
@@ -539,7 +542,7 @@ export default function BroadcastPage() {
                     </Stack>
                   ))}
                   {(analytics.series ?? []).length === 0 && (
-                    <Typography color="text.secondary" align="center" py={2}>ยังไม่มีข้อมูล</Typography>
+                    <Typography color="text.secondary" align="center" py={2}>No data yet</Typography>
                   )}
                 </Stack>
               </Paper>
@@ -555,7 +558,7 @@ export default function BroadcastPage() {
         <DialogTitle>
           <Stack direction="row" alignItems="center" spacing={1}>
             <Campaign sx={{ color: '#06C755' }} />
-            <span>{editId ? 'แก้ไข Broadcast' : 'สร้าง Broadcast ใหม่'}</span>
+            <span>{editId ? 'Edit Announcement' : 'New Announcement'}</span>
           </Stack>
         </DialogTitle>
         <DialogContent dividers>
@@ -565,11 +568,11 @@ export default function BroadcastPage() {
               <Stack direction="row" spacing={1} justifyContent="flex-end" mb={1}>
                 <Button size="small" startIcon={<Article />} variant="outlined"
                   onClick={() => setTemplatePickOpen(true)}>
-                  ใช้ Template
+                  Use Template
                 </Button>
                 <Button size="small" startIcon={<SmartToy />} variant="outlined"
                   onClick={aiDraft}>
-                  AI Draft
+                  Draft with AI
                 </Button>
                 <Button size="small" startIcon={<Preview />} variant="outlined"
                   onClick={() => setPreviewOpen(true)}>
@@ -579,23 +582,23 @@ export default function BroadcastPage() {
             </Grid>
 
             <Grid item xs={12}>
-              <TextField label="หัวข้อ *" fullWidth size="small" value={form.title}
+              <TextField label="Title *" fullWidth size="small" value={form.title}
                 onChange={e => setForm(f => ({ ...f, title: e.target.value }))} />
             </Grid>
 
             <Grid item xs={6} sm={4}>
               <FormControl fullWidth size="small">
-                <InputLabel>ประเภท</InputLabel>
-                <Select value={form.type} label="ประเภท" onChange={e => setForm(f => ({ ...f, type: e.target.value }))}>
+                <InputLabel>Type</InputLabel>
+                <Select value={form.type} label="Type" onChange={e => setForm(f => ({ ...f, type: e.target.value }))}>
                   {TYPES.map(t => <MenuItem key={t} value={t}>{TYPE_LABEL[t]}</MenuItem>)}
                 </Select>
               </FormControl>
             </Grid>
             <Grid item xs={6} sm={4}>
               <FormControl fullWidth size="small">
-                <InputLabel>ลำดับความสำคัญ</InputLabel>
-                <Select value={form.priority} label="ลำดับความสำคัญ" onChange={e => setForm(f => ({ ...f, priority: e.target.value }))}>
-                  {PRIORITIES.map(p => <MenuItem key={p} value={p}>{PRIORITY_EMOJI[p]} {p}</MenuItem>)}
+                <InputLabel>Priority</InputLabel>
+                <Select value={form.priority} label="Priority" onChange={e => setForm(f => ({ ...f, priority: e.target.value }))}>
+                  {PRIORITIES.map(p => <MenuItem key={p} value={p}>{PRIORITY_EMOJI[p]} {PRIORITY_LABEL_TH[p] ?? p}</MenuItem>)}
                 </Select>
               </FormControl>
             </Grid>
@@ -603,34 +606,34 @@ export default function BroadcastPage() {
               <FormControlLabel
                 control={<Switch checked={form.approvalRequired}
                   onChange={e => setForm(f => ({ ...f, approvalRequired: e.target.checked }))} />}
-                label="ต้องอนุมัติก่อนส่ง"
+                label="Require Approval Before Sending"
               />
             </Grid>
 
             <Grid item xs={12}>
-              <TextField label="เนื้อหา *" fullWidth multiline rows={6} size="small"
+              <TextField label="Content *" fullWidth multiline rows={6} size="small"
                 value={form.content}
                 onChange={e => setForm(f => ({ ...f, content: e.target.value }))}
-                placeholder="เขียนข่าวสาร..." />
+                placeholder="Write your message..." />
             </Grid>
 
             <Grid item xs={12}>
-              <TextField label="URL รูปภาพ (ถ้ามี)" fullWidth size="small"
+              <TextField label="Image URL (optional)" fullWidth size="small"
                 value={form.imageUrl}
                 onChange={e => setForm(f => ({ ...f, imageUrl: e.target.value }))} />
             </Grid>
 
-            <Grid item xs={12}><Divider><Typography variant="caption">ผู้รับ</Typography></Divider></Grid>
+            <Grid item xs={12}><Divider><Typography variant="caption">Recipients</Typography></Divider></Grid>
 
             <Grid item xs={12} sm={6}>
               <FormControl fullWidth size="small">
-                <InputLabel>กลุ่มผู้รับ</InputLabel>
-                <Select value={form.recipientType} label="กลุ่มผู้รับ"
+                <InputLabel>Recipient Group</InputLabel>
+                <Select value={form.recipientType} label="Recipient Group"
                   onChange={e => setForm(f => ({ ...f, recipientType: e.target.value }))}>
                   {[
-                    { v: 'all', l: '👥 ทุกคน' }, { v: 'sale', l: '🏃 Sale' },
+                    { v: 'all', l: '👥 Everyone' }, { v: 'sale', l: '🏃 Sale' },
                     { v: 'closer', l: '💼 Closer' }, { v: 'admin', l: '⚙️ Admin' },
-                    { v: 'executive', l: '👑 Executive' }, { v: 'individual', l: '👤 เลือกรายบุคคล' },
+                    { v: 'executive', l: '👑 Executive' }, { v: 'individual', l: '👤 Select Individuals' },
                   ].map(o => <MenuItem key={o.v} value={o.v}>{o.l}</MenuItem>)}
                 </Select>
               </FormControl>
@@ -639,11 +642,11 @@ export default function BroadcastPage() {
             {form.recipientType === 'individual' && (
               <Grid item xs={12} sm={6}>
                 <FormControl fullWidth size="small">
-                  <InputLabel>เลือกพนักงาน</InputLabel>
+                  <InputLabel>Select Employees</InputLabel>
                   <Select
-                    multiple value={form.recipientIds} label="เลือกพนักงาน"
+                    multiple value={form.recipientIds} label="Select Employees"
                     onChange={e => setForm(f => ({ ...f, recipientIds: e.target.value as string[] }))}
-                    renderValue={(sel) => `เลือกแล้ว ${(sel as string[]).length} คน`}
+                    renderValue={(sel) => `${(sel as string[]).length} selected`}
                   >
                     {employees.map(e => (
                       <MenuItem key={e.id} value={e.id}>
@@ -656,23 +659,23 @@ export default function BroadcastPage() {
               </Grid>
             )}
 
-            <Grid item xs={12}><Divider><Typography variant="caption">การส่ง</Typography></Divider></Grid>
+            <Grid item xs={12}><Divider><Typography variant="caption">Delivery</Typography></Divider></Grid>
 
             <Grid item xs={12} sm={4}>
               <FormControl fullWidth size="small">
-                <InputLabel>เวลาส่ง</InputLabel>
-                <Select value={form.scheduleType} label="เวลาส่ง"
+                <InputLabel>Send Time</InputLabel>
+                <Select value={form.scheduleType} label="Send Time"
                   onChange={e => setForm(f => ({ ...f, scheduleType: e.target.value }))}>
-                  <MenuItem value="immediate">⚡ ส่งทันที</MenuItem>
-                  <MenuItem value="scheduled">📅 กำหนดวันเวลา</MenuItem>
-                  <MenuItem value="recurring">🔄 ส่งซ้ำ</MenuItem>
+                  <MenuItem value="immediate">⚡ Send Immediately</MenuItem>
+                  <MenuItem value="scheduled">📅 Schedule</MenuItem>
+                  <MenuItem value="recurring">🔄 Recurring</MenuItem>
                 </Select>
               </FormControl>
             </Grid>
 
             {form.scheduleType === 'scheduled' && (
               <Grid item xs={12} sm={8}>
-                <TextField label="วันและเวลา" type="datetime-local" fullWidth size="small"
+                <TextField label="Date & Time" type="datetime-local" fullWidth size="small"
                   value={form.scheduledAt} InputLabelProps={{ shrink: true }}
                   onChange={e => setForm(f => ({ ...f, scheduledAt: e.target.value }))} />
               </Grid>
@@ -682,17 +685,17 @@ export default function BroadcastPage() {
               <>
                 <Grid item xs={6} sm={4}>
                   <FormControl fullWidth size="small">
-                    <InputLabel>ความถี่</InputLabel>
-                    <Select value={form.recurringFreq} label="ความถี่"
+                    <InputLabel>Frequency</InputLabel>
+                    <Select value={form.recurringFreq} label="Frequency"
                       onChange={e => setForm(f => ({ ...f, recurringFreq: e.target.value }))}>
-                      <MenuItem value="daily">รายวัน</MenuItem>
-                      <MenuItem value="weekly">รายสัปดาห์</MenuItem>
-                      <MenuItem value="monthly">รายเดือน</MenuItem>
+                      <MenuItem value="daily">Daily</MenuItem>
+                      <MenuItem value="weekly">Weekly</MenuItem>
+                      <MenuItem value="monthly">Monthly</MenuItem>
                     </Select>
                   </FormControl>
                 </Grid>
                 <Grid item xs={6} sm={4}>
-                  <TextField label="เวลา" type="time" fullWidth size="small"
+                  <TextField label="Time" type="time" fullWidth size="small"
                     value={form.recurringTime} InputLabelProps={{ shrink: true }}
                     onChange={e => setForm(f => ({ ...f, recurringTime: e.target.value }))} />
                 </Grid>
@@ -701,15 +704,15 @@ export default function BroadcastPage() {
           </Grid>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setFormOpen(false)}>ยกเลิก</Button>
+          <Button onClick={() => setFormOpen(false)}>Cancel</Button>
           <Button variant="outlined" onClick={() => save()} disabled={!form.title}>
-            บันทึก Draft
+            Save Draft
           </Button>
           {form.approvalRequired ? (
             <Button variant="contained" color="warning"
               onClick={() => save()}
               disabled={!form.title || !form.content}>
-              ส่งรออนุมัติ
+              Submit for Approval
             </Button>
           ) : (
             <Button variant="contained"
@@ -719,7 +722,7 @@ export default function BroadcastPage() {
               }}
               sx={{ bgcolor: '#06C755', '&:hover': { bgcolor: '#00A846' } }}
               disabled={!form.title || !form.content} startIcon={<Send />}>
-              บันทึก + ส่ง
+              Save & Send
             </Button>
           )}
         </DialogActions>
@@ -728,20 +731,20 @@ export default function BroadcastPage() {
       {/* ── Preview Dialog ── */}
       <Dialog open={previewOpen} onClose={() => setPreviewOpen(false)} maxWidth="xs" fullWidth
         PaperProps={{ sx: { backgroundImage: 'none', bgcolor: 'background.paper' } }}>
-        <DialogTitle>Preview LINE OA</DialogTitle>
+        <DialogTitle>LINE OA Preview</DialogTitle>
         <DialogContent>
           <LinePreview title={form.title} content={form.content}
             priority={form.priority} buttons={form.buttons} />
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setPreviewOpen(false)}>ปิด</Button>
+          <Button onClick={() => setPreviewOpen(false)}>Close</Button>
         </DialogActions>
       </Dialog>
 
       {/* ── Template Picker ── */}
       <Dialog open={templatePickOpen} onClose={() => setTemplatePickOpen(false)} maxWidth="sm" fullWidth
         PaperProps={{ sx: { backgroundImage: 'none', bgcolor: 'background.paper' } }}>
-        <DialogTitle>เลือก Template</DialogTitle>
+        <DialogTitle>Select Template</DialogTitle>
         <DialogContent>
           <List>
             {templates.map(t => (
@@ -758,7 +761,7 @@ export default function BroadcastPage() {
           </List>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setTemplatePickOpen(false)}>ปิด</Button>
+          <Button onClick={() => setTemplatePickOpen(false)}>Close</Button>
         </DialogActions>
       </Dialog>
 
@@ -775,16 +778,16 @@ export default function BroadcastPage() {
           {!detail ? <Box textAlign="center" p={4}><CircularProgress /></Box> : (
             <Grid container spacing={2}>
               <Grid item xs={12} sm={6}>
-                <Typography variant="caption" color="text.secondary">ผู้สร้าง</Typography>
+                <Typography variant="caption" color="text.secondary">Created By</Typography>
                 <Typography>{detail.createdBy?.name}</Typography>
               </Grid>
               <Grid item xs={12} sm={6}>
-                <Typography variant="caption" color="text.secondary">ส่งเมื่อ</Typography>
-                <Typography>{detail.sentAt ? new Date(detail.sentAt).toLocaleString('th-TH') : '—'}</Typography>
+                <Typography variant="caption" color="text.secondary">Sent At</Typography>
+                <Typography>{detail.sentAt ? new Date(detail.sentAt).toLocaleString('en-GB') : '—'}</Typography>
               </Grid>
 
               <Grid item xs={12}>
-                <Typography variant="caption" color="text.secondary">เนื้อหา</Typography>
+                <Typography variant="caption" color="text.secondary">Content</Typography>
                 <Paper variant="outlined" sx={{ p: 2, whiteSpace: 'pre-line', mt: 0.5 }}>
                   {detail.content}
                 </Paper>
@@ -794,9 +797,9 @@ export default function BroadcastPage() {
               <Grid item xs={12}>
                 <Stack direction="row" spacing={2} flexWrap="wrap">
                   {[
-                    { l: 'ส่ง', v: detail.sentCount, c: '#4F46E5' },
-                    { l: 'อ่าน', v: detail.readCount, c: '#06C755' },
-                    { l: 'ล้มเหลว', v: detail.failedCount, c: '#DC2626' },
+                    { l: 'Sent', v: detail.sentCount, c: '#4F46E5' },
+                    { l: 'Read', v: detail.readCount, c: '#06C755' },
+                    { l: 'Failed', v: detail.failedCount, c: '#DC2626' },
                   ].map(s => (
                     <Box key={s.l} sx={{ textAlign: 'center', minWidth: 80 }}>
                       <Typography variant="h5" fontWeight={700} sx={{ color: s.c }}>{s.v}</Typography>
@@ -809,13 +812,13 @@ export default function BroadcastPage() {
               {/* Logs */}
               {detail.logs?.length > 0 && (
                 <Grid item xs={12}>
-                  <Typography variant="subtitle2" fontWeight={700} mb={1}>Broadcast Log</Typography>
+                  <Typography variant="subtitle2" fontWeight={700} mb={1}>Send History</Typography>
                   <List dense disablePadding>
                     {detail.logs.map((log: any) => (
                       <ListItem key={log.id} disableGutters>
                         <ListItemText
-                          primary={`${log.action} — ${log.user?.name ?? 'ระบบ'}`}
-                          secondary={`${new Date(log.createdAt).toLocaleString('th-TH')}${log.detail ? ' · ' + log.detail : ''}`}
+                          primary={`${log.action} — ${log.user?.name ?? 'System'}`}
+                          secondary={`${new Date(log.createdAt).toLocaleString('en-GB')}${log.detail ? ' · ' + log.detail : ''}`}
                         />
                       </ListItem>
                     ))}
@@ -830,16 +833,16 @@ export default function BroadcastPage() {
             <Button variant="contained" startIcon={<Send />}
               sx={{ bgcolor: '#06C755', '&:hover': { bgcolor: '#00A846' } }}
               onClick={() => { sendNow(detail.id); setDetailId(null); }}>
-              ส่งเดี๋ยวนี้
+              Send Now
             </Button>
           )}
           {detail && detail.status === 'pending_approval' && isAdmin && (
             <Button variant="contained" color="success" startIcon={<CheckCircle />}
               onClick={() => { approve(detail.id); setDetailId(null); }}>
-              อนุมัติ
+              Approve
             </Button>
           )}
-          <Button onClick={() => setDetailId(null)}>ปิด</Button>
+          <Button onClick={() => setDetailId(null)}>Close</Button>
         </DialogActions>
       </Dialog>
     </Box>

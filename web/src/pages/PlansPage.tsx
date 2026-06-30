@@ -12,6 +12,7 @@ import { Link } from 'react-router-dom';
 import { api, errMsg } from '../api/client';
 import { useT } from '../i18n';
 import { useAuth } from '../auth/AuthContext';
+import { ExportPdfButton } from '../components/ExportPdfButton';
 
 interface Opt { id: string; code: string; name: string; }
 
@@ -133,12 +134,12 @@ export default function PlansPage() {
 
   const doBulkCreate = async () => {
     if (!bulkSelected.length || !bulkForm.employeeId || !bulkForm.date) {
-      setBulkMsg('กรุณาเลือก Agency, เซลส์ และวันที่'); return;
+      setBulkMsg('Please select Agency, sales, and date'); return;
     }
     setBulkLoading(true); setBulkMsg('');
     try {
       const { data } = await api.post('/visits/plans/bulk', { agencyIds: bulkSelected, ...bulkForm });
-      setBulkMsg(`สร้างแผนงานสำเร็จ ${data.created} รายการ`);
+      setBulkMsg(`Created ${data.created} plans successfully`);
       setBulkSelected([]);
       loadPlans();
     } catch (e) { setBulkMsg(errMsg(e)); }
@@ -242,8 +243,8 @@ export default function PlansPage() {
       const THAI_MONTHS = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
       const monthLabel = `${THAI_MONTHS[printMonth - 1]} ${printYear + 543}`;
       const empName = printEmployee
-        ? employees.find((e) => e.id === printEmployee)?.name ?? 'เซลส์'
-        : 'ทั้งหมด';
+        ? employees.find((e) => e.id === printEmployee)?.name ?? 'Sales'
+        : 'All';
 
       const fmtDate = (d: string) => {
         const dt = new Date(d);
@@ -296,16 +297,16 @@ export default function PlansPage() {
 
       const buildHeader = (showEmp: boolean) => `
         <tr>
-          <th style="${hStyle}">วันที่</th>
-          <th style="${hStyle}">รหัส</th>
+          <th style="${hStyle}">Date</th>
+          <th style="${hStyle}">Code</th>
           <th style="${hStyle}">Agency</th>
-          <th style="${hStyle}">โทร</th>
-          ${showEmp ? `<th style="${hStyle}">เซลส์</th>` : ''}
-          <th style="${hStyle}">ประเภท</th>
-          <th style="${hStyle}">ลำดับ</th>
-          <th style="${hStyle}">รายละเอียด</th>
-          <th style="${hStyle}">สถานะ</th>
-          <th style="${hStyle}">โทรยืนยัน</th>
+          <th style="${hStyle}">Phone</th>
+          ${showEmp ? `<th style="${hStyle}">Sales</th>` : ''}
+          <th style="${hStyle}">Type</th>
+          <th style="${hStyle}">Priority</th>
+          <th style="${hStyle}">Details</th>
+          <th style="${hStyle}">Status</th>
+          <th style="${hStyle}">Call Confirm</th>
           <th style="${hStyle}">Check-in</th>
           <th style="${hStyle}">Report</th>
         </tr>`;
@@ -323,7 +324,7 @@ export default function PlansPage() {
         tableBody = Object.values(grouped).map(({ name, plans: empPlans }) => `
           <div style="margin-bottom:24px;page-break-inside:avoid">
             <div style="background:#3b82f6;color:#fff;padding:6px 12px;font-weight:700;font-size:13px;border-radius:4px 4px 0 0">
-              👤 ${name} &nbsp;(${empPlans.length} รายการ)
+              👤 ${name} &nbsp;(${empPlans.length} items)
             </div>
             <table style="width:100%;border-collapse:collapse">
               ${buildHeader(false)}
@@ -335,7 +336,7 @@ export default function PlansPage() {
       const todayFmt = fmtDate(new Date().toISOString().slice(0, 10));
       const html = `<!DOCTYPE html><html><head>
         <meta charset="utf-8"/>
-        <title>แผนเยี่ยม ${monthLabel} — ${empName}</title>
+        <title>Visit Plan ${monthLabel} — ${empName}</title>
         <style>
           * { font-family: 'Sarabun', Arial, sans-serif; box-sizing: border-box; }
           body { margin: 0; padding: 16px 20px; color: #0f172a; }
@@ -348,16 +349,16 @@ export default function PlansPage() {
       </head><body>
         <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:12px;border-bottom:3px solid #1d4ed8;padding-bottom:8px">
           <div>
-            <div style="font-size:20px;font-weight:800;color:#1d4ed8">แผนเยี่ยม Agency Care</div>
-            <div style="font-size:14px;color:#475569;margin-top:2px">ประจำเดือน <strong>${monthLabel}</strong> &nbsp;|&nbsp; เซลส์: <strong>${empName}</strong></div>
+            <div style="font-size:20px;font-weight:800;color:#1d4ed8">Agency Care Visit Plan</div>
+            <div style="font-size:14px;color:#475569;margin-top:2px">Month: <strong>${monthLabel}</strong> &nbsp;|&nbsp; Sales: <strong>${empName}</strong></div>
           </div>
           <div style="text-align:right;font-size:11px;color:#94a3b8">
-            พิมพ์เมื่อ: ${todayFmt}<br/>รวม ${rows.length} รายการ
+            Printed: ${todayFmt}<br/>Total ${rows.length} items
           </div>
         </div>
         ${tableBody}
         <div class="no-print" style="margin-top:20px;text-align:center">
-          <button onclick="window.print()" style="padding:10px 32px;background:#1d4ed8;color:#fff;border:none;border-radius:6px;font-size:14px;cursor:pointer">🖨️ พิมพ์</button>
+          <button onclick="window.print()" style="padding:10px 32px;background:#1d4ed8;color:#fff;border:none;border-radius:6px;font-size:14px;cursor:pointer">🖨️ Print</button>
         </div>
       </body></html>`;
 
@@ -430,6 +431,7 @@ export default function PlansPage() {
               CSV
             </Button>
           </Tooltip>
+          <ExportPdfButton tableId="plans-table" filename="site-visit-plans" title="Site Visit Plans" size="small" variant="outlined" />
           <Tooltip title={t('pl.print')}>
             <Button size="small" variant="outlined" startIcon={<PrintIcon />} onClick={handlePrint}>
               {t('pl.print')}
@@ -437,7 +439,7 @@ export default function PlansPage() {
           </Tooltip>
           {isManager && (
             <Button variant="outlined" color="secondary" startIcon={<AddIcon />} onClick={() => setBulkOpen(true)}>
-              เพิ่มหลาย Agency
+              Add Multiple Agencies
             </Button>
           )}
           <Button variant="contained" startIcon={<AddIcon />} onClick={() => { setOpenAdd(true); setError(''); }}>
@@ -483,7 +485,7 @@ export default function PlansPage() {
 
       {/* ─── Plan list ─── */}
       {loading && <LinearProgress sx={{ mb: 1 }} />}
-      <Paper ref={tableRef}>
+      <Paper ref={tableRef} id="plans-table">
         <Table size="small">
           <TableHead>
             <TableRow>
@@ -599,10 +601,10 @@ export default function PlansPage() {
 
       {/* ─── Bulk Create Dialog ─── */}
       <Dialog open={bulkOpen} onClose={() => { setBulkOpen(false); setBulkMsg(''); setBulkSelected([]); }} maxWidth="md" fullWidth>
-        <DialogTitle>เพิ่มแผนงานหลาย Agency พร้อมกัน</DialogTitle>
+        <DialogTitle>Add Plans for Multiple Agencies</DialogTitle>
         <DialogContent>
           <Stack spacing={2} mt={1}>
-            {bulkMsg && <Alert severity={bulkMsg.includes('สำเร็จ') ? 'success' : 'error'}>{bulkMsg}</Alert>}
+            {bulkMsg && <Alert severity={bulkMsg.includes('successfully') ? 'success' : 'error'}>{bulkMsg}</Alert>}
             <Stack direction="row" spacing={2} flexWrap="wrap" useFlexGap>
               <FormControl size="small" sx={{ flex: 1, minWidth: 180 }}>
                 <InputLabel>{t('c.seller')}</InputLabel>
@@ -610,7 +612,7 @@ export default function PlansPage() {
                   {employees.map((e) => <MenuItem key={e.id} value={e.id}>{e.code} {e.name}</MenuItem>)}
                 </Select>
               </FormControl>
-              <TextField size="small" type="date" label="วันที่" value={bulkForm.date}
+              <TextField size="small" type="date" label="Date" value={bulkForm.date}
                 onChange={(e) => setBulkForm({ ...bulkForm, date: e.target.value })} InputLabelProps={{ shrink: true }} sx={{ flex: 1, minWidth: 150 }} />
               <FormControl size="small" sx={{ flex: 1, minWidth: 160 }}>
                 <InputLabel>{t('pl.actionType')}</InputLabel>
@@ -625,8 +627,8 @@ export default function PlansPage() {
                 </Select>
               </FormControl>
             </Stack>
-            <Divider>เลือก Agency ({bulkSelected.length} รายการ)</Divider>
-            <TextField size="small" placeholder="ค้นหา Agency..." value={bulkAgencySearch}
+            <Divider>Select Agencies ({bulkSelected.length} selected)</Divider>
+            <TextField size="small" placeholder="Search Agency..." value={bulkAgencySearch}
               onChange={(e) => setBulkAgencySearch(e.target.value)} />
             <Paper variant="outlined" sx={{ maxHeight: 280, overflowY: 'auto' }}>
               <Table size="small">
@@ -642,8 +644,8 @@ export default function PlansPage() {
                         }}
                       />
                     </TableCell>
-                    <TableCell>รหัส</TableCell>
-                    <TableCell>ชื่อ</TableCell>
+                    <TableCell>Code</TableCell>
+                    <TableCell>Name</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -660,9 +662,9 @@ export default function PlansPage() {
           </Stack>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => { setBulkOpen(false); setBulkMsg(''); setBulkSelected([]); }}>ปิด</Button>
+          <Button onClick={() => { setBulkOpen(false); setBulkMsg(''); setBulkSelected([]); }}>Close</Button>
           <Button variant="contained" onClick={doBulkCreate} disabled={bulkLoading || !bulkSelected.length}>
-            {bulkLoading ? <CircularProgress size={18} /> : `สร้าง ${bulkSelected.length} แผนงาน`}
+            {bulkLoading ? <CircularProgress size={18} /> : `Create ${bulkSelected.length} Plans`}
           </Button>
         </DialogActions>
       </Dialog>
@@ -768,37 +770,37 @@ export default function PlansPage() {
       <Dialog open={printOpen} onClose={() => setPrintOpen(false)} maxWidth="xs" fullWidth>
         <DialogTitle>
           <PrintIcon sx={{ mr: 1, verticalAlign: 'middle' }} fontSize="small" />
-          พิมพ์แผนเยี่ยมรายเดือน
+          Print Monthly Visit Plan
         </DialogTitle>
         <DialogContent>
           <Stack spacing={2} mt={1}>
             <Stack direction="row" spacing={2}>
               <FormControl size="small" fullWidth>
-                <InputLabel>เดือน</InputLabel>
-                <Select value={printMonth} label="เดือน" onChange={(e) => setPrintMonth(Number(e.target.value))}>
-                  {['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'].map((m, i) => (
+                <InputLabel>Month</InputLabel>
+                <Select value={printMonth} label="Month" onChange={(e) => setPrintMonth(Number(e.target.value))}>
+                  {['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'].map((m, i) => (
                     <MenuItem key={i + 1} value={i + 1}>{m}</MenuItem>
                   ))}
                 </Select>
               </FormControl>
               <TextField
-                size="small" label="ปี (พ.ศ.)" type="number" fullWidth
-                value={printYear + 543}
-                onChange={(e) => setPrintYear(Number(e.target.value) - 543)}
-                inputProps={{ min: 2560, max: 2580 }}
+                size="small" label="Year" type="number" fullWidth
+                value={printYear}
+                onChange={(e) => setPrintYear(Number(e.target.value))}
+                inputProps={{ min: 2017, max: 2037 }}
               />
             </Stack>
             <FormControl size="small" fullWidth>
-              <InputLabel>เซลส์</InputLabel>
-              <Select value={printEmployee} label="เซลส์" onChange={(e) => setPrintEmployee(e.target.value)}>
-                <MenuItem value="">ทั้งหมด (แยกกลุ่มตามคน)</MenuItem>
+              <InputLabel>Sales</InputLabel>
+              <Select value={printEmployee} label="Sales" onChange={(e) => setPrintEmployee(e.target.value)}>
+                <MenuItem value="">All (grouped by person)</MenuItem>
                 {employees.map((e) => (
                   <MenuItem key={e.id} value={e.id}>{e.name}</MenuItem>
                 ))}
               </Select>
             </FormControl>
             <Alert severity="info" sx={{ py: 0.5, fontSize: 12 }}>
-              ไฟล์จะเปิดหน้าต่างใหม่รูปแบบ A4 แนวนอน พร้อมปุ่มพิมพ์
+              A new window will open in A4 landscape format with a print button.
             </Alert>
           </Stack>
         </DialogContent>
@@ -808,7 +810,7 @@ export default function PlansPage() {
             variant="contained" startIcon={printLoading ? <CircularProgress size={16} /> : <PrintIcon />}
             onClick={executePrint} disabled={printLoading}
           >
-            {printLoading ? 'กำลังโหลด...' : 'พิมพ์'}
+            {printLoading ? 'Loading...' : 'Print'}
           </Button>
         </DialogActions>
       </Dialog>

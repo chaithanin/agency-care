@@ -12,15 +12,15 @@ import {
 import { api } from '../api/client';
 
 const AI_MODULES = [
-  { key: 'assignment', label: 'AI Assignment', icon: <Psychology />, desc: 'จัดสรรพนักงานเข้า Agency อัตโนมัติตามระดับ', color: '#4F46E5', route: '/auto-assign' },
-  { key: 'scheduler', label: 'AI Scheduler', icon: <CalendarMonth />, desc: 'สร้างตารางงานรายเดือนอัตโนมัติ', color: '#7C3AED', route: '/scheduling' },
-  { key: 'route', label: 'AI Route', icon: <Route />, desc: 'เส้นทางเยี่ยมที่เหมาะสมที่สุด', color: '#2563EB', route: '/route' },
-  { key: 'performance', label: 'AI Performance', icon: <Assessment />, desc: 'วิเคราะห์ผลงานทีมและบุคคล', color: '#16A34A', route: '/analytics' },
-  { key: 'score', label: 'AI Agency Score', icon: <Stars />, desc: 'คำนวณคะแนน Agency อัตโนมัติ', color: '#D97706', route: '/agencies' },
-  { key: 'risk', label: 'AI Risk Analysis', icon: <Warning />, desc: 'วิเคราะห์ความเสี่ยง Agency และพนักงาน', color: '#DC2626', route: '/ai-risk' },
-  { key: 'forecast', label: 'AI Forecast', icon: <TrendingUp />, desc: 'พยากรณ์ KPI, Workload และ Scenario', color: '#0891B2', route: '/ai-forecast' },
-  { key: 'health', label: 'AI Health Score', icon: <Favorite />, desc: 'Health Score 0-100 องค์กร/ทีม/Agency/พนักงาน', color: '#059669', route: '/ai-health' },
-  { key: 'recommendation', label: 'AI Recommendation', icon: <Lightbulb />, desc: 'คำแนะนำการปรับปรุงผลงานแบบ Real-time', color: '#7C3AED', route: '/ai-risk' },
+  { key: 'assignment', label: 'AI Assignment', icon: <Psychology />, desc: 'Automatically assign staff to Agency by level', color: '#4F46E5', route: '/auto-assign' },
+  { key: 'scheduler', label: 'AI Scheduler', icon: <CalendarMonth />, desc: 'Auto-generate monthly work schedules', color: '#7C3AED', route: '/scheduling' },
+  { key: 'route', label: 'AI Route', icon: <Route />, desc: 'Optimal visit routes', color: '#2563EB', route: '/route' },
+  { key: 'performance', label: 'AI Performance', icon: <Assessment />, desc: 'Analyze team and individual performance', color: '#16A34A', route: '/analytics' },
+  { key: 'score', label: 'AI Agency Score', icon: <Stars />, desc: 'Auto-calculate Agency scores', color: '#D97706', route: '/agencies' },
+  { key: 'risk', label: 'AI Risk Analysis', icon: <Warning />, desc: 'Analyze Agency and staff risk', color: '#DC2626', route: '/ai-risk' },
+  { key: 'forecast', label: 'AI Forecast', icon: <TrendingUp />, desc: 'Forecast KPI, Workload, and Scenarios', color: '#0891B2', route: '/ai-forecast' },
+  { key: 'health', label: 'AI Health Score', icon: <Favorite />, desc: 'Health score 0–100 for org/team/Agency/staff', color: '#059669', route: '/ai-health' },
+  { key: 'recommendation', label: 'AI Recommendations', icon: <Lightbulb />, desc: 'Real-time performance improvement suggestions', color: '#7C3AED', route: '/ai-risk' },
 ];
 
 interface LiveData {
@@ -54,9 +54,9 @@ export default function AiCenterPage() {
     setCalcResult('');
     try {
       const res = await api.post<{ calculated: number }>('/agency-scores/bulk-calculate', { month, year });
-      setCalcResult(`คำนวณเสร็จ ${res.data.calculated} Agency`);
+      setCalcResult(`Calculated ${res.data.calculated} Agency`);
     } catch {
-      setCalcResult('เกิดข้อผิดพลาด');
+      setCalcResult('An error occurred');
     }
     setCalcLoading(false);
   };
@@ -67,7 +67,7 @@ export default function AiCenterPage() {
         <AutoAwesome sx={{ color: '#4F46E5', fontSize: 32 }} />
         <Box>
           <Typography variant="h5" fontWeight={700}>AI Center</Typography>
-          <Typography variant="body2" color="text.secondary">ศูนย์กลาง AI ทุก Feature ของระบบ</Typography>
+          <Typography variant="body2" color="text.secondary">Central hub for all AI features</Typography>
         </Box>
       </Box>
 
@@ -84,7 +84,7 @@ export default function AiCenterPage() {
                 <Typography variant="body2" color="text.secondary" mb={2}>{m.desc}</Typography>
                 {m.route ? (
                   <Button size="small" endIcon={<ArrowForward />} onClick={() => navigate(m.route!)} sx={{ color: m.color }}>
-                    เปิดใช้งาน
+                    Open
                   </Button>
                 ) : (
                   <Chip label="Coming Soon" size="small" variant="outlined" sx={{ color: m.color, borderColor: m.color }} />
@@ -97,7 +97,7 @@ export default function AiCenterPage() {
 
       <Paper>
         <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ borderBottom: '1px solid #E2E8F0', px: 2 }}>
-          {['Overview','AI Agency Score','AI Daily Summary','AI Insights'].map((t, i) => <Tab key={i} label={t} />)}
+          {['Overview', 'AI Agency Score', 'AI Daily Summary', 'AI Recommendations'].map((t, i) => <Tab key={i} label={t} />)}
         </Tabs>
 
         {/* Overview */}
@@ -113,7 +113,7 @@ export default function AiCenterPage() {
                         <ListItemIcon sx={{ minWidth: 32, color: m.color }}>{m.icon}</ListItemIcon>
                         <ListItemText primary={m.label} secondary={m.route ? 'Active' : 'Coming Soon'} />
                         <Chip
-                          label={m.route ? 'ON' : 'Soon'}
+                          label={m.route ? 'On' : 'Coming Soon'}
                           size="small"
                           color={m.route ? 'success' : 'default'}
                           sx={{ fontWeight: 700 }}
@@ -123,16 +123,16 @@ export default function AiCenterPage() {
                   </List>
                 </Grid>
                 <Grid item xs={12} md={6}>
-                  <Typography variant="subtitle1" fontWeight={700} mb={2}>AI Live Insights</Typography>
+                  <Typography variant="subtitle1" fontWeight={700} mb={2}>Real-time AI Data</Typography>
                   {liveData.risk && (
                     <Box mb={2} sx={{ p: 1.5, border: '1px solid #FEE2E2', borderRadius: 2, bgcolor: '#FEF2F2' }}>
                       <Typography variant="body2" fontWeight={700} sx={{ color: '#DC2626', mb: 0.5 }}>Agency Risk</Typography>
                       <Box display="flex" gap={1} flexWrap="wrap">
                         {[
-                          { l: 'วิกฤต', v: liveData.risk.agencies.critical, c: '#DC2626' },
-                          { l: 'สูง', v: liveData.risk.agencies.high, c: '#EA580C' },
-                          { l: 'ปานกลาง', v: liveData.risk.agencies.medium, c: '#D97706' },
-                          { l: 'ต่ำ', v: liveData.risk.agencies.low, c: '#16A34A' },
+                          { l: 'Critical', v: liveData.risk.agencies.critical, c: '#DC2626' },
+                          { l: 'High', v: liveData.risk.agencies.high, c: '#EA580C' },
+                          { l: 'Medium', v: liveData.risk.agencies.medium, c: '#D97706' },
+                          { l: 'Low', v: liveData.risk.agencies.low, c: '#16A34A' },
                         ].map(x => (
                           <Box key={x.l} sx={{ textAlign: 'center' }}>
                             <Typography variant="h6" fontWeight={800} sx={{ color: x.c }}>{x.v}</Typography>
@@ -144,12 +144,12 @@ export default function AiCenterPage() {
                   )}
                   {liveData.forecast && (
                     <Box mb={2} sx={{ p: 1.5, border: '1px solid #DBEAFE', borderRadius: 2, bgcolor: '#EFF6FF' }}>
-                      <Typography variant="body2" fontWeight={700} sx={{ color: '#2563EB', mb: 0.5 }}>KPI Forecast เดือนนี้</Typography>
+                      <Typography variant="body2" fontWeight={700} sx={{ color: '#2563EB', mb: 0.5 }}>KPI Forecast This Month</Typography>
                       <Box display="flex" gap={2}>
-                        <Box><Typography variant="h6" fontWeight={800} sx={{ color: '#16A34A' }}>{liveData.forecast.summary.onTrack}</Typography><Typography variant="caption">ตามเป้า</Typography></Box>
-                        <Box><Typography variant="h6" fontWeight={800} sx={{ color: '#D97706' }}>{liveData.forecast.summary.atRisk}</Typography><Typography variant="caption">เสี่ยง</Typography></Box>
-                        <Box><Typography variant="h6" fontWeight={800} sx={{ color: '#DC2626' }}>{liveData.forecast.summary.critical}</Typography><Typography variant="caption">วิกฤต</Typography></Box>
-                        <Box><Typography variant="h6" fontWeight={800} sx={{ color: '#6366F1' }}>{liveData.forecast.summary.avgVisitProjRate}%</Typography><Typography variant="caption">Achievement</Typography></Box>
+                        <Box><Typography variant="h6" fontWeight={800} sx={{ color: '#16A34A' }}>{liveData.forecast.summary.onTrack}</Typography><Typography variant="caption">On Track</Typography></Box>
+                        <Box><Typography variant="h6" fontWeight={800} sx={{ color: '#D97706' }}>{liveData.forecast.summary.atRisk}</Typography><Typography variant="caption">At Risk</Typography></Box>
+                        <Box><Typography variant="h6" fontWeight={800} sx={{ color: '#DC2626' }}>{liveData.forecast.summary.critical}</Typography><Typography variant="caption">Critical</Typography></Box>
+                        <Box><Typography variant="h6" fontWeight={800} sx={{ color: '#6366F1' }}>{liveData.forecast.summary.avgVisitProjRate}%</Typography><Typography variant="caption">Result</Typography></Box>
                       </Box>
                     </Box>
                   )}
@@ -168,27 +168,27 @@ export default function AiCenterPage() {
         {/* AI Agency Score */}
         {tab === 1 && (
           <Box p={3}>
-            <Typography variant="subtitle1" fontWeight={700} mb={2}>คำนวณ Agency Score อัตโนมัติ</Typography>
+            <Typography variant="subtitle1" fontWeight={700} mb={2}>Auto-Calculate Agency Score</Typography>
             <Box display="flex" gap={2} alignItems="center" mb={3}>
               <FormControl size="small" sx={{ minWidth: 100 }}>
-                <InputLabel>เดือน</InputLabel>
-                <Select value={month} label="เดือน" onChange={e => setMonth(Number(e.target.value))}>
+                <InputLabel>Month</InputLabel>
+                <Select value={month} label="Month" onChange={e => setMonth(Number(e.target.value))}>
                   {Array.from({ length: 12 }, (_, i) => <MenuItem key={i+1} value={i+1}>{i+1}</MenuItem>)}
                 </Select>
               </FormControl>
-              <TextField size="small" label="ปี" type="number" value={year} onChange={e => setYear(Number(e.target.value))} sx={{ width: 100 }} />
+              <TextField size="small" label="Year" type="number" value={year} onChange={e => setYear(Number(e.target.value))} sx={{ width: 100 }} />
               <Button variant="contained" onClick={calcAgencyScores} disabled={calcLoading} startIcon={<Speed />}>
-                {calcLoading ? 'กำลังคำนวณ...' : 'คำนวณ Agency Score'}
+                {calcLoading ? 'Calculating...' : 'Calculate Agency Score'}
               </Button>
-              {calcResult && <Alert severity={calcResult.includes('ข้อผิด') ? 'error' : 'success'} sx={{ py: 0.5 }}>{calcResult}</Alert>}
+              {calcResult && <Alert severity={calcResult.includes('error') ? 'error' : 'success'} sx={{ py: 0.5 }}>{calcResult}</Alert>}
             </Box>
             <Paper variant="outlined" sx={{ p: 2, bgcolor: '#F8FAFC' }}>
-              <Typography variant="subtitle2" mb={1}>อัลกอริทึม AI Agency Scoring</Typography>
+              <Typography variant="subtitle2" mb={1}>AI Agency Scoring Algorithm</Typography>
               {[
-                { label: 'Visit Score (40%)', desc: 'ความสม่ำเสมอของการเข้าเยี่ยม vs เป้าหมาย' },
-                { label: 'Sales Score (30%)', desc: 'ยอดขายเทียบกับ Target และ YoY Growth' },
-                { label: 'Growth Score (20%)', desc: 'แนวโน้มการเติบโต 3 เดือนย้อนหลัง' },
-                { label: 'Risk Score (10%)', desc: 'ปัจจัยเสี่ยง: หมดสัญญา, ลดยอด, ร้องเรียน' },
+                { label: 'Visit Score (40%)', desc: 'Consistency of visits vs. target' },
+                { label: 'Sales Score (30%)', desc: 'Sales vs. target and YoY growth' },
+                { label: 'Growth Score (20%)', desc: 'Growth trend over the past 3 months' },
+                { label: 'Risk Score (10%)', desc: 'Risk factors: contract expiry, declining sales, complaints' },
               ].map((item, i) => (
                 <Box key={i} display="flex" gap={1} mb={1}>
                   <CheckCircle sx={{ color: '#16A34A', fontSize: 18, mt: 0.3 }} />
@@ -206,16 +206,16 @@ export default function AiCenterPage() {
         {tab === 2 && (
           <Box p={3}>
             <Typography variant="subtitle1" fontWeight={700} mb={2}>AI Daily Summary</Typography>
-            <Alert severity="info" sx={{ mb: 2 }}>ส่งสรุปประจำวันให้ทีมผ่าน LINE OA ทุก 08:00 น. อัตโนมัติ</Alert>
+            <Alert severity="info" sx={{ mb: 2 }}>Daily summary is automatically sent to the team via LINE OA at 08:00 every day</Alert>
             <Paper variant="outlined" sx={{ p: 2 }}>
-              <Typography variant="subtitle2" mb={1}>ตัวอย่าง AI Daily Brief</Typography>
+              <Typography variant="subtitle2" mb={1}>Sample AI Daily Brief</Typography>
               <Divider sx={{ mb: 1 }} />
               {[
-                '📊 วันนี้มีนัด Site Visit 12 รายการ (เสร็จ 8, ค้าง 4)',
-                '⚠️ Agency เสี่ยงสูง 3 ราย: TH-001, TH-045, TH-112',
-                '🏆 พนักงานทำ KPI ดีที่สุด: สมชาย (95%)',
-                '📋 งานค้างเกินกำหนด 7 รายการ รอดำเนินการ',
-                '💰 PR รออนุมัติ 2 รายการ มูลค่า ฿45,000',
+                '📊 Today\'s Site Visits: 12 scheduled (8 completed, 4 pending)',
+                '⚠️ High-risk Agencies: 3 — TH-001, TH-045, TH-112',
+                '🏆 Top KPI performer: Somchai (95%)',
+                '📋 Overdue tasks: 7 items awaiting action',
+                '💰 PR pending approval: 2 items totaling ฿45,000',
               ].map((line, i) => (
                 <Box key={i} display="flex" gap={1} mb={0.5}>
                   <Typography variant="body2">{line}</Typography>
@@ -231,10 +231,10 @@ export default function AiCenterPage() {
             <Typography variant="subtitle1" fontWeight={700} mb={2}>AI Insights & Recommendations</Typography>
             <Grid container spacing={2}>
               {[
-                { icon: <TrendingUp sx={{ color: '#16A34A' }} />, title: 'โอกาสเพิ่ม Visit', desc: 'Zone B มี 5 Agency ระดับ A ที่ยังไม่ได้รับการเยี่ยมใน 30 วัน', action: 'ดูแผน', color: '#16A34A' },
-                { icon: <Warning sx={{ color: '#DC2626' }} />, title: 'ความเสี่ยงสูง', desc: '3 Agency มีสัญญาหมดใน 60 วัน และยอดขายลดลง', action: 'ดู Agency', color: '#DC2626' },
-                { icon: <Stars sx={{ color: '#D97706' }} />, title: 'Best Practice', desc: 'ทีม A มี Conversion Rate 85% — พิจารณาใช้เป็น Template', action: 'ดูทีม', color: '#D97706' },
-                { icon: <Lightbulb sx={{ color: '#4F46E5' }} />, title: 'ปรับปรุง KPI', desc: 'พนักงาน 4 คน มีแนวโน้ม KPI ต่ำกว่า Target ในเดือนหน้า', action: 'ดูรายชื่อ', color: '#4F46E5' },
+                { icon: <TrendingUp sx={{ color: '#16A34A' }} />, title: 'Visit Opportunity', desc: 'Zone B has 5 Grade-A Agencies that have not been visited in 30 days', action: 'View Plan', color: '#16A34A' },
+                { icon: <Warning sx={{ color: '#DC2626' }} />, title: 'High Risk', desc: '3 Agencies have contracts expiring within 60 days and declining sales', action: 'View Agencies', color: '#DC2626' },
+                { icon: <Stars sx={{ color: '#D97706' }} />, title: 'Best Practice', desc: 'Team A has an 85% conversion rate — consider using as a template', action: 'View Team', color: '#D97706' },
+                { icon: <Lightbulb sx={{ color: '#4F46E5' }} />, title: 'KPI Improvement', desc: '4 staff members are trending below target KPI for next month', action: 'View List', color: '#4F46E5' },
               ].map((item, i) => (
                 <Grid item xs={12} sm={6} key={i}>
                   <Paper variant="outlined" sx={{ p: 2, borderLeft: `4px solid ${item.color}` }}>

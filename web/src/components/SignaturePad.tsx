@@ -8,7 +8,7 @@ interface Props {
   label?: string;
 }
 
-export function SignaturePad({ onSave, onCancel, label = 'ลงลายมือชื่อ' }: Props) {
+export function SignaturePad({ onSave, onCancel, label = 'Sign here' }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [drawing, setDrawing] = useState(false);
   const [hasStrokes, setHasStrokes] = useState(false);
@@ -94,15 +94,15 @@ export function SignaturePad({ onSave, onCancel, label = 'ลงลายมื�
           onTouchEnd={stopDraw}
         />
         <Typography variant="caption" sx={{ position: 'absolute', bottom: 4, left: 8, color: '#CBD5E1', pointerEvents: 'none' }}>
-          {hasStrokes ? '' : 'วาดลายมือชื่อที่นี่'}
+          {hasStrokes ? '' : 'Draw your signature here'}
         </Typography>
       </Box>
       <Box display="flex" gap={1} mt={1}>
-        <Button size="small" startIcon={<Delete />} onClick={clear} color="error" variant="outlined">ล้าง</Button>
+        <Button size="small" startIcon={<Delete />} onClick={clear} color="error" variant="outlined">Clear</Button>
         <Box flex={1} />
-        <Button size="small" onClick={onCancel}>ยกเลิก</Button>
+        <Button size="small" onClick={onCancel}>Cancel</Button>
         <Button size="small" variant="contained" startIcon={<Edit />} onClick={save} disabled={!hasStrokes}>
-          ยืนยันลงนาม
+          Confirm Signature
         </Button>
       </Box>
     </Box>

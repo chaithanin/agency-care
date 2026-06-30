@@ -64,7 +64,7 @@ export default function EvaluationPage() {
     try {
       if (editItem.id) await api.patch(`/evaluations/${editItem.id}`, editItem);
       else await api.post('/evaluations', editItem);
-      setSuccess(editItem.id ? 'บันทึกสำเร็จ' : 'สร้างการประเมินสำเร็จ');
+      setSuccess(editItem.id ? 'Saved successfully' : 'Evaluation created successfully');
       setEditItem(null);
       load();
     } catch (e) { setError(errMsg(e)); }
@@ -72,7 +72,7 @@ export default function EvaluationPage() {
   };
 
   const remove = async (id: string) => {
-    if (!confirm('ลบบันทึกการประเมินนี้?')) return;
+    if (!confirm('Delete this evaluation record?')) return;
     try { await api.delete(`/evaluations/${id}`); load(); } catch (e) { setError(errMsg(e)); }
   };
 
@@ -93,11 +93,11 @@ export default function EvaluationPage() {
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
         <Box>
           <Box display="flex" alignItems="center" gap={1}><Assessment sx={{ color:'#4F46E5' }} /><Typography variant="h5" fontWeight={700}>Employee Evaluation</Typography></Box>
-          <Typography variant="body2" color="text.secondary">ผลการประเมินพนักงานรายเดือน</Typography>
+          <Typography variant="body2" color="text.secondary">Monthly employee evaluation results</Typography>
         </Box>
         <Box display="flex" gap={1}>
           <IconButton onClick={load}><Refresh /></IconButton>
-          <Button startIcon={<Add />} variant="contained" onClick={() => setEditItem({ ...EMPTY })}>สร้างการประเมิน</Button>
+          <Button startIcon={<Add />} variant="contained" onClick={() => setEditItem({ ...EMPTY })}>Create Evaluation</Button>
         </Box>
       </Box>
 
@@ -111,7 +111,7 @@ export default function EvaluationPage() {
               <CardContent sx={{ py:1.5, px:2, '&:last-child':{pb:1.5} }}>
                 <Typography variant="h4" fontWeight={900} sx={{ color:GRADE_COLOR[g] }}>{g}</Typography>
                 <Typography fontWeight={700}>{byGrade(g)}</Typography>
-                <Typography variant="caption" color="text.secondary">คน</Typography>
+                <Typography variant="caption" color="text.secondary">people</Typography>
               </CardContent>
             </Card>
           </Grid>
@@ -120,7 +120,7 @@ export default function EvaluationPage() {
           <Card variant="outlined" sx={{ borderTop:'4px solid #7C3AED', textAlign:'center' }}>
             <CardContent sx={{ py:1.5, px:2, '&:last-child':{pb:1.5} }}>
               <Typography variant="h4" fontWeight={900} sx={{ color:'#7C3AED' }}>{avgScore}</Typography>
-              <Typography variant="caption" color="text.secondary">คะแนนเฉลี่ย</Typography>
+              <Typography variant="caption" color="text.secondary">Average Score</Typography>
             </CardContent>
           </Card>
         </Grid>
@@ -130,13 +130,13 @@ export default function EvaluationPage() {
       <Paper sx={{ p:2, mb:2 }}>
         <Box display="flex" gap={2} alignItems="center" flexWrap="wrap">
           <FormControl size="small" sx={{ minWidth:200 }}>
-            <InputLabel>พนักงาน</InputLabel>
-            <Select value={filterEmp} label="พนักงาน" onChange={e => setFilterEmp(e.target.value)}>
-              <MenuItem value="">ทั้งหมด</MenuItem>
+            <InputLabel>Employee</InputLabel>
+            <Select value={filterEmp} label="Employee" onChange={e => setFilterEmp(e.target.value)}>
+              <MenuItem value="">All</MenuItem>
               {employees.map(e=><MenuItem key={e.id} value={e.id}>{e.name}</MenuItem>)}
             </Select>
           </FormControl>
-          <TextField size="small" label="ปี" type="number" value={filterYear} onChange={e=>setFilterYear(Number(e.target.value))} sx={{ width:100 }} />
+          <TextField size="small" label="Year" type="number" value={filterYear} onChange={e=>setFilterYear(Number(e.target.value))} sx={{ width:100 }} />
         </Box>
       </Paper>
 
@@ -144,13 +144,13 @@ export default function EvaluationPage() {
         {loading ? <Box p={6} textAlign="center"><CircularProgress /></Box> : (
           <Table size="small">
             <TableHead><TableRow sx={{ bgcolor:'#F8FAFC' }}>
-              {['พนักงาน','เดือน','KPI (60%)','พฤติกรรม (40%)','รวม','เกรด','ประเมินโดย','จัดการ'].map(h=>(
+              {['Employee','Month','KPI (60%)','Behavior (40%)','Total','Grade','Evaluated By','Actions'].map(h=>(
                 <TableCell key={h} sx={{ fontWeight:700 }}>{h}</TableCell>
               ))}
             </TableRow></TableHead>
             <TableBody>
               {items.length === 0 ? (
-                <TableRow><TableCell colSpan={8} align="center" sx={{ py:6, color:'text.secondary' }}>ไม่มีผลการประเมิน</TableCell></TableRow>
+                <TableRow><TableCell colSpan={8} align="center" sx={{ py:6, color:'text.secondary' }}>No evaluation results</TableCell></TableRow>
               ) : items.map(e => (
                 <TableRow key={e.id} hover>
                   <TableCell>
@@ -190,61 +190,61 @@ export default function EvaluationPage() {
 
       {/* Form Dialog */}
       <Dialog open={!!editItem} onClose={() => setEditItem(null)} maxWidth="md" fullWidth>
-        <DialogTitle>{editItem?.id ? 'แก้ไข' : 'สร้าง'}การประเมิน</DialogTitle>
+        <DialogTitle>{editItem?.id ? 'Edit' : 'Create'} Evaluation</DialogTitle>
         <DialogContent>
           <Grid container spacing={2} sx={{ mt:0.5 }}>
             <Grid item xs={12} sm={6}>
               <FormControl fullWidth size="small">
-                <InputLabel>พนักงาน *</InputLabel>
-                <Select value={editItem?.employeeId??''} label="พนักงาน *" onChange={e => setEditItem(f=>({...f!, employeeId:e.target.value}))}>
+                <InputLabel>Employee *</InputLabel>
+                <Select value={editItem?.employeeId??''} label="Employee *" onChange={e => setEditItem(f=>({...f!, employeeId:e.target.value}))}>
                   {employees.map(e=><MenuItem key={e.id} value={e.id}>{e.name} ({e.code})</MenuItem>)}
                 </Select>
               </FormControl>
             </Grid>
             <Grid item xs={6} sm={3}>
               <FormControl fullWidth size="small">
-                <InputLabel>เดือน</InputLabel>
-                <Select value={editItem?.month??1} label="เดือน" onChange={e => setEditItem(f=>({...f!, month:Number(e.target.value)}))}>
+                <InputLabel>Month</InputLabel>
+                <Select value={editItem?.month??1} label="Month" onChange={e => setEditItem(f=>({...f!, month:Number(e.target.value)}))}>
                   {MONTH_TH.filter(Boolean).map((m,i)=><MenuItem key={i+1} value={i+1}>{m}</MenuItem>)}
                 </Select>
               </FormControl>
             </Grid>
             <Grid item xs={6} sm={3}>
-              <TextField size="small" label="ปี" type="number" fullWidth value={editItem?.year??2024} onChange={e=>setEditItem(f=>({...f!, year:Number(e.target.value)}))} />
+              <TextField size="small" label="Year" type="number" fullWidth value={editItem?.year??2024} onChange={e=>setEditItem(f=>({...f!, year:Number(e.target.value)}))} />
             </Grid>
 
             <Grid item xs={12} sm={6}>
-              <Typography variant="subtitle2" gutterBottom>คะแนน KPI (60%): {editItem?.kpiScore}</Typography>
+              <Typography variant="subtitle2" gutterBottom>KPI Score (60%): {editItem?.kpiScore}</Typography>
               <Slider value={editItem?.kpiScore??80} min={0} max={100} onChange={(_, v) => updateScore('kpiScore', v as number)} marks step={5} />
             </Grid>
             <Grid item xs={12} sm={6}>
-              <Typography variant="subtitle2" gutterBottom>คะแนนพฤติกรรม (40%): {editItem?.behaviorScore}</Typography>
+              <Typography variant="subtitle2" gutterBottom>Behavior Score (40%): {editItem?.behaviorScore}</Typography>
               <Slider value={editItem?.behaviorScore??80} min={0} max={100} onChange={(_, v) => updateScore('behaviorScore', v as number)} marks step={5} />
             </Grid>
 
             <Grid item xs={6} textAlign="center">
-              <Typography variant="caption" color="text.secondary">คะแนนรวม</Typography>
+              <Typography variant="caption" color="text.secondary">Total Score</Typography>
               <Typography variant="h3" fontWeight={700} sx={{ color: GRADE_COLOR[editItem?.grade??'B']??'#666' }}>{editItem?.overallScore}</Typography>
             </Grid>
             <Grid item xs={6} textAlign="center">
-              <Typography variant="caption" color="text.secondary">เกรด</Typography>
+              <Typography variant="caption" color="text.secondary">Grade</Typography>
               <Typography variant="h2" fontWeight={900} sx={{ color: GRADE_COLOR[editItem?.grade??'B']??'#666' }}>{editItem?.grade}</Typography>
             </Grid>
 
             <Grid item xs={12}>
-              <TextField label="จุดแข็ง (Strengths)" multiline rows={2} fullWidth size="small" value={editItem?.strengths??''} onChange={e=>setEditItem(f=>({...f!, strengths:e.target.value}))} />
+              <TextField label="Strengths" multiline rows={2} fullWidth size="small" value={editItem?.strengths??''} onChange={e=>setEditItem(f=>({...f!, strengths:e.target.value}))} />
             </Grid>
             <Grid item xs={12}>
-              <TextField label="จุดที่ต้องพัฒนา (Improvements)" multiline rows={2} fullWidth size="small" value={editItem?.improvements??''} onChange={e=>setEditItem(f=>({...f!, improvements:e.target.value}))} />
+              <TextField label="Areas for Improvement" multiline rows={2} fullWidth size="small" value={editItem?.improvements??''} onChange={e=>setEditItem(f=>({...f!, improvements:e.target.value}))} />
             </Grid>
             <Grid item xs={12}>
-              <TextField label="เป้าหมายเดือนหน้า (Goals)" multiline rows={2} fullWidth size="small" value={editItem?.goals??''} onChange={e=>setEditItem(f=>({...f!, goals:e.target.value}))} />
+              <TextField label="Next Month Goals" multiline rows={2} fullWidth size="small" value={editItem?.goals??''} onChange={e=>setEditItem(f=>({...f!, goals:e.target.value}))} />
             </Grid>
           </Grid>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setEditItem(null)}>ยกเลิก</Button>
-          <Button variant="contained" onClick={save} disabled={!editItem?.employeeId}>บันทึก</Button>
+          <Button onClick={() => setEditItem(null)}>Cancel</Button>
+          <Button variant="contained" onClick={save} disabled={!editItem?.employeeId}>Save</Button>
         </DialogActions>
       </Dialog>
     </Box>

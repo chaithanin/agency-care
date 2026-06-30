@@ -94,7 +94,7 @@ export default function DocCreatePage() {
         kpiSales: d.kpiSales?.toString() ?? '', notes: d.notes ?? '', declaration: d.declaration ?? '',
       });
       if (d.rows?.length) setRows(d.rows as ScheduleRow[]);
-    } catch { setError('โหลดข้อมูลไม่สำเร็จ'); }
+    } catch { setError('Failed to load data'); }
   };
 
   const setF = (k: string, v: string | number) => setForm(p => ({ ...p, [k]: v }));
@@ -104,7 +104,7 @@ export default function DocCreatePage() {
   const setRow = (i: number, k: string, v: string) => setRows(p => p.map((r, idx) => idx === i ? { ...r, [k]: v } : r));
 
   const handleSubmit = async () => {
-    if (!form.employeeId || !form.month || !form.year) { setError('กรุณากรอกข้อมูลที่จำเป็น'); return; }
+    if (!form.employeeId || !form.month || !form.year) { setError('Please fill in all required fields'); return; }
     setSaving(true); setError('');
     try {
       const payload = {
@@ -145,8 +145,8 @@ export default function DocCreatePage() {
   };
 
   const generateSchedule = async () => {
-    if (!docId && !isEdit) { setError('บันทึกเอกสารก่อน แล้วจึง Generate Schedule'); return; }
-    if (!selectedAgencies.length) { setError('เลือก Agency ก่อน'); return; }
+    if (!docId && !isEdit) { setError('Please save the document first before generating a schedule'); return; }
+    if (!selectedAgencies.length) { setError('Please select at least one Agency'); return; }
     setGenerating(true);
     try {
       const targetId = docId ?? id!;
@@ -161,7 +161,7 @@ export default function DocCreatePage() {
       <Box display="flex" alignItems="center" gap={1} mb={3}>
         <IconButton onClick={() => navigate('/docs')}><ArrowBack /></IconButton>
         <Box>
-          <Typography variant="h5" fontWeight={700}>{isEdit ? 'แก้ไข' : 'สร้าง'} {DOC_TITLE[docType]}</Typography>
+          <Typography variant="h5" fontWeight={700}>{isEdit ? 'Edit' : 'Create'} {DOC_TITLE[docType]}</Typography>
           <Chip label={docType.toUpperCase()} size="small" variant="outlined" sx={{ mt: 0.5 }} />
         </Box>
       </Box>
@@ -170,35 +170,35 @@ export default function DocCreatePage() {
 
       {/* Basic Info */}
       <Paper sx={{ p: 3, mb: 2 }}>
-        <Typography variant="subtitle1" fontWeight={700} mb={2}>ข้อมูลเอกสาร</Typography>
+        <Typography variant="subtitle1" fontWeight={700} mb={2}>Document Information</Typography>
         <Grid container spacing={2}>
           <Grid item xs={12} sm={6}>
-            <TextField label="บริษัท" value={form.companyName} onChange={e => setF('companyName', e.target.value)} fullWidth />
+            <TextField label="Company" value={form.companyName} onChange={e => setF('companyName', e.target.value)} fullWidth />
           </Grid>
           <Grid item xs={6} sm={3}>
             <FormControl fullWidth required>
-              <InputLabel>เดือน</InputLabel>
-              <Select value={form.month} label="เดือน" onChange={e => setF('month', e.target.value as number)}>
+              <InputLabel>Month</InputLabel>
+              <Select value={form.month} label="Month" onChange={e => setF('month', e.target.value as number)}>
                 {MONTH_TH.slice(1).map((m, i) => <MenuItem key={i + 1} value={i + 1}>{m}</MenuItem>)}
               </Select>
             </FormControl>
           </Grid>
           <Grid item xs={6} sm={3}>
-            <TextField label="ปี พ.ศ." type="number" value={form.year} onChange={e => setF('year', e.target.value)} fullWidth required />
+            <TextField label="Year" type="number" value={form.year} onChange={e => setF('year', e.target.value)} fullWidth required />
           </Grid>
           <Grid item xs={12} sm={4}>
             <FormControl fullWidth required>
-              <InputLabel>พนักงาน</InputLabel>
-              <Select value={form.employeeId} label="พนักงาน" onChange={e => setF('employeeId', e.target.value as string)}>
+              <InputLabel>Employee</InputLabel>
+              <Select value={form.employeeId} label="Employee" onChange={e => setF('employeeId', e.target.value as string)}>
                 {employees.map(e => <MenuItem key={e.id} value={e.id}>{e.name} ({e.code})</MenuItem>)}
               </Select>
             </FormControl>
           </Grid>
           <Grid item xs={12} sm={4}>
             <FormControl fullWidth>
-              <InputLabel>หัวหน้างาน (Supervisor)</InputLabel>
-              <Select value={form.supervisorId} label="หัวหน้างาน (Supervisor)" onChange={e => setF('supervisorId', e.target.value as string)}>
-                <MenuItem value="">— ไม่ระบุ —</MenuItem>
+              <InputLabel>Supervisor</InputLabel>
+              <Select value={form.supervisorId} label="Supervisor" onChange={e => setF('supervisorId', e.target.value as string)}>
+                <MenuItem value="">— Not specified —</MenuItem>
                 {users.map(u => <MenuItem key={u.id} value={u.id}>{u.name}</MenuItem>)}
               </Select>
             </FormControl>
@@ -207,7 +207,7 @@ export default function DocCreatePage() {
             <FormControl fullWidth>
               <InputLabel>Closer</InputLabel>
               <Select value={form.closerId} label="Closer" onChange={e => setF('closerId', e.target.value as string)}>
-                <MenuItem value="">— ไม่ระบุ —</MenuItem>
+                <MenuItem value="">— Not specified —</MenuItem>
                 {users.map(u => <MenuItem key={u.id} value={u.id}>{u.name}</MenuItem>)}
               </Select>
             </FormControl>
@@ -217,10 +217,10 @@ export default function DocCreatePage() {
 
       {/* KPI */}
       <Paper sx={{ p: 3, mb: 2 }}>
-        <Typography variant="subtitle1" fontWeight={700} mb={2}>KPI ประจำเดือน</Typography>
+        <Typography variant="subtitle1" fontWeight={700} mb={2}>Monthly KPI</Typography>
         <Grid container spacing={2}>
-          {[['kpiSiteVisit','Site Visit (ครั้ง)'],['kpiFollowup','Follow-up (ครั้ง)'],
-            ['kpiNewAgency','New Agency (ราย)'],['kpiTraining','Training (ครั้ง)'],['kpiSales','Sales Target (฿)']].map(([k,l]) => (
+          {[['kpiSiteVisit','Site Visit (times)'],['kpiFollowup','Follow-up (times)'],
+            ['kpiNewAgency','New Agency (count)'],['kpiTraining','Training (times)'],['kpiSales','Sales Target (฿)']].map(([k,l]) => (
             <Grid item xs={6} sm={4} md={2.4} key={k}>
               <TextField label={l} type="number" value={(form as Record<string,unknown>)[k] as string} onChange={e => setF(k, e.target.value)} fullWidth size="small" />
             </Grid>
@@ -232,16 +232,16 @@ export default function DocCreatePage() {
       {docType === 'sva' && (
         <Paper sx={{ p: 3, mb: 2 }}>
           <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-            <Typography variant="subtitle1" fontWeight={700}>ตารางแผนงาน</Typography>
+            <Typography variant="subtitle1" fontWeight={700}>Schedule Plan</Typography>
             <Box display="flex" gap={1}>
-              <Button size="small" startIcon={<Add />} onClick={addRow}>เพิ่มแถว</Button>
+              <Button size="small" startIcon={<Add />} onClick={addRow}>Add Row</Button>
             </Box>
           </Box>
           <Box sx={{ overflowX: 'auto' }}>
             <Table size="small">
               <TableHead>
                 <TableRow sx={{ bgcolor: '#F8FAFC' }}>
-                  {['วันที่','เวลา','Agency','ผู้ติดต่อ','จังหวัด','ประเภท','Priority','หมายเหตุ',''].map(h => (
+                  {['Date','Time','Agency','Contact Person','Province','Type','Priority','Notes',''].map(h => (
                     <TableCell key={h} sx={{ fontWeight: 600, whiteSpace: 'nowrap' }}>{h}</TableCell>
                   ))}
                 </TableRow>
@@ -278,12 +278,12 @@ export default function DocCreatePage() {
             <AccordionSummary expandIcon={<ExpandMore />}>
               <Box display="flex" alignItems="center" gap={1}>
                 <AutoAwesome sx={{ color: '#7C3AED' }} />
-                <Typography fontWeight={600}>AI สร้างตาราง — เลือก Agency แล้วให้ระบบจัดตาราง</Typography>
+                <Typography fontWeight={600}>AI Schedule Generator — Select agencies and let the system build the schedule</Typography>
               </Box>
             </AccordionSummary>
             <AccordionDetails>
               <Box mb={2}>
-                <Typography variant="body2" color="text.secondary" mb={1}>เลือก Agency ที่ต้องการเยี่ยม:</Typography>
+                <Typography variant="body2" color="text.secondary" mb={1}>Select agencies to visit:</Typography>
                 <Box display="flex" flexWrap="wrap" gap={1} mb={2}>
                   {agencies.slice(0, 50).map(ag => (
                     <Chip key={ag.id} label={`${ag.name} (${ag.level ?? 'C'})`} size="small"
@@ -294,7 +294,7 @@ export default function DocCreatePage() {
                 </Box>
                 {selectedAgencies.length > 0 && (
                   <Box mb={2}>
-                    <Typography variant="body2" mb={1} fontWeight={600}>Agency ที่เลือก ({selectedAgencies.length}):</Typography>
+                    <Typography variant="body2" mb={1} fontWeight={600}>Selected Agencies ({selectedAgencies.length}):</Typography>
                     {selectedAgencies.map((ag, i) => (
                       <Box key={i} display="flex" gap={1} mb={0.5} alignItems="center">
                         <Typography variant="body2" sx={{ minWidth: 160 }}>{ag.name}</Typography>
@@ -310,7 +310,7 @@ export default function DocCreatePage() {
                 <Button variant="contained" startIcon={generating ? <CircularProgress size={16} color="inherit" /> : <AutoAwesome />}
                   onClick={generateSchedule} disabled={generating || !selectedAgencies.length}
                   sx={{ bgcolor: '#7C3AED', '&:hover': { bgcolor: '#6D28D9' } }}>
-                  {generating ? 'กำลังสร้าง...' : 'AI สร้างตาราง'}
+                  {generating ? 'Generating...' : 'AI Generate Schedule'}
                 </Button>
               </Box>
             </AccordionDetails>
@@ -320,22 +320,22 @@ export default function DocCreatePage() {
 
       {/* Notes & Declaration */}
       <Paper sx={{ p: 3, mb: 2 }}>
-        <Typography variant="subtitle1" fontWeight={700} mb={2}>หมายเหตุ & การรับทราบ</Typography>
+        <Typography variant="subtitle1" fontWeight={700} mb={2}>Notes & Declaration</Typography>
         <Grid container spacing={2}>
           <Grid item xs={12}>
-            <TextField label="หมายเหตุ" value={form.notes} onChange={e => setF('notes', e.target.value)} fullWidth multiline rows={3} />
+            <TextField label="Notes" value={form.notes} onChange={e => setF('notes', e.target.value)} fullWidth multiline rows={3} />
           </Grid>
           <Grid item xs={12}>
-            <TextField label="ข้อความการรับทราบ (Declaration)" value={form.declaration} onChange={e => setF('declaration', e.target.value)} fullWidth multiline rows={2} />
+            <TextField label="Declaration Text" value={form.declaration} onChange={e => setF('declaration', e.target.value)} fullWidth multiline rows={2} />
           </Grid>
         </Grid>
       </Paper>
 
       {/* Actions */}
       <Box display="flex" gap={2} justifyContent="flex-end">
-        <Button variant="outlined" onClick={() => navigate('/docs')}>ยกเลิก</Button>
+        <Button variant="outlined" onClick={() => navigate('/docs')}>Cancel</Button>
         <Button variant="contained" startIcon={saving ? <CircularProgress size={16} color="inherit" /> : <Save />} onClick={handleSubmit} disabled={saving}>
-          {saving ? 'กำลังบันทึก…' : 'บันทึก'}
+          {saving ? 'Saving...' : 'Save'}
         </Button>
       </Box>
     </Box>

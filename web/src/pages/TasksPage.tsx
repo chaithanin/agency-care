@@ -434,10 +434,10 @@ export default function TasksPage() {
 
             {isManager && employees.length > 0 && (
               <FormControl size="small" fullWidth>
-                <InputLabel>Assign to</InputLabel>
-                <Select value={form.assignedToId} label="Assign to"
+                <InputLabel>Assign To</InputLabel>
+                <Select value={form.assignedToId} label="Assign To"
                   onChange={(e) => setForm({ ...form, assignedToId: e.target.value })}>
-                  <MenuItem value="">— ไม่ระบุ (ตัวเอง) —</MenuItem>
+                  <MenuItem value="">— Unassigned (Self) —</MenuItem>
                   {employees.map((e) => <MenuItem key={e.id} value={e.id}>{e.name} ({e.code})</MenuItem>)}
                 </Select>
               </FormControl>
@@ -503,10 +503,10 @@ export default function TasksPage() {
             </Stack>
             {isManager && employees.length > 0 && (
               <FormControl size="small" fullWidth>
-                <InputLabel>Assign to</InputLabel>
-                <Select value={editForm.assignedToId} label="Assign to"
+                <InputLabel>Assign To</InputLabel>
+                <Select value={editForm.assignedToId} label="Assign To"
                   onChange={(e) => setEditForm({ ...editForm, assignedToId: e.target.value })}>
-                  <MenuItem value="">— ไม่เปลี่ยน —</MenuItem>
+                  <MenuItem value="">— Keep Unchanged —</MenuItem>
                   {employees.map((e) => <MenuItem key={e.id} value={e.id}>{e.name} ({e.code})</MenuItem>)}
                 </Select>
               </FormControl>

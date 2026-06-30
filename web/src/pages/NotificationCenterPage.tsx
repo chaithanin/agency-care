@@ -8,6 +8,7 @@ import {
 import { Send, Settings, History, NotificationsActive, CheckCircle, Error, PlayArrow } from '@mui/icons-material';
 import { useT } from '../i18n';
 import { api } from '../api/client';
+import { ExportPdfButton } from '../components/ExportPdfButton';
 
 interface NotifSetting {
   id: string;
@@ -33,24 +34,24 @@ interface NotifLog {
 }
 
 const NOTIF_TYPE_LABELS: Record<string, string> = {
-  daily_brief: '📋 Daily Brief 08:00',
+  daily_brief: '📋 Morning Summary 08:00',
   midday: '⏰ Midday 12:00',
   afternoon: '🔔 Afternoon 16:00',
   evening: '🚨 Evening 18:00',
 };
 
 const NOTIF_DESCRIPTIONS: Record<string, string> = {
-  daily_brief: 'สรุปงานประจำวัน + AI แนะนำลำดับงาน ส่งถึงพนักงาน หัวหน้า และผู้บริหาร',
-  midday: 'แจ้งงานที่ยังไม่เสร็จ (เฉพาะคนที่มีงานค้าง)',
-  afternoon: 'Escalation ระดับ Sale + Closer หากงานยังไม่เสร็จ',
-  evening: 'Escalation สูงสุด — Sale + Closer + Executive หากงานเกินกำหนด',
+  daily_brief: 'Daily task summary + AI-recommended task order — sent to staff, supervisors, and executives',
+  midday: 'Notify incomplete tasks (only for users with pending work)',
+  afternoon: 'Escalation to Sales + Closer if tasks are still unfinished',
+  evening: 'Highest escalation — Sales + Closer + Executive if tasks are overdue',
 };
 
 const ESCALATION_TABLE = [
-  { time: '08:00', to: 'Sale', condition: 'แจ้งงานประจำวัน', color: '#4F46E5' },
-  { time: '12:00', to: 'Sale', condition: 'มีงานค้าง', color: '#0369A1' },
-  { time: '16:00', to: 'Sale + Closer', condition: 'ยังไม่ดำเนินการ', color: '#D97706' },
-  { time: '18:00', to: 'Sale + Closer + Executive', condition: 'งานยังไม่เสร็จ', color: '#DC2626' },
+  { time: '08:00', to: 'Sale', condition: 'Daily task notification', color: '#4F46E5' },
+  { time: '12:00', to: 'Sale', condition: 'Pending tasks exist', color: '#0369A1' },
+  { time: '16:00', to: 'Sale + Closer', condition: 'No action taken', color: '#D97706' },
+  { time: '18:00', to: 'Sale + Closer + Executive', condition: 'Tasks still incomplete', color: '#DC2626' },
 ];
 
 function fmtDate(d: string) {
@@ -73,6 +74,10 @@ export default function NotificationCenterPage() {
   const [logStatusFilter, setLogStatusFilter] = useState('');
   const [logFrom, setLogFrom] = useState('');
   const [logTo, setLogTo] = useState('');
+  const [logSellerSearch, setLogSellerSearch] = useState('');
+  const [logAgencySearch, setLogAgencySearch] = useState('');
+  const [logTaskTitleSearch, setLogTaskTitleSearch] = useState('');
+  const [filteredLogs, setFilteredLogs] = useState<NotifLog[]>([]);
 
   useEffect(() => {
     fetchSettings();
@@ -81,6 +86,28 @@ export default function NotificationCenterPage() {
   useEffect(() => {
     if (tab === 1) fetchLogs();
   }, [tab, logTypeFilter, logStatusFilter, logFrom, logTo]);
+
+  // Apply client-side filters to logs
+  useEffect(() => {
+    const filtered = logs.filter((log) => {
+      const sellerMatch =
+        logSellerSearch === '' ||
+        log.recipient?.name?.toLowerCase().includes(logSellerSearch.toLowerCase()) ||
+        log.recipient?.code?.toLowerCase().includes(logSellerSearch.toLowerCase());
+
+      const agencyMatch =
+        logAgencySearch === '' ||
+        log.recipient?.name?.toLowerCase().includes(logAgencySearch.toLowerCase());
+
+      const taskMatch =
+        logTaskTitleSearch === '' ||
+        log.notifType?.toLowerCase().includes(logTaskTitleSearch.toLowerCase()) ||
+        log.taskCount.toString().includes(logTaskTitleSearch);
+
+      return sellerMatch && agencyMatch && taskMatch;
+    });
+    setFilteredLogs(filtered);
+  }, [logs, logSellerSearch, logAgencySearch, logTaskTitleSearch]);
 
   const fetchSettings = async () => {
     setLoadingSettings(true);
@@ -116,9 +143,9 @@ export default function NotificationCenterPage() {
     try {
       await api.patch(`/notifications/smart/settings/${notifType}`, data);
       setSettings((prev) => prev.map((s) => (s.notifType === notifType ? { ...s, ...data } : s)));
-      showAlert('บันทึกเรียบร้อย', 'success');
+      showAlert('Saved successfully', 'success');
     } catch {
-      showAlert('เกิดข้อผิดพลาด', 'error');
+      showAlert('An error occurred', 'error');
     } finally {
       setSaving(null);
     }
@@ -130,10 +157,10 @@ export default function NotificationCenterPage() {
       const res = await api.post(`/notifications/smart/send/${notifType}`, {});
       const r = res.data as Record<string, number>;
       const counts = Object.entries(r).map(([k, v]) => `${k}: ${v}`).join(', ');
-      showAlert(`ส่งสำเร็จ — ${counts}`, 'success');
+      showAlert(`Sent successfully — ${counts}`, 'success');
       if (tab === 1) fetchLogs();
     } catch {
-      showAlert('ส่งไม่สำเร็จ', 'error');
+      showAlert('Failed to send', 'error');
     } finally {
       setSending(null);
     }
@@ -149,10 +176,21 @@ export default function NotificationCenterPage() {
       sent: { label: t('ntf.statusSent'), color: 'success' },
       failed: { label: t('ntf.statusFailed'), color: 'error' },
       read: { label: t('ntf.statusRead'), color: 'default' },
-      skipped: { label: 'ข้าม', color: 'default' },
+      skipped: { label: 'Skipped', color: 'default' },
     };
     const m = map[s] ?? { label: s, color: 'default' };
     return <Chip label={m.label} color={m.color} size="small" />;
+  };
+
+  const hasActiveFilters =
+    logSellerSearch !== '' ||
+    logAgencySearch !== '' ||
+    logTaskTitleSearch !== '';
+
+  const resetFilters = () => {
+    setLogSellerSearch('');
+    setLogAgencySearch('');
+    setLogTaskTitleSearch('');
   };
 
   return (
@@ -174,13 +212,13 @@ export default function NotificationCenterPage() {
         <Box>
           {/* Escalation overview */}
           <Paper sx={{ p: 2, mb: 3 }}>
-            <Typography variant="subtitle1" fontWeight={700} mb={2}>ระบบ Escalation — การแจ้งเตือนตามลำดับ</Typography>
+            <Typography variant="subtitle1" fontWeight={700} mb={2}>Escalation Notification Schedule</Typography>
             <Table size="small">
               <TableHead>
                 <TableRow>
-                  <TableCell>เวลา</TableCell>
-                  <TableCell>แจ้งเตือนถึง</TableCell>
-                  <TableCell>เงื่อนไข</TableCell>
+                  <TableCell>Time</TableCell>
+                  <TableCell>Notify To</TableCell>
+                  <TableCell>Condition</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -199,7 +237,7 @@ export default function NotificationCenterPage() {
           {loadingSettings ? (
             <CircularProgress />
           ) : settings.length === 0 ? (
-            <Alert severity="info">ยังไม่มีการตั้งค่า (migration อาจยังไม่รัน)</Alert>
+            <Alert severity="info">No settings found (migration may not have run yet)</Alert>
           ) : (
             <Grid container spacing={2}>
               {settings.map((s) => (
@@ -272,7 +310,7 @@ export default function NotificationCenterPage() {
                           disabled={saving === s.notifType}
                           onClick={() => patchSetting(s.notifType, { cronTime: s.cronTime })}
                         >
-                          {saving === s.notifType ? <CircularProgress size={16} /> : 'บันทึก'}
+                          {saving === s.notifType ? <CircularProgress size={16} /> : 'Save'}
                         </Button>
                       </Box>
                     </CardContent>
@@ -287,10 +325,10 @@ export default function NotificationCenterPage() {
             <Typography variant="subtitle1" fontWeight={700} mb={1}>{t('ntf.lineSettings')}</Typography>
             <Divider sx={{ mb: 2 }} />
             <Typography variant="body2" color="text.secondary" mb={1}>
-              ตั้งค่า environment variable <code>LINE_CHANNEL_ACCESS_TOKEN</code> ใน Cloud Run เพื่อเปิดใช้งาน LINE OA
+              Set the environment variable <code>LINE_CHANNEL_ACCESS_TOKEN</code> in Cloud Run to enable LINE OA
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              ผู้ใช้แต่ละคนต้องผูก LINE User ID กับบัญชีพนักงาน ผ่าน LINE LIFF app หรือ admin กำหนดให้
+              Each user must link their LINE User ID to their staff account via the LINE LIFF app or have it assigned by an admin
             </Typography>
           </Paper>
         </Box>
@@ -299,36 +337,82 @@ export default function NotificationCenterPage() {
       {/* ========== TAB 1: LOGS ========== */}
       {tab === 1 && (
         <Box>
-          {/* Filters */}
-          <Paper sx={{ p: 2, mb: 2 }}>
+          {/* Primary Filters - Server-side */}
+          <Paper sx={{ p: 2, mb: 2, bgcolor: '#F8FAFC' }}>
+            <Typography variant="subtitle2" fontWeight={700} mb={1.5}>Notification Filters</Typography>
             <Box display="flex" flexWrap="wrap" gap={2} alignItems="center">
               <FormControl size="small" sx={{ minWidth: 180 }}>
                 <InputLabel>{t('ntf.logType')}</InputLabel>
                 <Select value={logTypeFilter} label={t('ntf.logType')} onChange={(e) => setLogTypeFilter(e.target.value)}>
-                  <MenuItem value="">ทั้งหมด</MenuItem>
+                  <MenuItem value="">All</MenuItem>
                   {Object.entries(NOTIF_TYPE_LABELS).map(([k, v]) => <MenuItem key={k} value={k}>{v}</MenuItem>)}
                 </Select>
               </FormControl>
               <FormControl size="small" sx={{ minWidth: 140 }}>
                 <InputLabel>{t('ntf.logStatus')}</InputLabel>
                 <Select value={logStatusFilter} label={t('ntf.logStatus')} onChange={(e) => setLogStatusFilter(e.target.value)}>
-                  <MenuItem value="">ทั้งหมด</MenuItem>
+                  <MenuItem value="">All</MenuItem>
                   <MenuItem value="sent">{t('ntf.statusSent')}</MenuItem>
                   <MenuItem value="failed">{t('ntf.statusFailed')}</MenuItem>
                   <MenuItem value="read">{t('ntf.statusRead')}</MenuItem>
                 </Select>
               </FormControl>
-              <TextField label="จาก" type="date" size="small" value={logFrom} onChange={(e) => setLogFrom(e.target.value)} InputLabelProps={{ shrink: true }} />
-              <TextField label="ถึง" type="date" size="small" value={logTo} onChange={(e) => setLogTo(e.target.value)} InputLabelProps={{ shrink: true }} />
-              <Button variant="contained" size="small" onClick={fetchLogs}>ค้นหา</Button>
+              <TextField label="From" type="date" size="small" value={logFrom} onChange={(e) => setLogFrom(e.target.value)} InputLabelProps={{ shrink: true }} />
+              <TextField label="To" type="date" size="small" value={logTo} onChange={(e) => setLogTo(e.target.value)} InputLabelProps={{ shrink: true }} />
+              <Button variant="contained" size="small" onClick={fetchLogs}>Search</Button>
+              <ExportPdfButton tableId="notifications-table" filename="notifications" title="Notifications" variant="outlined" size="small" />
             </Box>
           </Paper>
 
+          {/* Secondary Filters - Client-side Search */}
+          <Paper sx={{ p: 2, mb: 2, border: '1px solid #E2E8F0' }}>
+            <Box display="flex" justifyContent="space-between" alignItems="center" mb={1.5}>
+              <Typography variant="subtitle2" fontWeight={700}>Search & Filter Results</Typography>
+              {hasActiveFilters && (
+                <Button size="small" variant="outlined" onClick={resetFilters}>
+                  Clear All
+                </Button>
+              )}
+            </Box>
+            <Grid container spacing={2}>
+              <Grid item xs={12} sm={4}>
+                <TextField
+                  fullWidth
+                  size="small"
+                  label="Seller Name / Code"
+                  placeholder="Search by seller name or code"
+                  value={logSellerSearch}
+                  onChange={(e) => setLogSellerSearch(e.target.value)}
+                />
+              </Grid>
+              <Grid item xs={12} sm={4}>
+                <TextField
+                  fullWidth
+                  size="small"
+                  label="Agency"
+                  placeholder="Search by agency name"
+                  value={logAgencySearch}
+                  onChange={(e) => setLogAgencySearch(e.target.value)}
+                />
+              </Grid>
+              <Grid item xs={12} sm={4}>
+                <TextField
+                  fullWidth
+                  size="small"
+                  label="Task Title / Keyword"
+                  placeholder="Search by task type or count"
+                  value={logTaskTitleSearch}
+                  onChange={(e) => setLogTaskTitleSearch(e.target.value)}
+                />
+              </Grid>
+            </Grid>
+          </Paper>
+
           {/* Log stats summary */}
-          {!loadingLogs && logs.length > 0 && (
+          {!loadingLogs && filteredLogs.length > 0 && (
             <Box display="flex" gap={2} mb={2} flexWrap="wrap">
               {(['sent', 'failed', 'read'] as const).map((s) => {
-                const count = logs.filter((l) => l.status === s).length;
+                const count = filteredLogs.filter((l) => l.status === s).length;
                 const icon = s === 'sent' ? <CheckCircle color="success" /> : s === 'failed' ? <Error color="error" /> : <Send />;
                 return (
                   <Paper key={s} sx={{ p: 1.5, display: 'flex', alignItems: 'center', gap: 1, minWidth: 120 }}>
@@ -343,8 +427,8 @@ export default function NotificationCenterPage() {
               <Paper sx={{ p: 1.5, display: 'flex', alignItems: 'center', gap: 1, minWidth: 120 }}>
                 <NotificationsActive color="primary" />
                 <Box>
-                  <Typography variant="h6" fontWeight={700} lineHeight={1}>{logs.length}</Typography>
-                  <Typography variant="caption" color="text.secondary">ทั้งหมด</Typography>
+                  <Typography variant="h6" fontWeight={700} lineHeight={1}>{filteredLogs.length}</Typography>
+                  <Typography variant="caption" color="text.secondary">{hasActiveFilters ? `Results` : `Total`}</Typography>
                 </Box>
               </Paper>
             </Box>
@@ -355,7 +439,7 @@ export default function NotificationCenterPage() {
             {loadingLogs ? (
               <Box p={4} textAlign="center"><CircularProgress /></Box>
             ) : (
-              <Table size="small">
+              <Table id="notifications-table" size="small">
                 <TableHead>
                   <TableRow sx={{ bgcolor: '#F8FAFC' }}>
                     <TableCell>{t('ntf.logDate')}</TableCell>
@@ -369,12 +453,14 @@ export default function NotificationCenterPage() {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {logs.length === 0 ? (
+                  {filteredLogs.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={8} align="center" sx={{ py: 4, color: 'text.secondary' }}>ไม่มีข้อมูล</TableCell>
+                      <TableCell colSpan={8} align="center" sx={{ py: 4, color: 'text.secondary' }}>
+                        {logs.length === 0 ? 'No data' : hasActiveFilters ? 'No results found. Try adjusting your filters.' : 'No data'}
+                      </TableCell>
                     </TableRow>
                   ) : (
-                    logs.map((log) => (
+                    filteredLogs.map((log) => (
                       <TableRow key={log.id} hover>
                         <TableCell><Typography variant="caption">{fmtDate(log.createdAt)}</Typography></TableCell>
                         <TableCell>

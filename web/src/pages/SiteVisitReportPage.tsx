@@ -46,6 +46,7 @@ import {
 import { Link } from 'react-router-dom';
 import { api, errMsg } from '../api/client';
 import { useAuth } from '../auth/AuthContext';
+import { ExportPdfButton } from '../components/ExportPdfButton';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 interface DashboardSummary {
@@ -271,7 +272,7 @@ function VisitDetailDialog({ row, onClose }: { row: ReportRow | null; onClose: (
           )}
 
           {/* ── POSM / Materials Given ── */}
-          <Section title={t('svr.materialsGiven') || 'สิ่งที่นำไป / Materials Given'}>
+          <Section title={t('svr.materialsGiven') || 'Materials Given'}>
             {row.posmItems && row.posmItems.length > 0 ? (
               <Stack spacing={0.5}>
                 {row.posmItems.map((item, i) => (
@@ -556,6 +557,15 @@ export default function SiteVisitReportPage() {
               </Button>
             </Tooltip>
           )}
+          {(isAdmin || isCloser) && (
+            <ExportPdfButton
+              tableId="site-visit-report-table"
+              filename="site-visit-reports"
+              title="Site Visit Report"
+              variant="outlined"
+              size="small"
+            />
+          )}
           <Tooltip title={t('svr.refresh')}>
             <IconButton onClick={() => { loadDashboard(dashDate); loadReport(appliedFilters); }}>
               <Refresh />
@@ -626,8 +636,8 @@ export default function SiteVisitReportPage() {
               {(isAdmin || isCloser) && (
                 <Grid item xs={12} sm={6} md={3}>
                   <FormControl fullWidth size="small">
-                    <InputLabel>Sale</InputLabel>
-                    <Select value={filters.employeeId} label="Sale"
+                    <InputLabel>Sales</InputLabel>
+                    <Select value={filters.employeeId} label="Sales"
                       onChange={(e) => setFilters((f) => ({ ...f, employeeId: e.target.value }))}>
                       <MenuItem value="">{t('svr.all')}</MenuItem>
                       {saleOptions.map((e) => <MenuItem key={e.id} value={e.id}>{e.name} ({e.code})</MenuItem>)}
@@ -711,12 +721,12 @@ export default function SiteVisitReportPage() {
         {loading && <LinearProgress />}
         {error && <Alert severity="error" sx={{ m: 2 }}>{error}</Alert>}
         <Box sx={{ overflowX: 'auto' }}>
-          <Table size="small">
+          <Table id="site-visit-report-table" size="small">
             <TableHead>
               <TableRow>
                 <TableCell>{t('pl2.date')}</TableCell>
                 <TableCell>Agency</TableCell>
-                <TableCell>Sale</TableCell>
+                <TableCell>Sales</TableCell>
                 {isManager && <TableCell>Closer</TableCell>}
                 <TableCell>{t('c.status')}</TableCell>
                 <TableCell align="center">{t('svr.time')}</TableCell>
@@ -777,7 +787,7 @@ export default function SiteVisitReportPage() {
                     </TableCell>
                     <TableCell align="center">
                       {photoCount > 0
-                        ? <Chip size="small" icon={<PhotoCamera fontSize="small" />} label={`${photoCount} ${t('svr.photoUnit') || 'รูป'}`} variant="outlined" />
+                        ? <Chip size="small" icon={<PhotoCamera fontSize="small" />} label={`${photoCount} ${t('svr.photoUnit') || 'photos'}`} variant="outlined" />
                         : <Typography variant="caption" color="text.disabled">-</Typography>}
                     </TableCell>
                     <TableCell align="center">

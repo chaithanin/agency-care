@@ -100,4 +100,10 @@ export class EmployeeService {
     };
     return this.prisma.employee.update({ where: { id }, data });
   }
+
+  async delete(id: string) {
+    await this.get(id);
+    await this.prisma.employee.delete({ where: { id } });
+    return { ok: true };
+  }
 }

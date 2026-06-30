@@ -1000,10 +1000,10 @@ interface I18nCtx {
   t: (key: string) => string;
   setLang: (l: Lang) => void;
 }
-const Ctx = createContext<I18nCtx>({ lang: 'th', t: (k) => k, setLang: () => {} });
+const Ctx = createContext<I18nCtx>({ lang: 'en', t: (k) => k, setLang: () => {} });
 
 export function I18nProvider({ children }: { children: ReactNode }) {
-  const [lang, setLangState] = useState<Lang>(() => (localStorage.getItem('lang') as Lang) || 'th');
+  const [lang, setLangState] = useState<Lang>(() => (localStorage.getItem('lang') as Lang) || 'en');
   const value = useMemo<I18nCtx>(
     () => ({
       lang,

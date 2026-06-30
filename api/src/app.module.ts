@@ -45,6 +45,8 @@ import { AppointmentModule } from './appointment/appointment.module';
 import { AiRiskModule } from './ai-risk/ai-risk.module';
 import { AiForecastModule } from './ai-forecast/ai-forecast.module';
 import { AiHealthModule } from './ai-health/ai-health.module';
+import { AcquisitionModule } from './acquisition/acquisition.module';
+import { DepositsModule } from './deposits/deposits.module';
 
 @Module({
   imports: [
@@ -101,6 +103,8 @@ import { AiHealthModule } from './ai-health/ai-health.module';
     AiRiskModule,
     AiForecastModule,
     AiHealthModule,
+    AcquisitionModule,
+    DepositsModule,
   ],
   controllers: [AppController],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],

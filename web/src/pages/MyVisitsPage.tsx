@@ -9,12 +9,15 @@ import {
   Chip,
   TextField,
   LinearProgress,
+  ToggleButton,
+  ToggleButtonGroup,
 } from '@mui/material';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../api/client';
 import { useT } from '../i18n';
+import { ExportPdfButton } from '../components/ExportPdfButton';
 
 interface Plan {
   id: string;
@@ -27,14 +30,27 @@ const todayStr = () => new Date().toISOString().slice(0, 10);
 
 export default function MyVisitsPage() {
   const { t } = useT();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [plans, setPlans] = useState<Plan[] | null>(null);
   const [date, setDate] = useState(todayStr());
+  const [period, setPeriod] = useState<'day' | 'month'>(() => {
+    const param = searchParams.get('period');
+    return (param === 'month' ? 'month' : 'day') as 'day' | 'month';
+  });
   const nav = useNavigate();
 
   useEffect(() => {
     setPlans(null);
-    api.get('/visits/plans', { params: { date } }).then((r) => setPlans(r.data));
-  }, [date]);
+    if (period === 'day') {
+      api.get('/visits/plans', { params: { date } }).then((r) => setPlans(r.data));
+    } else {
+      // Get first and last day of current month
+      const now = new Date();
+      const firstDay = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
+      const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().slice(0, 10);
+      api.get('/visits/plans', { params: { from: firstDay, to: lastDay } }).then((r) => setPlans(r.data));
+    }
+  }, [date, period]);
 
   return (
     <Box>
@@ -42,12 +58,36 @@ export default function MyVisitsPage() {
         <Typography variant="h5" fontWeight={700}>
           {t('mv.title')}
         </Typography>
-        <TextField
-          type="date"
-          size="small"
-          value={date}
-          onChange={(e) => setDate(e.target.value)}
-        />
+        <Stack direction="row" spacing={1} alignItems="center">
+          <ToggleButtonGroup
+            size="small"
+            value={period}
+            onChange={(_, v) => {
+              if (v) {
+                setPeriod(v);
+                setSearchParams({ period: v });
+              }
+            }}
+          >
+            <ToggleButton value="day">Day</ToggleButton>
+            <ToggleButton value="month">Month</ToggleButton>
+          </ToggleButtonGroup>
+          {period === 'day' && (
+            <TextField
+              type="date"
+              size="small"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+            />
+          )}
+          <ExportPdfButton
+            tableId="my-visits-table"
+            filename="my-visits"
+            title="My Visits"
+            size="small"
+            variant="outlined"
+          />
+        </Stack>
       </Stack>
 
       {plans === null && <LinearProgress />}
@@ -57,7 +97,7 @@ export default function MyVisitsPage() {
         </Typography>
       )}
 
-      <Stack spacing={1.5}>
+      <Stack id="my-visits-table" spacing={1.5}>
         {plans?.map((p) => (
           <Card key={p.id} variant="outlined">
             <CardActionArea onClick={() => nav(`/visits/${p.id}`)}>

@@ -10,13 +10,13 @@ interface Pipeline {
 }
 
 const STAGE_ORDER = [
-  { key: 'new', label: 'ใหม่', color: '#90a4ae' },
+  { key: 'new', label: 'New', color: '#90a4ae' },
   { key: 'prospect', label: 'Prospect', color: '#42a5f5' },
   { key: 'onboarding', label: 'Onboarding', color: '#26a69a' },
   { key: 'active', label: 'Active', color: '#66bb6a' },
   { key: 'grade_a', label: 'Grade A', color: '#ab47bc' },
-  { key: 'at_risk', label: 'เสี่ยงหลุด', color: '#ffa726' },
-  { key: 'inactive', label: 'ไม่เคลื่อนไหว', color: '#bdbdbd' },
+  { key: 'at_risk', label: 'At Risk', color: '#ffa726' },
+  { key: 'inactive', label: 'Inactive', color: '#bdbdbd' },
 ];
 const TIER_ORDER = [
   { key: 'platinum', label: 'Platinum', color: 'secondary' as const },

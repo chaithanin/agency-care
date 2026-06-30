@@ -16,6 +16,7 @@ import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
 import { useT } from '../i18n';
+import { ExportPdfButton } from '../components/ExportPdfButton';
 
 interface Visit {
   visitPlanId: string;
@@ -38,9 +39,9 @@ interface MyDay {
 
 const today = () => new Date().toISOString().slice(0, 10);
 
-function Stat({ label, value, target }: { label: string; value: number; target?: number }) {
+function Stat({ label, value, target, onClick }: { label: string; value: number; target?: number; onClick?: () => void }) {
   return (
-    <Paper sx={{ p: 1.5, textAlign: 'center' }}>
+    <Paper sx={{ p: 1.5, textAlign: 'center', cursor: onClick ? 'pointer' : 'default', '&:hover': onClick ? { bgcolor: 'action.hover' } : {} }} onClick={onClick}>
       <Typography variant="h5" fontWeight={700}>
         {value}
         {target != null && <Typography component="span" variant="body2" color="text.secondary">/{target}</Typography>}
@@ -80,19 +81,22 @@ export default function MyDayPage() {
       </Stack>
 
       <Grid container spacing={1.5} mb={2}>
-        <Grid item xs={4}><Stat label={t('my.visitMonth')} value={data.month.visitDone} target={data.month.visitTarget} /></Grid>
-        <Grid item xs={4}><Stat label={t('my.agencyDuty')} value={data.month.assigned} /></Grid>
-        <Grid item xs={4}><Stat label={t('my.newTarget')} value={data.month.newAgencyTarget} /></Grid>
+        <Grid item xs={4}><Stat label={t('my.visitMonth')} value={data.month.visitDone} target={data.month.visitTarget} onClick={() => nav('/my-visits?period=month')} /></Grid>
+        <Grid item xs={4}><Stat label={t('my.agencyDuty')} value={data.month.assigned} onClick={() => nav('/agencies')} /></Grid>
+        <Grid item xs={4}><Stat label={t('my.newTarget')} value={data.month.newAgencyTarget} onClick={() => nav('/agencies')} /></Grid>
       </Grid>
 
       {data.inOffice && (
         <Alert severity="info" sx={{ mb: 2 }}>{t('my.office')}</Alert>
       )}
 
-      <Paper>
-        <Typography variant="subtitle1" fontWeight={700} sx={{ p: 2, pb: 1 }}>
-          {t('my.todayAppt')} ({data.visits.length}) — {t('my.tapCheckin')}
-        </Typography>
+      <Paper id="my-day-table">
+        <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ p: 2, pb: 1 }} gap={1}>
+          <Typography variant="subtitle1" fontWeight={700}>
+            {t('my.todayAppt')} ({data.visits.length}) — {t('my.tapCheckin')}
+          </Typography>
+          <ExportPdfButton tableId="my-day-table" filename="my-day" title="My Day" size="small" />
+        </Stack>
         {data.visits.length === 0 ? (
           <Typography sx={{ p: 2, color: 'text.secondary' }}>
             {t('my.noAppt')}

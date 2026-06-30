@@ -12,6 +12,7 @@ import {
 } from '@mui/icons-material';
 import { api, errMsg } from '../api/client';
 import { useT } from '../i18n';
+import { ExportPdfButton } from '../components/ExportPdfButton';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 interface InvItem {
@@ -151,9 +152,10 @@ function StockTab() {
             {CATEGORIES.map((c) => <MenuItem key={c} value={c}>{CATEGORY_LABEL[c]}</MenuItem>)}
           </Select>
         </FormControl>
-        <TextField size="small" placeholder="ค้นหาชื่อ/รหัสสื่อ" value={nameSearch}
+        <TextField size="small" placeholder="Search name / item code" value={nameSearch}
           onChange={(e) => setNameSearch(e.target.value)} sx={{ minWidth: 180 }} />
         <Button startIcon={<Refresh />} onClick={load} disabled={loading}>{t('posm.refresh')}</Button>
+        <ExportPdfButton tableId="posm-inventory-table" filename="posm-inventory" title="POSM Inventory" size="small" variant="outlined" />
         <Box flex={1} />
         <Button variant="contained" startIcon={<Add />} onClick={() => { setAddErr(''); setAddOpen(true); }}>
           {t('posm.addItem')}
@@ -163,60 +165,62 @@ function StockTab() {
       {loading && <LinearProgress sx={{ mb: 2 }} />}
 
       {/* Tables by category */}
-      {grouped.map(({ cat, rows }) => (
-        <Paper key={cat} sx={{ mb: 3, borderRadius: 3 }}>
-          <Stack direction="row" alignItems="center" spacing={1} sx={{ p: 1.5, borderBottom: '1px solid', borderColor: 'divider' }}>
-            <Chip size="small" color={CATEGORY_COLOR[cat]} label={CATEGORY_LABEL[cat]} />
-            <Typography variant="caption" color="text.secondary">{rows.length} {t('posm.items')}</Typography>
-          </Stack>
-          <Table size="small">
-            <TableHead>
-              <TableRow sx={{ '& th': { fontWeight: 700, fontSize: 12 } }}>
-                <TableCell>{t('posm.codeAndName')}</TableCell>
-                <TableCell>{t('posm.stock')}</TableCell>
-                <TableCell>{t('posm.minStockCol')}</TableCell>
-                <TableCell>{t('c.status')}</TableCell>
-                <TableCell align="right">{t('posm.used30')}</TableCell>
-                <TableCell align="right">{t('c.manage')}</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {rows.map((p) => (
-                <TableRow key={p.id} hover
-                  sx={{ bgcolor: p.urgent ? 'error.50' : p.low ? 'warning.50' : undefined }}>
-                  <TableCell>
-                    <Typography variant="body2" fontWeight={600}>{p.name}</Typography>
-                    <Typography variant="caption" color="text.secondary">{p.code} · {p.unit}</Typography>
-                    {p.description && <Typography variant="caption" color="text.disabled" display="block">{p.description}</Typography>}
-                  </TableCell>
-                  <TableCell>
-                    <Typography fontWeight={800} color={p.urgent ? 'error.main' : p.low ? 'warning.main' : 'success.main'}>
-                      {p.stockQty}
-                    </Typography>
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="body2" color="text.secondary">{p.reorderPoint || '—'}</Typography>
-                    <StockBar qty={p.stockQty} reorder={p.reorderPoint} />
-                  </TableCell>
-                  <TableCell>
-                    {p.urgent
-                      ? <Chip size="small" color="error" label={`🚨 ${t('posm.statusCritical')}`} />
-                      : p.low
-                        ? <Chip size="small" color="warning" label={`⚠️ ${t('posm.statusLow')}`} />
-                        : <Chip size="small" color="success" label={`✓ ${t('posm.statusOk')}`} />}
-                  </TableCell>
-                  <TableCell align="right">
-                    <Typography variant="body2">{p.used30}</Typography>
-                  </TableCell>
-                  <TableCell align="right">
-                    <Button size="small" onClick={() => openManage(p)}>{t('posm.refill')}</Button>
-                  </TableCell>
+      <Box id="posm-inventory-table">
+        {grouped.map(({ cat, rows }) => (
+          <Paper key={cat} sx={{ mb: 3, borderRadius: 3 }}>
+            <Stack direction="row" alignItems="center" spacing={1} sx={{ p: 1.5, borderBottom: '1px solid', borderColor: 'divider' }}>
+              <Chip size="small" color={CATEGORY_COLOR[cat]} label={CATEGORY_LABEL[cat]} />
+              <Typography variant="caption" color="text.secondary">{rows.length} {t('posm.items')}</Typography>
+            </Stack>
+            <Table size="small">
+              <TableHead>
+                <TableRow sx={{ '& th': { fontWeight: 700, fontSize: 12 } }}>
+                  <TableCell>{t('posm.codeAndName')}</TableCell>
+                  <TableCell>{t('posm.stock')}</TableCell>
+                  <TableCell>{t('posm.minStockCol')}</TableCell>
+                  <TableCell>{t('c.status')}</TableCell>
+                  <TableCell align="right">{t('posm.used30')}</TableCell>
+                  <TableCell align="right">{t('c.manage')}</TableCell>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </Paper>
-      ))}
+              </TableHead>
+              <TableBody>
+                {rows.map((p) => (
+                  <TableRow key={p.id} hover
+                    sx={{ bgcolor: p.urgent ? 'error.50' : p.low ? 'warning.50' : undefined }}>
+                    <TableCell>
+                      <Typography variant="body2" fontWeight={600}>{p.name}</Typography>
+                      <Typography variant="caption" color="text.secondary">{p.code} · {p.unit}</Typography>
+                      {p.description && <Typography variant="caption" color="text.disabled" display="block">{p.description}</Typography>}
+                    </TableCell>
+                    <TableCell>
+                      <Typography fontWeight={800} color={p.urgent ? 'error.main' : p.low ? 'warning.main' : 'success.main'}>
+                        {p.stockQty}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Typography variant="body2" color="text.secondary">{p.reorderPoint || '—'}</Typography>
+                      <StockBar qty={p.stockQty} reorder={p.reorderPoint} />
+                    </TableCell>
+                    <TableCell>
+                      {p.urgent
+                        ? <Chip size="small" color="error" label={`🚨 ${t('posm.statusCritical')}`} />
+                        : p.low
+                          ? <Chip size="small" color="warning" label={`⚠️ ${t('posm.statusLow')}`} />
+                          : <Chip size="small" color="success" label={`✓ ${t('posm.statusOk')}`} />}
+                    </TableCell>
+                    <TableCell align="right">
+                      <Typography variant="body2">{p.used30}</Typography>
+                    </TableCell>
+                    <TableCell align="right">
+                      <Button size="small" onClick={() => openManage(p)}>{t('posm.refill')}</Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </Paper>
+        ))}
+      </Box>
 
       {/* Add Item Dialog */}
       <Dialog open={addOpen} onClose={() => setAddOpen(false)} fullWidth maxWidth="sm">
@@ -338,6 +342,7 @@ function AgencyTab() {
           <TextField size="small" type="date" label={t('posm.to')} value={to}
             onChange={(e) => setTo(e.target.value)} InputLabelProps={{ shrink: true }} />
           <Button variant="contained" onClick={load} startIcon={<Refresh />}>{t('posm.viewData')}</Button>
+          <ExportPdfButton tableId="posm-agency-table" filename="posm-agency-summary" title="POSM Agency Distribution" size="small" variant="outlined" />
           <TextField size="small" placeholder={t('posm.searchAgency')} value={search}
             onChange={(e) => setSearch(e.target.value)} sx={{ minWidth: 200 }} />
         </Stack>
@@ -365,7 +370,7 @@ function AgencyTab() {
 
       {/* Agency table */}
       {filtered.length > 0 && (
-        <Paper sx={{ borderRadius: 3 }}>
+        <Paper sx={{ borderRadius: 3 }} id="posm-agency-table">
           <Table size="small">
             <TableHead>
               <TableRow sx={{ '& th': { fontWeight: 700, fontSize: 12 } }}>
@@ -513,6 +518,9 @@ function LogTab() {
           {rows.length > 0 && (
             <Button variant="outlined" startIcon={<Download />} onClick={exportCsv}>{t('pl.exportCsv')}</Button>
           )}
+          {rows.length > 0 && (
+            <ExportPdfButton tableId="posm-distribution-table" filename="posm-distribution-log" title="POSM Distribution Log" size="small" variant="outlined" />
+          )}
           {total > 0 && (
             <Typography variant="caption" color="text.secondary">
               {total} {t('posm.items')} · {t('posm.total')} {quantityTotal} {t('posm.pieces')}
@@ -524,7 +532,7 @@ function LogTab() {
       {loading && <LinearProgress sx={{ mb: 2 }} />}
 
       {rows.length > 0 && (
-        <Paper sx={{ borderRadius: 3 }}>
+        <Paper sx={{ borderRadius: 3 }} id="posm-distribution-table">
           <Box sx={{ overflowX: 'auto' }}>
             <Table size="small">
               <TableHead>

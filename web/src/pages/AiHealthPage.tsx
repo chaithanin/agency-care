@@ -6,6 +6,7 @@ import {
 } from '@mui/material';
 import FavoriteRoundedIcon from '@mui/icons-material/FavoriteRounded';
 import RefreshRoundedIcon from '@mui/icons-material/RefreshRounded';
+import { ExportPdfButton } from '../components/ExportPdfButton';
 import { api } from '../api/client';
 
 type HealthLabel = 'excellent' | 'good' | 'fair' | 'poor' | 'critical';
@@ -17,7 +18,7 @@ const HEALTH_BG: Record<HealthLabel, string> = {
   excellent: '#F0FDF4', good: '#F0FDF4', fair: '#FEFCE8', poor: '#FFF7ED', critical: '#FEF2F2',
 };
 const HEALTH_LABEL_TH: Record<HealthLabel, string> = {
-  excellent: 'ดีเยี่ยม', good: 'ดี', fair: 'พอใช้', poor: 'อ่อนแอ', critical: 'วิกฤต',
+  excellent: 'Excellent', good: 'Good', fair: 'Fair', poor: 'Weak', critical: 'Critical',
 };
 
 interface AgencyHealth {
@@ -89,7 +90,7 @@ function DistBar({ label, count, total, color }: { label: string; count: number;
     <Box sx={{ mb: 1 }}>
       <Stack direction="row" justifyContent="space-between" sx={{ mb: 0.25 }}>
         <Typography variant="caption" color="text.secondary">{label}</Typography>
-        <Typography variant="caption" fontWeight={700}>{count} ราย ({pct}%)</Typography>
+        <Typography variant="caption" fontWeight={700}>{count} ({pct}%)</Typography>
       </Stack>
       <LinearProgress variant="determinate" value={pct}
         sx={{ height: 8, borderRadius: 4, bgcolor: '#F3F4F6',
@@ -114,7 +115,7 @@ function AgencyHealthRow({ a }: { a: AgencyHealth }) {
         </Stack>
       </TableCell>
       <TableCell><HealthChip label={a.healthLabel} /></TableCell>
-      <TableCell sx={{ fontSize: 12, color: 'text.secondary' }}>{a.daysSinceLastVisit !== null ? `${a.daysSinceLastVisit}d` : '—'}</TableCell>
+      <TableCell sx={{ fontSize: 12, color: 'text.secondary' }}>{a.daysSinceLastVisit !== null ? `${a.daysSinceLastVisit} days` : '—'}</TableCell>
       <TableCell sx={{ fontSize: 12, color: 'text.secondary' }}>{a.agencyScore !== null ? `${a.agencyScore}/100` : '—'}</TableCell>
     </TableRow>
   );
@@ -139,7 +140,7 @@ function EmpHealthCard({ emp }: { emp: EmployeeHealth }) {
           <Typography variant="caption" fontWeight={700}>{emp.stats.visitRate}%</Typography>
         </Box>
         <Box sx={{ textAlign: 'center' }}>
-          <Typography variant="caption" color="text.secondary" display="block">Task ค้าง</Typography>
+          <Typography variant="caption" color="text.secondary" display="block">Overdue</Typography>
           <Typography variant="caption" fontWeight={700} sx={{ color: emp.stats.overdue > 10 ? '#DC2626' : 'inherit' }}>{emp.stats.overdue}</Typography>
         </Box>
         {emp.stats.kpiRate !== null && (
@@ -166,7 +167,7 @@ export default function AiHealthPage() {
       const res = await api.get('/ai-health/summary');
       setData(res.data);
     } catch {
-      setError('ไม่สามารถโหลดข้อมูล Health Score ได้');
+      setError('Unable to load Health Score data');
     } finally {
       setLoading(false);
     }
@@ -179,11 +180,11 @@ export default function AiHealthPage() {
   if (!data) return null;
 
   const distEntries: { label: string; count: number; color: string }[] = [
-    { label: '80-100 (ดีเยี่ยม)', count: data.agency.distribution['80-100'] ?? 0, color: '#16A34A' },
-    { label: '60-79 (ดี)', count: data.agency.distribution['60-79'] ?? 0, color: '#22C55E' },
-    { label: '40-59 (พอใช้)', count: data.agency.distribution['40-59'] ?? 0, color: '#D97706' },
-    { label: '20-39 (อ่อนแอ)', count: data.agency.distribution['20-39'] ?? 0, color: '#EA580C' },
-    { label: '0-19 (วิกฤต)', count: data.agency.distribution['0-19'] ?? 0, color: '#DC2626' },
+    { label: '80-100 (Excellent)', count: data.agency.distribution['80-100'] ?? 0, color: '#16A34A' },
+    { label: '60-79 (Good)', count: data.agency.distribution['60-79'] ?? 0, color: '#22C55E' },
+    { label: '40-59 (Fair)', count: data.agency.distribution['40-59'] ?? 0, color: '#D97706' },
+    { label: '20-39 (Weak)', count: data.agency.distribution['20-39'] ?? 0, color: '#EA580C' },
+    { label: '0-19 (Critical)', count: data.agency.distribution['0-19'] ?? 0, color: '#DC2626' },
   ];
 
   return (
@@ -193,14 +194,14 @@ export default function AiHealthPage() {
           <FavoriteRoundedIcon sx={{ color: '#059669', fontSize: 28 }} />
           <Box>
             <Typography variant="h5" fontWeight={800}>AI Health Score</Typography>
-            <Typography variant="caption" color="text.secondary">คะแนนสุขภาพองค์กร 0-100 ระดับ Agency / พนักงาน / ทีม</Typography>
+            <Typography variant="caption" color="text.secondary">Organization health score 0-100 by Agency / Employee / Team</Typography>
           </Box>
         </Stack>
         <Tooltip title="Refresh"><IconButton onClick={load} size="small"><RefreshRoundedIcon /></IconButton></Tooltip>
       </Stack>
 
       <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ mb: 2, borderBottom: '1px solid #E5E7EB' }}>
-        <Tab label="Organization" />
+        <Tab label="Organization Overview" />
         <Tab label="Agency Health" />
         <Tab label="Employee Health" />
         <Tab label="Team Comparison" />
@@ -217,7 +218,7 @@ export default function AiHealthPage() {
                   <HealthGauge score={data.orgScore} size={140} />
                   <HealthChip label={data.orgLabel} />
                   <Typography variant="caption" color="text.secondary" align="center">
-                    คะแนนรวมองค์กร = Agency 60% + พนักงาน 40%
+                    Overall score = Agency 60% + Employee 40%
                   </Typography>
                 </Stack>
               </CardContent>
@@ -231,7 +232,7 @@ export default function AiHealthPage() {
                   <HealthGauge score={data.agency.avg} size={80} />
                   <Box>
                     <Typography variant="h5" fontWeight={800}>{data.agency.avg}/100</Typography>
-                    <Typography variant="caption" color="text.secondary">{data.agency.total} Agency</Typography>
+                    <Typography variant="caption" color="text.secondary">{data.agency.total} Agencies</Typography>
                   </Box>
                 </Stack>
                 {distEntries.map(d => (
@@ -248,7 +249,7 @@ export default function AiHealthPage() {
                   <HealthGauge score={data.employee.avg} size={80} />
                   <Box>
                     <Typography variant="h5" fontWeight={800}>{data.employee.avg}/100</Typography>
-                    <Typography variant="caption" color="text.secondary">{data.employee.total} พนักงาน</Typography>
+                    <Typography variant="caption" color="text.secondary">{data.employee.total} Employees</Typography>
                   </Box>
                 </Stack>
                 <Stack spacing={1}>
@@ -270,7 +271,7 @@ export default function AiHealthPage() {
 
           {/* Top & Bottom Agencies */}
           <Grid item xs={12} md={6}>
-            <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1 }}>Agency สุขภาพดีที่สุด Top 5</Typography>
+            <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1 }}>Top 5 Healthiest Agencies</Typography>
             <Stack spacing={1}>
               {data.agency.topAgencies.slice(0, 5).map(a => (
                 <Box key={a.id} sx={{ p: 1.5, border: '1px solid #D1FAE5', borderRadius: 2, bgcolor: '#F0FDF4' }}>
@@ -289,7 +290,7 @@ export default function AiHealthPage() {
             </Stack>
           </Grid>
           <Grid item xs={12} md={6}>
-            <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1 }}>Agency ที่ต้องช่วยเหลือ Bottom 5</Typography>
+            <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1 }}>Bottom 5 Agencies Needing Attention</Typography>
             <Stack spacing={1}>
               {data.agency.bottomAgencies.slice(0, 5).map(a => (
                 <Box key={a.id} sx={{ p: 1.5, border: '1px solid', borderColor: HEALTH_COLOR[a.healthLabel] + '40', borderRadius: 2, bgcolor: HEALTH_BG[a.healthLabel] }}>
@@ -313,21 +314,24 @@ export default function AiHealthPage() {
       {/* Agency Health Tab */}
       {tab === 1 && (
         <Box>
-          <Stack direction="row" alignItems="center" spacing={2} sx={{ mb: 2 }}>
-            <HealthGauge score={data.agency.avg} size={72} />
-            <Box>
-              <Typography variant="h4" fontWeight={800}>{data.agency.avg}/100</Typography>
-              <Typography variant="caption" color="text.secondary">Agency Health เฉลี่ย ({data.agency.total} ราย)</Typography>
-            </Box>
+          <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 2 }}>
+            <Stack direction="row" alignItems="center" spacing={2}>
+              <HealthGauge score={data.agency.avg} size={72} />
+              <Box>
+                <Typography variant="h4" fontWeight={800}>{data.agency.avg}/100</Typography>
+                <Typography variant="caption" color="text.secondary">Average Agency health ({data.agency.total} agencies)</Typography>
+              </Box>
+            </Stack>
+            <ExportPdfButton tableId="ai-health-table" filename="ai-health" title="AI Health - Agency Report" size="small" />
           </Stack>
-          <TableContainer component={Paper} elevation={0} sx={{ border: '1px solid #E5E7EB', borderRadius: 2 }}>
+          <TableContainer component={Paper} elevation={0} sx={{ border: '1px solid #E5E7EB', borderRadius: 2 }} id="ai-health-table">
             <Table size="small">
               <TableHead sx={{ bgcolor: '#F9FAFB' }}>
                 <TableRow>
                   <TableCell sx={{ fontWeight: 700 }}>Agency</TableCell>
                   <TableCell sx={{ fontWeight: 700, minWidth: 160 }}>Health Score</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>ระดับ</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>เยี่ยมล่าสุด</TableCell>
+                  <TableCell sx={{ fontWeight: 700 }}>Level</TableCell>
+                  <TableCell sx={{ fontWeight: 700 }}>Last Visit</TableCell>
                   <TableCell sx={{ fontWeight: 700 }}>Agency Score</TableCell>
                 </TableRow>
               </TableHead>
@@ -348,7 +352,7 @@ export default function AiHealthPage() {
             <HealthGauge score={data.employee.avg} size={72} />
             <Box>
               <Typography variant="h4" fontWeight={800}>{data.employee.avg}/100</Typography>
-              <Typography variant="caption" color="text.secondary">Employee Health เฉลี่ย ({data.employee.total} คน)</Typography>
+              <Typography variant="caption" color="text.secondary">Average employee health ({data.employee.total} employees)</Typography>
             </Box>
           </Stack>
           <Grid container spacing={1.5}>
@@ -374,7 +378,7 @@ export default function AiHealthPage() {
                       <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 2 }}>
                         <Box>
                           <Typography variant="subtitle1" fontWeight={700}>{team.zone}</Typography>
-                          <Typography variant="caption" color="text.secondary">{team.count} คน</Typography>
+                          <Typography variant="caption" color="text.secondary">{team.count} members</Typography>
                         </Box>
                         <Stack alignItems="center">
                           <Typography variant="h4" fontWeight={800} sx={{ color: HEALTH_COLOR[label] }}>{team.avg}</Typography>

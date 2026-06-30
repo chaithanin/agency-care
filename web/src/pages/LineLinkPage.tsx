@@ -21,7 +21,7 @@ type Phase = 'loading' | 'success' | 'error' | 'notoken';
 
 export default function LineLinkPage() {
   const [phase, setPhase] = useState<Phase>('loading');
-  const [message, setMessage] = useState('กำลังเชื่อมต่อกับ LINE...');
+  const [message, setMessage] = useState('Connecting to LINE...');
   const [displayName, setDisplayName] = useState('');
 
   useEffect(() => {
@@ -29,7 +29,7 @@ export default function LineLinkPage() {
     script.src = 'https://static.line-scdn.net/liff/edge/2/sdk.js';
     script.async = true;
     script.onload = () => run();
-    script.onerror = () => { setPhase('error'); setMessage('ไม่สามารถโหลด LINE SDK กรุณาเปิดในแอป LINE'); };
+    script.onerror = () => { setPhase('error'); setMessage('Unable to load LINE SDK. Please open this page in the LINE app.'); };
     document.head.appendChild(script);
     return () => { document.head.removeChild(script); };
   }, []);
@@ -56,7 +56,7 @@ export default function LineLinkPage() {
 
       if (!token) {
         setPhase('notoken');
-        setMessage('ไม่พบ token กรุณาเปิดจากแอป Agency Care แล้วกด "ผูก LINE" ใหม่อีกครั้ง');
+        setMessage('Token not found. Please open the Agency Care app and tap "Link LINE" again.');
         return;
       }
 
@@ -68,12 +68,12 @@ export default function LineLinkPage() {
 
       if (res.ok) {
         setPhase('success');
-        setMessage('ผูกบัญชี LINE สำเร็จ! ปิดหน้าต่างนี้ได้เลย');
+        setMessage('LINE account linked successfully! You may close this window.');
         setTimeout(() => { try { window.liff.closeWindow(); } catch {} }, 2500);
       } else {
         const err = await res.json().catch(() => ({}));
         setPhase('error');
-        setMessage((err as { message?: string }).message ?? 'เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง');
+        setMessage((err as { message?: string }).message ?? 'An error occurred. Please try again.');
       }
     } catch (e) {
       setPhase('error');
@@ -104,7 +104,7 @@ export default function LineLinkPage() {
 
         <Typography variant="h6" fontWeight={700} mb={0.5}>Agency Care × LINE</Typography>
         {displayName && (
-          <Typography variant="body2" color="text.secondary" mb={2}>สวัสดี {displayName}</Typography>
+          <Typography variant="body2" color="text.secondary" mb={2}>Hello, {displayName}</Typography>
         )}
 
         {phase === 'loading' && (
@@ -129,7 +129,7 @@ export default function LineLinkPage() {
               variant="outlined" size="small" color="error"
               onClick={() => window.liff?.closeWindow()}
             >
-              ปิดหน้าต่าง
+              Close Window
             </Button>
           </>
         )}

@@ -30,12 +30,15 @@ export class UserService {
   }
 
   async create(dto: CreateUserDto) {
-    const dup = await this.prisma.user.findUnique({ where: { email: dto.email } });
-    if (dup) throw new BadRequestException(`อีเมล ${dto.email} ถูกใช้แล้ว`);
+    // Convert username to email if no @ symbol
+    const email = dto.email.includes('@') ? dto.email : `${dto.email}@agencycare.local`;
+
+    const dup = await this.prisma.user.findUnique({ where: { email } });
+    if (dup) throw new BadRequestException(`ผู้ใช้ ${dto.email} ถูกใช้แล้ว`);
     const passwordHash = await argon2.hash(dto.password);
     const role = dto.role ?? 'sales';
     const u = await this.prisma.user.create({
-      data: { email: dto.email, name: dto.name, role, activeRole: role, passwordHash },
+      data: { email, name: dto.name, role, activeRole: role, passwordHash },
     });
     return { id: u.id, email: u.email, name: u.name, role: u.role, isActive: u.isActive };
   }
@@ -60,6 +63,12 @@ export class UserService {
     await this.getOrThrow(id);
     const passwordHash = await argon2.hash(dto.password);
     await this.prisma.user.update({ where: { id }, data: { passwordHash } });
+    return { ok: true };
+  }
+
+  async delete(id: string) {
+    await this.getOrThrow(id);
+    await this.prisma.user.delete({ where: { id } });
     return { ok: true };
   }
 }

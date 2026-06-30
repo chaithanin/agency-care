@@ -11,6 +11,7 @@ import ExpandLessRoundedIcon from '@mui/icons-material/ExpandLessRounded';
 import RefreshRoundedIcon from '@mui/icons-material/RefreshRounded';
 import WarningAmberRoundedIcon from '@mui/icons-material/WarningAmberRounded';
 import { api } from '../api/client';
+import { ExportPdfButton } from '../components/ExportPdfButton';
 
 type RiskLevel = 'low' | 'medium' | 'high' | 'critical';
 
@@ -41,14 +42,14 @@ const RISK_COLOR: Record<RiskLevel, string> = {
 const RISK_BG: Record<RiskLevel, string> = {
   critical: '#FEF2F2', high: '#FFF7ED', medium: '#FEFCE8', low: '#F0FDF4',
 };
-const RISK_LABEL_TH: Record<RiskLevel, string> = {
-  critical: 'วิกฤต', high: 'สูง', medium: 'ปานกลาง', low: 'ต่ำ',
+const RISK_LABEL: Record<RiskLevel, string> = {
+  critical: 'Critical', high: 'High', medium: 'Medium', low: 'Low',
 };
 
 function RiskChip({ level }: { level: RiskLevel }) {
   return (
     <Chip
-      label={RISK_LABEL_TH[level]}
+      label={RISK_LABEL[level]}
       size="small"
       sx={{ bgcolor: RISK_BG[level], color: RISK_COLOR[level], fontWeight: 700, fontSize: 11 }}
     />
@@ -123,7 +124,7 @@ function AgencyRow({ agency }: { agency: AgencyRisk }) {
           {agency.daysSinceLastSale !== null ? `${agency.daysSinceLastSale}d` : '—'}
         </TableCell>
         <TableCell sx={{ color: agency.daysUntilExpiry !== null && agency.daysUntilExpiry < 30 ? '#DC2626' : 'text.secondary', fontSize: 12 }}>
-          {agency.daysUntilExpiry !== null ? (agency.daysUntilExpiry < 0 ? 'หมดแล้ว' : `${agency.daysUntilExpiry}d`) : '—'}
+          {agency.daysUntilExpiry !== null ? (agency.daysUntilExpiry < 0 ? 'Expired' : `${agency.daysUntilExpiry}d`) : '—'}
         </TableCell>
         <TableCell sx={{ color: 'text.secondary', fontSize: 12 }}>
           {agency.agencyScore !== null ? `${agency.agencyScore}${agency.scoreTrend < -5 ? ' ↓' : agency.scoreTrend > 5 ? ' ↑' : ''}` : '—'}
@@ -135,11 +136,11 @@ function AgencyRow({ agency }: { agency: AgencyRisk }) {
             <Box sx={{ p: 2, bgcolor: '#FAFAFA', borderBottom: '1px solid #E5E7EB' }}>
               <Grid container spacing={2}>
                 <Grid item xs={12} md={6}>
-                  <Typography variant="caption" fontWeight={700} sx={{ mb: 1, display: 'block' }}>ปัจจัยความเสี่ยง</Typography>
+                  <Typography variant="caption" fontWeight={700} sx={{ mb: 1, display: 'block' }}>Risk Factors</Typography>
                   <FactorList factors={agency.factors} />
                 </Grid>
                 <Grid item xs={12} md={6}>
-                  <Typography variant="caption" fontWeight={700} sx={{ mb: 1, display: 'block' }}>คำแนะนำ AI</Typography>
+                  <Typography variant="caption" fontWeight={700} sx={{ mb: 1, display: 'block' }}>AI Recommendations</Typography>
                   <Stack spacing={0.5}>
                     {agency.recommendations.map((r, i) => (
                       <Typography key={i} variant="caption" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
@@ -149,7 +150,7 @@ function AgencyRow({ agency }: { agency: AgencyRisk }) {
                   </Stack>
                   {agency.overdueTaskCount > 0 && (
                     <Typography variant="caption" color="error" sx={{ mt: 1, display: 'block' }}>
-                      Task ค้าง {agency.overdueTaskCount} งาน
+                      {agency.overdueTaskCount} overdue task{agency.overdueTaskCount > 1 ? 's' : ''}
                     </Typography>
                   )}
                 </Grid>
@@ -195,7 +196,7 @@ function SaleRow({ sale }: { sale: SaleRisk }) {
             <Box sx={{ p: 2, bgcolor: '#FAFAFA', borderBottom: '1px solid #E5E7EB' }}>
               <Grid container spacing={2}>
                 <Grid item xs={12} md={6}>
-                  <Typography variant="caption" fontWeight={700} sx={{ mb: 1, display: 'block' }}>ปัจจัยประสิทธิภาพ</Typography>
+                  <Typography variant="caption" fontWeight={700} sx={{ mb: 1, display: 'block' }}>Performance Factors</Typography>
                   <FactorList factors={sale.factors} />
                   <Stack direction="row" spacing={1} sx={{ mt: 1, flexWrap: 'wrap', gap: 0.5 }}>
                     {sale.issues.map((issue, i) => (
@@ -204,7 +205,7 @@ function SaleRow({ sale }: { sale: SaleRisk }) {
                   </Stack>
                 </Grid>
                 <Grid item xs={12} md={6}>
-                  <Typography variant="caption" fontWeight={700} sx={{ mb: 1, display: 'block' }}>คำแนะนำ AI</Typography>
+                  <Typography variant="caption" fontWeight={700} sx={{ mb: 1, display: 'block' }}>AI Recommendations</Typography>
                   <Stack spacing={0.5}>
                     {sale.recommendations.map((r, i) => (
                       <Typography key={i} variant="caption" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
@@ -261,7 +262,7 @@ export default function AiRiskPage() {
       setAgencies(agRes.data.items ?? []);
       setSales(saleRes.data.items ?? []);
     } catch {
-      setError('ไม่สามารถโหลดข้อมูล Risk ได้');
+      setError('Unable to load risk data');
     } finally {
       setLoading(false);
     }
@@ -282,7 +283,7 @@ export default function AiRiskPage() {
           <WarningAmberRoundedIcon sx={{ color: '#D97706', fontSize: 28 }} />
           <Box>
             <Typography variant="h5" fontWeight={800}>AI Risk Analysis</Typography>
-            <Typography variant="caption" color="text.secondary">วิเคราะห์ความเสี่ยง Agency & Sale พร้อมคำแนะนำอัตโนมัติ</Typography>
+            <Typography variant="caption" color="text.secondary">Agency &amp; Sales risk analysis with automated recommendations</Typography>
           </Box>
         </Stack>
         <Tooltip title="Refresh">
@@ -295,7 +296,7 @@ export default function AiRiskPage() {
       <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ mb: 2, borderBottom: '1px solid #E5E7EB' }}>
         <Tab label="Executive Dashboard" />
         <Tab label="Agency Risk" />
-        <Tab label="Sale Risk" />
+        <Tab label="Sales Risk" />
       </Tabs>
 
       {loading && !dashboard ? (
@@ -311,19 +312,19 @@ export default function AiRiskPage() {
                 <Grid item xs={12} md={6}>
                   <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1 }}>Agency Risk</Typography>
                   <Stack direction="row" spacing={1} flexWrap="wrap">
-                    <SummaryCard label="วิกฤต" value={dashboard.agencies.critical} color="#DC2626" />
-                    <SummaryCard label="สูง" value={dashboard.agencies.high} color="#EA580C" />
-                    <SummaryCard label="ปานกลาง" value={dashboard.agencies.medium} color="#D97706" />
-                    <SummaryCard label="ต่ำ" value={dashboard.agencies.low} color="#16A34A" />
+                    <SummaryCard label="Critical" value={dashboard.agencies.critical} color="#DC2626" />
+                    <SummaryCard label="High" value={dashboard.agencies.high} color="#EA580C" />
+                    <SummaryCard label="Medium" value={dashboard.agencies.medium} color="#D97706" />
+                    <SummaryCard label="Low" value={dashboard.agencies.low} color="#16A34A" />
                   </Stack>
                 </Grid>
                 <Grid item xs={12} md={6}>
-                  <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1 }}>Sale Performance</Typography>
+                  <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1 }}>Sales Performance</Typography>
                   <Stack direction="row" spacing={1} flexWrap="wrap">
-                    <SummaryCard label="วิกฤต" value={dashboard.sales.critical} color="#DC2626" />
-                    <SummaryCard label="สูง" value={dashboard.sales.high} color="#EA580C" />
-                    <SummaryCard label="ปานกลาง" value={dashboard.sales.medium} color="#D97706" />
-                    <SummaryCard label="ดี" value={dashboard.sales.low} color="#16A34A" />
+                    <SummaryCard label="Critical" value={dashboard.sales.critical} color="#DC2626" />
+                    <SummaryCard label="High" value={dashboard.sales.high} color="#EA580C" />
+                    <SummaryCard label="Medium" value={dashboard.sales.medium} color="#D97706" />
+                    <SummaryCard label="Good" value={dashboard.sales.low} color="#16A34A" />
                   </Stack>
                 </Grid>
               </Grid>
@@ -348,7 +349,7 @@ export default function AiRiskPage() {
 
               <Grid container spacing={2}>
                 <Grid item xs={12} md={6}>
-                  <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1 }}>Top Agency ที่ต้องดูแลด่วน</Typography>
+                  <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1 }}>Top Agencies Requiring Immediate Attention</Typography>
                   <Stack spacing={1}>
                     {dashboard.topRiskAgencies.slice(0, 5).map(a => (
                       <Box key={a.id} sx={{ p: 1.5, border: '1px solid', borderColor: RISK_COLOR[a.riskLevel] + '40', borderRadius: 2, bgcolor: RISK_BG[a.riskLevel] }}>
@@ -370,7 +371,7 @@ export default function AiRiskPage() {
                   </Stack>
                 </Grid>
                 <Grid item xs={12} md={6}>
-                  <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1 }}>Sale ที่ต้องช่วยเหลือ</Typography>
+                  <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1 }}>Sales Requiring Support</Typography>
                   <Stack spacing={1}>
                     {dashboard.topRiskSales.slice(0, 5).map(s => (
                       <Box key={s.employeeId} sx={{ p: 1.5, border: '1px solid', borderColor: RISK_COLOR[s.riskLevel] + '40', borderRadius: 2, bgcolor: RISK_BG[s.riskLevel] }}>
@@ -398,9 +399,9 @@ export default function AiRiskPage() {
           {/* Agency Risk Tab */}
           {tab === 1 && (
             <Box>
-              <Stack direction="row" spacing={1.5} sx={{ mb: 2, flexWrap: 'wrap', gap: 1 }}>
+              <Stack direction="row" spacing={1.5} sx={{ mb: 2, flexWrap: 'wrap', gap: 1, alignItems: 'center' }}>
                 <TextField
-                  size="small" placeholder="ค้นหา Agency..."
+                  size="small" placeholder="Search Agency..."
                   value={agencySearch}
                   onChange={e => setAgencySearch(e.target.value)}
                   InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon fontSize="small" /></InputAdornment> }}
@@ -409,7 +410,7 @@ export default function AiRiskPage() {
                 {(['all', 'critical', 'high', 'medium', 'low'] as const).map(lv => (
                   <Chip
                     key={lv}
-                    label={lv === 'all' ? 'ทั้งหมด' : RISK_LABEL_TH[lv]}
+                    label={lv === 'all' ? 'All' : RISK_LABEL[lv]}
                     onClick={() => setRiskFilter(lv)}
                     sx={{
                       cursor: 'pointer',
@@ -419,23 +420,26 @@ export default function AiRiskPage() {
                     }}
                   />
                 ))}
+                <Box sx={{ ml: 'auto' }}>
+                  <ExportPdfButton tableId="ai-risk-table" filename="ai-risk" title="AI Risk - Agencies" size="small" />
+                </Box>
               </Stack>
-              <TableContainer component={Paper} elevation={0} sx={{ border: '1px solid #E5E7EB', borderRadius: 2 }}>
+              <TableContainer component={Paper} elevation={0} sx={{ border: '1px solid #E5E7EB', borderRadius: 2 }} id="ai-risk-table">
                 <Table size="small">
                   <TableHead sx={{ bgcolor: '#F9FAFB' }}>
                     <TableRow>
                       <TableCell sx={{ fontWeight: 700 }}>Agency</TableCell>
-                      <TableCell sx={{ fontWeight: 700 }}>ระดับ</TableCell>
+                      <TableCell sx={{ fontWeight: 700 }}>Level</TableCell>
                       <TableCell sx={{ fontWeight: 700, minWidth: 140 }}>Risk Score</TableCell>
-                      <TableCell sx={{ fontWeight: 700 }}>เยี่ยมล่าสุด</TableCell>
-                      <TableCell sx={{ fontWeight: 700 }}>ยอดขายล่าสุด</TableCell>
-                      <TableCell sx={{ fontWeight: 700 }}>สัญญา</TableCell>
-                      <TableCell sx={{ fontWeight: 700 }}>คะแนน</TableCell>
+                      <TableCell sx={{ fontWeight: 700 }}>Last Visit</TableCell>
+                      <TableCell sx={{ fontWeight: 700 }}>Last Sale</TableCell>
+                      <TableCell sx={{ fontWeight: 700 }}>Agreement</TableCell>
+                      <TableCell sx={{ fontWeight: 700 }}>Score</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
                     {filteredAgencies.length === 0 ? (
-                      <TableRow><TableCell colSpan={7} align="center" sx={{ py: 4, color: 'text.secondary' }}>ไม่พบข้อมูล</TableCell></TableRow>
+                      <TableRow><TableCell colSpan={7} align="center" sx={{ py: 4, color: 'text.secondary' }}>No data found</TableCell></TableRow>
                     ) : (
                       filteredAgencies.map(a => <AgencyRow key={a.id} agency={a} />)
                     )}
@@ -443,34 +447,39 @@ export default function AiRiskPage() {
                 </Table>
               </TableContainer>
               <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
-                แสดง {filteredAgencies.length} จาก {agencies.length} Agency
+                Showing {filteredAgencies.length} of {agencies.length} agencies
               </Typography>
             </Box>
           )}
 
           {/* Sale Risk Tab */}
           {tab === 2 && (
-            <TableContainer component={Paper} elevation={0} sx={{ border: '1px solid #E5E7EB', borderRadius: 2 }}>
+            <Box>
+              <Stack direction="row" spacing={1.5} sx={{ mb: 2, justifyContent: 'flex-end' }}>
+                <ExportPdfButton tableId="sales-risk-table" filename="sales-risk" title="AI Risk - Sales" size="small" />
+              </Stack>
+              <TableContainer component={Paper} elevation={0} sx={{ border: '1px solid #E5E7EB', borderRadius: 2 }} id="sales-risk-table">
               <Table size="small">
                 <TableHead sx={{ bgcolor: '#F9FAFB' }}>
                   <TableRow>
-                    <TableCell sx={{ fontWeight: 700 }}>Sale</TableCell>
-                    <TableCell sx={{ fontWeight: 700 }}>ระดับ</TableCell>
+                    <TableCell sx={{ fontWeight: 700 }}>Sales</TableCell>
+                    <TableCell sx={{ fontWeight: 700 }}>Level</TableCell>
                     <TableCell sx={{ fontWeight: 700, minWidth: 140 }}>Performance Score</TableCell>
-                    <TableCell sx={{ fontWeight: 700 }}>Visit เดือนนี้</TableCell>
-                    <TableCell sx={{ fontWeight: 700 }}>Task ค้าง</TableCell>
+                    <TableCell sx={{ fontWeight: 700 }}>Visits This Month</TableCell>
+                    <TableCell sx={{ fontWeight: 700 }}>Overdue Tasks</TableCell>
                     <TableCell sx={{ fontWeight: 700 }}>KPI</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
                   {sales.length === 0 ? (
-                    <TableRow><TableCell colSpan={6} align="center" sx={{ py: 4, color: 'text.secondary' }}>ไม่พบข้อมูล</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={6} align="center" sx={{ py: 4, color: 'text.secondary' }}>No data found</TableCell></TableRow>
                   ) : (
                     sales.map(s => <SaleRow key={s.employeeId} sale={s} />)
                   )}
                 </TableBody>
               </Table>
             </TableContainer>
+            </Box>
           )}
         </>
       )}

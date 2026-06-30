@@ -39,7 +39,9 @@ import {
 import { api, errMsg } from '../api/client';
 import { useAuth } from '../auth/AuthContext';
 import { useT } from '../i18n';
+import { exportTableToPdf } from '../utils/exportPdf';
 import SalesDashboardTab from './SalesDashboardTab';
+import OneReportTab from './OneReportTab';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 interface AgActivityRow {
@@ -209,10 +211,13 @@ function WeeklyTab() {
       {data && filteredRows.length > 0 && (
         <Paper sx={{ borderRadius: 3 }}>
           <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ p: 2, borderBottom: '1px solid', borderColor: 'divider' }}>
-            <Typography fontWeight={700}>Weekly Sale Activity Summary</Typography>
-            <Button size="small" startIcon={<Download />} onClick={exportWeeklyCsv}>Export CSV</Button>
+            <Typography fontWeight={700}>Weekly Sales Activity Summary</Typography>
+            <Stack direction="row" spacing={1}>
+              <Button size="small" startIcon={<Download />} onClick={exportWeeklyCsv}>Export CSV</Button>
+              <Button size="small" startIcon={<Download />} onClick={() => exportTableToPdf('weekly-table', 'weekly-activity', 'Weekly Sales Activity Summary')}>Export PDF</Button>
+            </Stack>
           </Stack>
-          <Box sx={{ overflowX: 'auto' }}>
+          <Box sx={{ overflowX: 'auto' }} id="weekly-table">
             <Table size="small">
               <TableHead>
                 <TableRow sx={{ '& th': { fontWeight: 700, fontSize: 12 } }}>
@@ -361,16 +366,19 @@ function MonthlyTab() {
         <Paper sx={{ borderRadius: 3 }}>
           <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ p: 2, borderBottom: '1px solid', borderColor: 'divider' }}>
             <Typography fontWeight={700}>{t('svr.monthlyLog')} — {monthName(year, month)}</Typography>
-            <Button size="small" startIcon={<Download />} onClick={exportMonthlyCsv}>Export CSV</Button>
+            <Stack direction="row" spacing={1}>
+              <Button size="small" startIcon={<Download />} onClick={exportMonthlyCsv}>Export CSV</Button>
+              <Button size="small" startIcon={<Download />} onClick={() => exportTableToPdf('monthly-table', 'monthly-submission', `Monthly Report Submission - ${monthName(year, month)}`)}>Export PDF</Button>
+            </Stack>
           </Stack>
-          <Box sx={{ overflowX: 'auto' }}>
+          <Box sx={{ overflowX: 'auto' }} id="monthly-table">
             <Table size="small">
               <TableHead>
                 <TableRow sx={{ '& th': { fontWeight: 700 } }}>
                   <TableCell>Employee</TableCell>
                   <TableCell align="center">{t('rpt.totalPlanned')}</TableCell>
                   <TableCell align="center">{t('rpt.completed')}</TableCell>
-                  <TableCell align="center">% Completion</TableCell>
+                  <TableCell align="center">% Done</TableCell>
                   <TableCell align="center">{t('rpt.submitted')}</TableCell>
                   <TableCell align="center">{t('rpt.pctSubmit')}</TableCell>
                   <TableCell align="center">{t('rpt.newLead')}</TableCell>
@@ -483,7 +491,7 @@ function AgencyPerfTab() {
               </Stack>
               <Typography variant="caption" color="text.secondary">{a.code} · {a.zone ?? '-'}</Typography>
               <Grid container spacing={1} mt={0.5}>
-                <Grid item xs={6}><Typography variant="caption" color="text.secondary">Visit</Typography><br /><Typography variant="body2" fontWeight={700}>{a.completed}/{a.visits}</Typography></Grid>
+                <Grid item xs={6}><Typography variant="caption" color="text.secondary">Visits</Typography><br /><Typography variant="body2" fontWeight={700}>{a.completed}/{a.visits}</Typography></Grid>
                 <Grid item xs={6}><Typography variant="caption" color="text.secondary">Lead</Typography><br /><Typography variant="body2" fontWeight={700}>{a.leads}</Typography></Grid>
               </Grid>
               <Box mt={1}>
@@ -504,11 +512,12 @@ function AgencyPerfTab() {
           <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ p: 2, borderBottom: '1px solid', borderColor: 'divider' }}>
             <Typography fontWeight={700}>Agency Performance — {fmtDate(data.from)} {t('rpt.toDate')} {fmtDate(data.to)}</Typography>
             <Stack direction="row" spacing={1} alignItems="center">
-              <Typography variant="caption" color="text.secondary">{data.rows.length} agencies</Typography>
+              <Typography variant="caption" color="text.secondary">{data.rows.length} Agency</Typography>
               <Button size="small" startIcon={<Download />} onClick={exportAgencyCsv}>Export CSV</Button>
+              <Button size="small" startIcon={<Download />} onClick={() => exportTableToPdf('agency-perf-table', 'agency-performance', `Agency Performance - ${fmtDate(data.from)} to ${fmtDate(data.to)}`)}>Export PDF</Button>
             </Stack>
           </Stack>
-          <Box sx={{ overflowX: 'auto' }}>
+          <Box sx={{ overflowX: 'auto' }} id="agency-perf-table">
             <Table size="small">
               <TableHead>
                 <TableRow sx={{ '& th': { fontWeight: 700, fontSize: 12 } }}>
@@ -516,7 +525,7 @@ function AgencyPerfTab() {
                   <TableCell>Agency</TableCell>
                   <TableCell>{t('c.zone')}</TableCell>
                   <TableCell>Level</TableCell>
-                  <TableCell align="center">Visit</TableCell>
+                  <TableCell align="center">Visits</TableCell>
                   <TableCell align="center">{t('rpt.done')}</TableCell>
                   <TableCell align="center">{t('rpt.pctDone')}</TableCell>
                   <TableCell align="center">Lead</TableCell>
@@ -627,7 +636,7 @@ function AgencyActivityTab() {
           <Button variant="contained" onClick={load} startIcon={<Refresh />}>{t('rpt.load')}</Button>
           <TextField size="small" placeholder={t('rpt.searchAgency')} value={search}
             onChange={(e) => setSearch(e.target.value)} sx={{ minWidth: 200 }} />
-          {data && <Typography variant="caption" color="text.secondary">{rows.length} agencies</Typography>}
+          {data && <Typography variant="caption" color="text.secondary">{rows.length} Agency</Typography>}
         </Stack>
       </Paper>
 
@@ -639,11 +648,14 @@ function AgencyActivityTab() {
           <Stack direction="row" justifyContent="space-between" alignItems="center"
             sx={{ p: 2, borderBottom: '1px solid', borderColor: 'divider' }}>
             <Typography fontWeight={700}>Agency Activity Report</Typography>
-            <Typography variant="caption" color="text.secondary">
-              {fmtDate(from)} — {fmtDate(to)}
-            </Typography>
+            <Stack direction="row" spacing={1} alignItems="center">
+              <Typography variant="caption" color="text.secondary">
+                {fmtDate(from)} — {fmtDate(to)}
+              </Typography>
+              <Button size="small" startIcon={<Download />} onClick={() => exportTableToPdf('activity-table', 'agency-activity', `Agency Activity Report - ${fmtDate(from)} to ${fmtDate(to)}`)}>Export PDF</Button>
+            </Stack>
           </Stack>
-          <Box sx={{ overflowX: 'auto' }}>
+          <Box sx={{ overflowX: 'auto' }} id="activity-table">
             <Table size="small" sx={{ minWidth: 1200 }}>
               <TableHead>
                 <TableRow sx={{ '& th': { fontWeight: 700, fontSize: 11, whiteSpace: 'nowrap', bgcolor: 'grey.50' } }}>
@@ -653,11 +665,11 @@ function AgencyActivityTab() {
                   <TableCell>{t('c.zone')}</TableCell>
                   <TableCell>{t('rpt.responsible')}</TableCell>
                   <TableCell>{t('rpt.contactPerson')}</TableCell>
-                  <TableCell align="center">Visit (Done)</TableCell>
+                  <TableCell align="center">Visits (Done)</TableCell>
                   <TableCell align="center">Last Visit</TableCell>
                   <TableCell align="center">Last Report</TableCell>
                   <TableCell align="center">Lead</TableCell>
-                  <TableCell align="center">AG Bring Customer</TableCell>
+                  <TableCell align="center">Agency Brings Client</TableCell>
                   <TableCell align="center">Orientation</TableCell>
                   <TableCell align="center">Last Sale</TableCell>
                   <TableCell align="center">Social Media</TableCell>
@@ -837,11 +849,14 @@ function DailyTrackerTab() {
               {t('svr.dailyTracker')} — {MONTHS.find(m => m.val === data.month)?.label} {data.year + 543}
               {' '}({data.half === 1 ? t('rpt.halfFirst') : t('rpt.halfSecond')})
             </Typography>
-            <Typography variant="caption" color="text.secondary">
-              Target {data.dailyTarget} visits/day
-            </Typography>
+            <Stack direction="row" spacing={1} alignItems="center">
+              <Typography variant="caption" color="text.secondary">
+                Target {data.dailyTarget} visits/day
+              </Typography>
+              <Button size="small" startIcon={<Download />} onClick={() => exportTableToPdf('daily-tracker-table', 'daily-visit-tracker', `Daily Visit Tracker - ${MONTHS.find(m => m.val === data.month)?.label} ${data.year + 543}`)}>Export PDF</Button>
+            </Stack>
           </Stack>
-          <Box sx={{ overflowX: 'auto' }}>
+          <Box sx={{ overflowX: 'auto' }} id="daily-tracker-table">
             <Table size="small" sx={{ minWidth: 900 }}>
               <TableHead>
                 <TableRow sx={{ '& th': { fontWeight: 700, fontSize: 11, textAlign: 'center', bgcolor: 'grey.50', py: 0.5 } }}>
@@ -859,7 +874,7 @@ function DailyTrackerTab() {
                   ))}
                   <TableCell sx={{ minWidth: 50 }}>{t('rpt.total')}</TableCell>
                   <TableCell sx={{ minWidth: 60 }}>Target</TableCell>
-                  <TableCell sx={{ minWidth: 60 }}>Ach%</TableCell>
+                  <TableCell sx={{ minWidth: 60 }}>% Ach.</TableCell>
                   <TableCell sx={{ minWidth: 60 }}>{t('rpt.avgPerDay')}</TableCell>
                 </TableRow>
               </TableHead>
@@ -963,6 +978,7 @@ export default function ReportsPage() {
           <Tab icon={<BusinessCenter fontSize="small" />} iconPosition="start" label="Agency Activity Report" />
           <Tab icon={<TableChart fontSize="small" />} iconPosition="start" label={t('svr.dailyTracker')} />
           <Tab icon={<TrendingUp fontSize="small" />} iconPosition="start" label="Sales Dashboard" />
+          <Tab icon={<Assessment fontSize="small" />} iconPosition="start" label="OneReport" />
         </Tabs>
       </Paper>
 
@@ -972,6 +988,7 @@ export default function ReportsPage() {
       <Box hidden={tab !== 3}><AgencyActivityTab /></Box>
       <Box hidden={tab !== 4}><DailyTrackerTab /></Box>
       <Box hidden={tab !== 5}><SalesDashboardTab /></Box>
+      <Box hidden={tab !== 6}><OneReportTab /></Box>
     </Box>
   );
 }

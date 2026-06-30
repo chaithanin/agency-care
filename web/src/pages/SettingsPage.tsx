@@ -89,14 +89,14 @@ export default function SettingsPage() {
         </Typography>
       </Stack>
       <Typography variant="body2" color="text.secondary" mb={4}>
-        System Configuration & Management
+        System configuration and management
       </Typography>
 
       {/* GROUP 1: Team & Users */}
       {isAdmin && (
         <Box mb={4}>
           <Typography variant="overline" color="text.secondary" mb={1.5} display="block">
-            Team & Users
+            Team &amp; Users
           </Typography>
           <Grid container spacing={2}>
             <Grid item xs={12} sm={6} md={4}>
@@ -104,7 +104,7 @@ export default function SettingsPage() {
                 icon={<GroupsRoundedIcon />}
                 iconBg="#1976d2"
                 title="Employees"
-                desc="Manage sales team, holidays, LINE setup"
+                desc="Manage sales team, leave days, and LINE"
                 href="/employees"
               />
             </Grid>
@@ -113,8 +113,8 @@ export default function SettingsPage() {
                 <SettingCard
                   icon={<ManageAccountsRoundedIcon />}
                   iconBg="#7b1fa2"
-                  title="Users & Access"
-                  desc="User accounts, roles, passwords"
+                  title="Users & Permissions"
+                  desc="User accounts, roles, and passwords"
                   href="/users"
                 />
               </Grid>
@@ -135,7 +135,7 @@ export default function SettingsPage() {
                 icon={<Inventory2RoundedIcon />}
                 iconBg="#388e3c"
                 title="Products"
-                desc="Product master list for sales recording"
+                desc="Product list for recording sales"
                 href="/products"
               />
             </Grid>
@@ -144,7 +144,7 @@ export default function SettingsPage() {
                 icon={<CampaignRoundedIcon />}
                 iconBg="#f57c00"
                 title="POSM Materials"
-                desc="Promotional materials inventory"
+                desc="Point-of-sale marketing materials library"
                 href="/posm"
               />
             </Grid>
@@ -152,8 +152,8 @@ export default function SettingsPage() {
               <SettingCard
                 icon={<DevicesOtherRoundedIcon />}
                 iconBg="#00796b"
-                title="Equipment"
-                desc="Display models and equipment tracking"
+                title="Devices"
+                desc="Track display models and devices"
                 href="/models"
               />
             </Grid>
@@ -172,7 +172,7 @@ export default function SettingsPage() {
               icon={<CalendarMonthRoundedIcon />}
               iconBg="#d32f2f"
               title="Calendar"
-              desc="Monthly visit calendar view"
+              desc="Monthly visit calendar"
               href="/calendar"
             />
           </Grid>
@@ -180,8 +180,8 @@ export default function SettingsPage() {
             <SettingCard
               icon={<ScheduleRoundedIcon />}
               iconBg="#303f9f"
-              title="Scheduling"
-              desc="Team targets, coverage, office planner"
+              title="Schedule"
+              desc="Team targets, coverage, and office plan"
               href="/scheduling"
             />
           </Grid>
@@ -189,7 +189,7 @@ export default function SettingsPage() {
             <SettingCard
               icon={<LeaderboardRoundedIcon />}
               iconBg="#f9a825"
-              title="Seller Performance"
+              title="Sales Performance"
               desc="Individual performance dashboard"
               href="/seller-performance"
             />
@@ -199,7 +199,7 @@ export default function SettingsPage() {
               icon={<AccountTreeRoundedIcon />}
               iconBg="#0097a7"
               title="Pipeline"
-              desc="Agency pipeline funnel overview"
+              desc="Agency pipeline overview"
               href="/pipeline"
             />
           </Grid>
@@ -207,8 +207,8 @@ export default function SettingsPage() {
             <SettingCard
               icon={<RouteRoundedIcon />}
               iconBg="#616161"
-              title="Route Optimization"
-              desc="Optimized daily visit route"
+              title="Visit Route"
+              desc="Optimized daily visit routes"
               href="/route"
             />
           </Grid>

@@ -11,10 +11,26 @@ import LaunchIcon from '@mui/icons-material/Launch';
 import SearchIcon from '@mui/icons-material/Search';
 import PrintIcon from '@mui/icons-material/Print';
 import RequestQuoteIcon from '@mui/icons-material/RequestQuote';
+import DownloadIcon from '@mui/icons-material/Download';
+import BookmarkIcon from '@mui/icons-material/Bookmark';
+import HistoryIcon from '@mui/icons-material/History';
 import { api, errMsg } from '../api/client';
 import { useT } from '../i18n';
 
 interface QuoteLine { product: Product; qty: number; unitPrice: number; }
+
+interface QuotationRecord {
+  id: string;
+  quoteNo: string;
+  createdAt: string;
+  downloadedAt?: string;
+  sellerName: string;
+  agencyName?: string;
+  customerName?: string;
+  downloadCount: number;
+  productIds: string[];
+  total: number;
+}
 
 function QuotationDialog({ open, onClose, products }: { open: boolean; onClose: () => void; products: Product[] }) {
   const printRef = useRef<HTMLDivElement>(null);
@@ -23,6 +39,14 @@ function QuotationDialog({ open, onClose, products }: { open: boolean; onClose: 
   const [note, setNote] = useState('');
   const [lines, setLines] = useState<QuoteLine[]>([]);
   const [quoteNo] = useState(() => `QT-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${Math.floor(Math.random() * 9000) + 1000}`);
+  const [quotationHistory, setQuotationHistory] = useState<QuotationRecord[]>([]);
+
+  // Load quotation history on mount
+  useEffect(() => {
+    // TODO: Fetch from backend endpoint /quotations/history
+    // For now, initialize with empty array
+    setQuotationHistory([]);
+  }, []);
 
   const toggleProduct = (p: Product) => {
     setLines((prev) => {
@@ -38,11 +62,19 @@ function QuotationDialog({ open, onClose, products }: { open: boolean; onClose: 
   const vat = Math.round(subtotal * 0.07);
   const total = subtotal + vat;
 
+  const downloadPDF = () => {
+    // TODO: Implement PDF generation
+    // For now, use print functionality as fallback
+    doPrint();
+    // After download, track it:
+    // TODO: POST /quotations/track with { quoteNo, customerName, downloadCount: 1 }
+  };
+
   const doPrint = () => {
     if (!printRef.current) return;
     const w = window.open('', '_blank');
     if (!w) return;
-    w.document.write(`<html><head><title>ใบเสนอราคา</title><style>
+    w.document.write(`<html><head><title>Quotation</title><style>
       body{font-family:sans-serif;margin:24px;font-size:13px}
       table{width:100%;border-collapse:collapse}
       th,td{border:1px solid #ccc;padding:6px 8px}
@@ -54,25 +86,30 @@ function QuotationDialog({ open, onClose, products }: { open: boolean; onClose: 
     w.print();
   };
 
-  const today = new Date().toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' });
+  const today = new Date().toLocaleDateString('en-GB', { year: 'numeric', month: 'long', day: 'numeric' });
 
   return (
     <Dialog open={open} onClose={onClose} fullWidth maxWidth="md">
       <DialogTitle>
         <Stack direction="row" justifyContent="space-between" alignItems="center">
-          <span>สร้างใบเสนอราคา</span>
-          <Button size="small" variant="outlined" startIcon={<PrintIcon />} onClick={doPrint} disabled={lines.length === 0}>
-            พิมพ์
-          </Button>
+          <span>Create Quotation</span>
+          <Stack direction="row" spacing={1}>
+            <Button size="small" variant="outlined" startIcon={<DownloadIcon />} onClick={downloadPDF} disabled={lines.length === 0}>
+              Download PDF
+            </Button>
+            <Button size="small" variant="outlined" startIcon={<PrintIcon />} onClick={doPrint} disabled={lines.length === 0}>
+              Print
+            </Button>
+          </Stack>
         </Stack>
       </DialogTitle>
       <DialogContent>
         <Stack direction="row" spacing={2} mb={2} mt={1} flexWrap="wrap" useFlexGap>
-          <TextField size="small" label="ชื่อลูกค้า / Agency" value={customerName} onChange={(e) => setCustomerName(e.target.value)} sx={{ flex: 2, minWidth: 200 }} />
-          <TextField size="small" label="เบอร์โทรศัพท์" value={customerTel} onChange={(e) => setCustomerTel(e.target.value)} sx={{ flex: 1, minWidth: 150 }} />
+          <TextField size="small" label="Customer Name / Agency" value={customerName} onChange={(e) => setCustomerName(e.target.value)} sx={{ flex: 2, minWidth: 200 }} />
+          <TextField size="small" label="Phone Number" value={customerTel} onChange={(e) => setCustomerTel(e.target.value)} sx={{ flex: 1, minWidth: 150 }} />
         </Stack>
 
-        <Typography variant="subtitle2" fontWeight={700} mb={1}>เลือกสินค้า/โครงการ</Typography>
+        <Typography variant="subtitle2" fontWeight={700} mb={1}>Select Product / Project</Typography>
         <Paper variant="outlined" sx={{ mb: 2, maxHeight: 220, overflowY: 'auto' }}>
           <Table size="small">
             <TableBody>
@@ -94,14 +131,14 @@ function QuotationDialog({ open, onClose, products }: { open: boolean; onClose: 
 
         {lines.length > 0 && (
           <>
-            <Typography variant="subtitle2" fontWeight={700} mb={1}>รายการในใบเสนอราคา</Typography>
+            <Typography variant="subtitle2" fontWeight={700} mb={1}>Quotation Items</Typography>
             <Table size="small" sx={{ mb: 2 }}>
               <TableHead>
                 <TableRow>
-                  <TableCell>สินค้า/โครงการ</TableCell>
-                  <TableCell align="center" sx={{ width: 80 }}>จำนวน</TableCell>
-                  <TableCell align="right" sx={{ width: 130 }}>ราคาต่อหน่วย</TableCell>
-                  <TableCell align="right" sx={{ width: 120 }}>รวม</TableCell>
+                  <TableCell>Product / Project</TableCell>
+                  <TableCell align="center" sx={{ width: 80 }}>Qty</TableCell>
+                  <TableCell align="right" sx={{ width: 130 }}>Unit Price</TableCell>
+                  <TableCell align="right" sx={{ width: 120 }}>Amount</TableCell>
                   <TableCell sx={{ width: 40 }} />
                 </TableRow>
               </TableHead>
@@ -124,7 +161,7 @@ function QuotationDialog({ open, onClose, products }: { open: boolean; onClose: 
                   </TableRow>
                 ))}
                 <TableRow>
-                  <TableCell colSpan={3} align="right" sx={{ fontWeight: 600 }}>ราคารวม (ก่อน VAT)</TableCell>
+                  <TableCell colSpan={3} align="right" sx={{ fontWeight: 600 }}>Subtotal (before VAT)</TableCell>
                   <TableCell align="right">{subtotal.toLocaleString()}</TableCell>
                   <TableCell />
                 </TableRow>
@@ -134,7 +171,7 @@ function QuotationDialog({ open, onClose, products }: { open: boolean; onClose: 
                   <TableCell />
                 </TableRow>
                 <TableRow>
-                  <TableCell colSpan={3} align="right" sx={{ fontWeight: 700, fontSize: '1rem' }}>ยอดรวมทั้งสิ้น</TableCell>
+                  <TableCell colSpan={3} align="right" sx={{ fontWeight: 700, fontSize: '1rem' }}>Total Amount</TableCell>
                   <TableCell align="right" sx={{ fontWeight: 700, fontSize: '1rem', color: 'primary.main' }}>{total.toLocaleString()}</TableCell>
                   <TableCell />
                 </TableRow>
@@ -143,8 +180,54 @@ function QuotationDialog({ open, onClose, products }: { open: boolean; onClose: 
           </>
         )}
 
-        <TextField size="small" label="หมายเหตุ" value={note} onChange={(e) => setNote(e.target.value)}
-          fullWidth multiline minRows={2} placeholder="เงื่อนไขการชำระเงิน, ระยะเวลาดำเนินการ..." />
+        <TextField size="small" label="Remarks" value={note} onChange={(e) => setNote(e.target.value)}
+          fullWidth multiline minRows={2} placeholder="Payment terms, lead time..." />
+
+        {/* Quotation History Section */}
+        <Box sx={{ mt: 3, pt: 2, borderTop: '1px solid #eee' }}>
+          <Typography variant="subtitle2" fontWeight={700} sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
+            <HistoryIcon fontSize="small" />
+            Quotation History
+          </Typography>
+          {quotationHistory.length === 0 ? (
+            <Typography variant="caption" color="text.secondary">No quotations generated yet</Typography>
+          ) : (
+            <Paper variant="outlined" sx={{ overflowX: 'auto' }}>
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Date Downloaded</TableCell>
+                    <TableCell>Quotation #</TableCell>
+                    <TableCell>Seller Name</TableCell>
+                    <TableCell>Agency Name</TableCell>
+                    <TableCell>Customer Name</TableCell>
+                    <TableCell align="center">Downloads</TableCell>
+                    <TableCell align="right">Total Amount</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {quotationHistory.map((q) => (
+                    <TableRow key={q.id} hover>
+                      <TableCell>
+                        {q.downloadedAt
+                          ? new Date(q.downloadedAt).toLocaleDateString('en-GB', { year: 'numeric', month: 'short', day: 'numeric' })
+                          : new Date(q.createdAt).toLocaleDateString('en-GB', { year: 'numeric', month: 'short', day: 'numeric' })}
+                      </TableCell>
+                      <TableCell sx={{ fontFamily: 'monospace', fontSize: '0.875rem' }}>{q.quoteNo}</TableCell>
+                      <TableCell>{q.sellerName}</TableCell>
+                      <TableCell>{q.agencyName || '-'}</TableCell>
+                      <TableCell>{q.customerName || '-'}</TableCell>
+                      <TableCell align="center">
+                        <Chip size="small" label={q.downloadCount} variant="outlined" />
+                      </TableCell>
+                      <TableCell align="right" sx={{ fontWeight: 600 }}>{q.total.toLocaleString()}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </Paper>
+          )}
+        </Box>
 
         {/* Hidden print area */}
         <Box ref={printRef} sx={{ display: 'none' }}>
@@ -152,26 +235,26 @@ function QuotationDialog({ open, onClose, products }: { open: boolean; onClose: 
             <table style={{ width: '100%', marginBottom: 16 }}>
               <tbody>
                 <tr>
-                  <td><h2 style={{ margin: 0 }}>ใบเสนอราคา (Quotation)</h2></td>
+                  <td><h2 style={{ margin: 0 }}>Quotation</h2></td>
                   <td style={{ textAlign: 'right', verticalAlign: 'top' }}>
-                    <div><b>เลขที่:</b> {quoteNo}</div>
-                    <div><b>วันที่:</b> {today}</div>
+                    <div><b>No.:</b> {quoteNo}</div>
+                    <div><b>Date:</b> {today}</div>
                   </td>
                 </tr>
               </tbody>
             </table>
             <div style={{ marginBottom: 12 }}>
-              <div><b>เสนอให้:</b> {customerName || '-'}</div>
-              <div><b>โทร:</b> {customerTel || '-'}</div>
+              <div><b>Attention:</b> {customerName || '-'}</div>
+              <div><b>Tel:</b> {customerTel || '-'}</div>
             </div>
             <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 12 }}>
               <thead>
                 <tr>
-                  <th style={{ border: '1px solid #ccc', padding: '6px 8px', background: '#f5f5f5' }}>ลำดับ</th>
-                  <th style={{ border: '1px solid #ccc', padding: '6px 8px', background: '#f5f5f5' }}>สินค้า/โครงการ</th>
-                  <th style={{ border: '1px solid #ccc', padding: '6px 8px', background: '#f5f5f5', textAlign: 'center' }}>จำนวน</th>
-                  <th style={{ border: '1px solid #ccc', padding: '6px 8px', background: '#f5f5f5', textAlign: 'right' }}>ราคาต่อหน่วย</th>
-                  <th style={{ border: '1px solid #ccc', padding: '6px 8px', background: '#f5f5f5', textAlign: 'right' }}>จำนวนเงิน</th>
+                  <th style={{ border: '1px solid #ccc', padding: '6px 8px', background: '#f5f5f5' }}>#</th>
+                  <th style={{ border: '1px solid #ccc', padding: '6px 8px', background: '#f5f5f5' }}>Product / Project</th>
+                  <th style={{ border: '1px solid #ccc', padding: '6px 8px', background: '#f5f5f5', textAlign: 'center' }}>Qty</th>
+                  <th style={{ border: '1px solid #ccc', padding: '6px 8px', background: '#f5f5f5', textAlign: 'right' }}>Unit Price</th>
+                  <th style={{ border: '1px solid #ccc', padding: '6px 8px', background: '#f5f5f5', textAlign: 'right' }}>Amount</th>
                 </tr>
               </thead>
               <tbody>
@@ -185,7 +268,7 @@ function QuotationDialog({ open, onClose, products }: { open: boolean; onClose: 
                   </tr>
                 ))}
                 <tr>
-                  <td colSpan={4} style={{ border: '1px solid #ccc', padding: '6px 8px', textAlign: 'right' }}>ราคารวมก่อน VAT</td>
+                  <td colSpan={4} style={{ border: '1px solid #ccc', padding: '6px 8px', textAlign: 'right' }}>Subtotal (before VAT)</td>
                   <td style={{ border: '1px solid #ccc', padding: '6px 8px', textAlign: 'right' }}>{subtotal.toLocaleString()}</td>
                 </tr>
                 <tr>
@@ -193,21 +276,21 @@ function QuotationDialog({ open, onClose, products }: { open: boolean; onClose: 
                   <td style={{ border: '1px solid #ccc', padding: '6px 8px', textAlign: 'right' }}>{vat.toLocaleString()}</td>
                 </tr>
                 <tr>
-                  <td colSpan={4} style={{ border: '1px solid #ccc', padding: '6px 8px', textAlign: 'right', fontWeight: 'bold' }}>ยอดรวมทั้งสิ้น</td>
-                  <td style={{ border: '1px solid #ccc', padding: '6px 8px', textAlign: 'right', fontWeight: 'bold' }}>{total.toLocaleString()} บาท</td>
+                  <td colSpan={4} style={{ border: '1px solid #ccc', padding: '6px 8px', textAlign: 'right', fontWeight: 'bold' }}>Total Amount</td>
+                  <td style={{ border: '1px solid #ccc', padding: '6px 8px', textAlign: 'right', fontWeight: 'bold' }}>{total.toLocaleString()}</td>
                 </tr>
               </tbody>
             </table>
-            {note && <div style={{ marginBottom: 8 }}><b>หมายเหตุ:</b> {note}</div>}
+            {note && <div style={{ marginBottom: 8 }}><b>Remarks:</b> {note}</div>}
             <div style={{ marginTop: 40, display: 'flex', justifyContent: 'space-between' }}>
-              <div style={{ textAlign: 'center' }}><div style={{ borderTop: '1px solid #333', width: 160, margin: '0 auto' }}></div><div style={{ marginTop: 4 }}>ผู้เสนอราคา</div></div>
-              <div style={{ textAlign: 'center' }}><div style={{ borderTop: '1px solid #333', width: 160, margin: '0 auto' }}></div><div style={{ marginTop: 4 }}>ผู้อนุมัติ / ผู้มีอำนาจ</div></div>
+              <div style={{ textAlign: 'center' }}><div style={{ borderTop: '1px solid #333', width: 160, margin: '0 auto' }}></div><div style={{ marginTop: 4 }}>Prepared By</div></div>
+              <div style={{ textAlign: 'center' }}><div style={{ borderTop: '1px solid #333', width: 160, margin: '0 auto' }}></div><div style={{ marginTop: 4 }}>Authorized Signatory</div></div>
             </div>
           </div>
         </Box>
       </DialogContent>
       <DialogActions>
-        <Button onClick={onClose}>ปิด</Button>
+        <Button onClick={onClose}>Close</Button>
       </DialogActions>
     </Dialog>
   );
@@ -226,6 +309,131 @@ interface Product {
   marketingLink?: string | null;
 }
 
+function ProductDetailDialog({ open, onClose, product }: { open: boolean; onClose: () => void; product: Product | null }) {
+  if (!product) return null;
+
+  const handleViewBookingApp = () => {
+    // TODO: Navigate to booking app with product ID
+    // This could open in a new tab or navigate within the app
+    const bookingAppUrl = `${window.location.origin}/booking?product=${product.id}`;
+    window.open(bookingAppUrl, '_blank');
+  };
+
+  const handleCreateQuotation = () => {
+    // TODO: Open quotation dialog with this product pre-selected
+    onClose();
+  };
+
+  const handleCheckAvailability = () => {
+    // TODO: Fetch and display availability from booking system
+    alert(`Checking availability for "${product.name}"...`);
+  };
+
+  return (
+    <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm">
+      <DialogTitle>
+        <Stack direction="row" justifyContent="space-between" alignItems="center">
+          <Typography variant="h6">{product.name}</Typography>
+          <Chip size="small" label={product.code} variant="outlined" />
+        </Stack>
+      </DialogTitle>
+      <DialogContent>
+        <Stack spacing={2} mt={1}>
+          {/* Product Info */}
+          <Box>
+            <Typography variant="caption" color="text.secondary">Product Details</Typography>
+            <Table size="small" sx={{ mt: 1 }}>
+              <TableBody>
+                <TableRow>
+                  <TableCell sx={{ fontWeight: 600, width: '40%' }}>Price</TableCell>
+                  <TableCell align="right">{product.price.toLocaleString()} THB</TableCell>
+                </TableRow>
+                {product.unit && (
+                  <TableRow>
+                    <TableCell sx={{ fontWeight: 600 }}>Unit</TableCell>
+                    <TableCell>{product.unit}</TableCell>
+                  </TableRow>
+                )}
+                {product.quota != null && (
+                  <TableRow>
+                    <TableCell sx={{ fontWeight: 600 }}>Quota/Stock</TableCell>
+                    <TableCell align="right">{product.quota}</TableCell>
+                  </TableRow>
+                )}
+                {product.projectType && (
+                  <TableRow>
+                    <TableCell sx={{ fontWeight: 600 }}>Project Type</TableCell>
+                    <TableCell>{product.projectType}</TableCell>
+                  </TableRow>
+                )}
+                {product.description && (
+                  <TableRow>
+                    <TableCell sx={{ fontWeight: 600, verticalAlign: 'top' }}>Description</TableCell>
+                    <TableCell sx={{ fontSize: '0.875rem' }}>{product.description}</TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </Box>
+
+          {/* Booking & Quotation Actions */}
+          <Box sx={{ borderTop: '1px solid #eee', pt: 2 }}>
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>Booking & Sales Tools</Typography>
+            <Stack spacing={1}>
+              <Button
+                fullWidth
+                variant="contained"
+                startIcon={<BookmarkIcon />}
+                onClick={handleViewBookingApp}
+              >
+                View in Booking App
+              </Button>
+              <Button
+                fullWidth
+                variant="outlined"
+                startIcon={<SearchIcon />}
+                onClick={handleCheckAvailability}
+              >
+                Check Availability
+              </Button>
+              <Button
+                fullWidth
+                variant="outlined"
+                startIcon={<DownloadIcon />}
+                onClick={handleCreateQuotation}
+              >
+                Create Quotation
+              </Button>
+            </Stack>
+          </Box>
+
+          {/* Marketing Link */}
+          {product.marketingLink && (
+            <Box sx={{ borderTop: '1px solid #eee', pt: 2 }}>
+              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>Marketing</Typography>
+              <Button
+                fullWidth
+                variant="text"
+                startIcon={<LaunchIcon />}
+                component={Link}
+                href={product.marketingLink}
+                target="_blank"
+                rel="noopener"
+                sx={{ justifyContent: 'flex-start' }}
+              >
+                View Marketing Link
+              </Button>
+            </Box>
+          )}
+        </Stack>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={onClose}>Close</Button>
+      </DialogActions>
+    </Dialog>
+  );
+}
+
 const emptyForm = { code: '', name: '', price: '', description: '', projectType: '', unit: '', quota: '', marketingLink: '' };
 
 export default function ProductsPage() {
@@ -240,6 +448,8 @@ export default function ProductsPage() {
   const [editForm, setEditForm] = useState({ ...emptyForm, isActive: true as boolean });
   const [editOpen, setEditOpen] = useState(false);
   const [editError, setEditError] = useState('');
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
 
   const load = () => api.get('/products').then((r) => setRows(r.data));
   useEffect(() => { load(); }, []);
@@ -303,6 +513,11 @@ export default function ProductsPage() {
     try { await api.delete(`/products/${p.id}`); load(); } catch (e) { alert(errMsg(e)); }
   };
 
+  const openDetail = (p: Product) => {
+    setSelectedProduct(p);
+    setDetailOpen(true);
+  };
+
   const ProductForm = ({ f, onChange }: { f: typeof emptyForm; onChange: (v: typeof emptyForm) => void }) => (
     <Stack spacing={2} mt={1}>
       <Stack direction="row" spacing={2}>
@@ -330,7 +545,7 @@ export default function ProductsPage() {
             onChange={(e) => setSearchQ(e.target.value)}
             InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment> }}
             sx={{ width: 220 }} />
-          <Button variant="outlined" startIcon={<RequestQuoteIcon />} onClick={() => setQuoteOpen(true)}>ใบเสนอราคา</Button>
+          <Button variant="outlined" startIcon={<RequestQuoteIcon />} onClick={() => setQuoteOpen(true)}>Quotation</Button>
           <Button variant="contained" onClick={() => setOpen(true)}>{t('pr.add')}</Button>
         </Stack>
       </Stack>
@@ -355,7 +570,9 @@ export default function ProductsPage() {
               <TableRow key={p.id} hover>
                 <TableCell><Typography variant="caption" fontFamily="monospace">{p.code}</Typography></TableCell>
                 <TableCell>
-                  <Typography variant="body2" fontWeight={600}>{p.name}</Typography>
+                  <Typography variant="body2" fontWeight={600} sx={{ cursor: 'pointer', color: 'primary.main' }} onClick={() => openDetail(p)}>
+                    {p.name}
+                  </Typography>
                   {p.description && <Typography variant="caption" color="text.secondary" display="block" noWrap sx={{ maxWidth: 200 }}>{p.description}</Typography>}
                 </TableCell>
                 <TableCell>{p.projectType ? <Chip size="small" label={p.projectType} /> : '-'}</TableCell>
@@ -376,8 +593,15 @@ export default function ProductsPage() {
                   ) : '-'}
                 </TableCell>
                 <TableCell align="right">
-                  <IconButton size="small" onClick={() => openEdit(p)}><EditIcon fontSize="small" /></IconButton>
-                  <IconButton size="small" color="error" onClick={() => remove(p)}><DeleteIcon fontSize="small" /></IconButton>
+                  <Tooltip title="View Details & Booking">
+                    <IconButton size="small" onClick={() => openDetail(p)}><BookmarkIcon fontSize="small" /></IconButton>
+                  </Tooltip>
+                  <Tooltip title="Edit">
+                    <IconButton size="small" onClick={() => openEdit(p)}><EditIcon fontSize="small" /></IconButton>
+                  </Tooltip>
+                  <Tooltip title="Delete">
+                    <IconButton size="small" color="error" onClick={() => remove(p)}><DeleteIcon fontSize="small" /></IconButton>
+                  </Tooltip>
                 </TableCell>
               </TableRow>
             ))}
@@ -423,6 +647,13 @@ export default function ProductsPage() {
           <Button variant="contained" onClick={saveEdit}>{t('common.save')}</Button>
         </DialogActions>
       </Dialog>
+
+      {/* Product Detail Dialog with Booking & Quotation Options */}
+      <ProductDetailDialog
+        open={detailOpen}
+        onClose={() => setDetailOpen(false)}
+        product={selectedProduct}
+      />
     </Box>
   );
 }

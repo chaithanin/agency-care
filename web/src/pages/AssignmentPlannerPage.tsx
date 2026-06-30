@@ -189,11 +189,11 @@ function PlanDetailPanel({
     const buildHeader = () => `
       <tr>
         <th style="${hStyle}">#</th>
-        <th style="${hStyle}">รหัส Agency</th>
-        <th style="${hStyle}">ชื่อ Agency</th>
-        <th style="${hStyle}">โซน Agency</th>
-        <th style="${hStyle}">โซนเซลส์</th>
-        <th style="${hStyle}">หมายเหตุ</th>
+        <th style="${hStyle}">Agency Code</th>
+        <th style="${hStyle}">Agency Name</th>
+        <th style="${hStyle}">Agency Zone</th>
+        <th style="${hStyle}">Sales Zone</th>
+        <th style="${hStyle}">Notes</th>
       </tr>`;
 
     const buildRows = (list: PlanItem[]) =>
@@ -223,7 +223,7 @@ function PlanDetailPanel({
       const emp = uniqueEmployees.find((e) => e.id === printEmployee);
       bodyHtml = `
         <div style="margin-bottom:8px;background:#3b82f6;color:#fff;padding:6px 12px;font-weight:700;font-size:13px;border-radius:4px">
-          👤 ${emp?.name ?? ''} — ${emp?.code ?? ''} &nbsp;|&nbsp; โซน: ${emp?.zone ?? '—'} &nbsp;|&nbsp; ${empItems.length} Agency
+          👤 ${emp?.name ?? ''} — ${emp?.code ?? ''} &nbsp;|&nbsp; Zone: ${emp?.zone ?? '—'} &nbsp;|&nbsp; ${empItems.length} Agency
         </div>
         <table style="width:100%;border-collapse:collapse">
           ${buildHeader()}
@@ -236,7 +236,7 @@ function PlanDetailPanel({
         return `
           <div style="margin-bottom:24px;page-break-inside:avoid">
             <div style="background:#1d4ed8;color:#fff;padding:6px 12px;font-weight:700;font-size:13px;border-radius:4px 4px 0 0">
-              👤 ${emp.name} (${emp.code}) &nbsp;|&nbsp; โซน: ${emp.zone ?? '—'} &nbsp;|&nbsp; ${empItems.length} Agency
+              👤 ${emp.name} (${emp.code}) &nbsp;|&nbsp; Zone: ${emp.zone ?? '—'} &nbsp;|&nbsp; ${empItems.length} Agency
             </div>
             <table style="width:100%;border-collapse:collapse">
               ${buildHeader()}
@@ -248,13 +248,13 @@ function PlanDetailPanel({
 
     const empLabel = printEmployee
       ? uniqueEmployees.find((e) => e.id === printEmployee)?.name ?? ''
-      : 'ทั้งหมด';
+      : 'All';
 
-    const todayStr = new Date().toLocaleDateString('th-TH', { day: '2-digit', month: 'short', year: 'numeric' });
+    const todayStr = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
 
     const html = `<!DOCTYPE html><html><head>
       <meta charset="utf-8"/>
-      <title>แผนมอบหมาย ${plan.period} — ${empLabel}</title>
+      <title>Assignment Plan ${plan.period} — ${empLabel}</title>
       <style>
         * { font-family: 'Sarabun', Arial, sans-serif; box-sizing: border-box; }
         body { margin: 0; padding: 16px 20px; color: #0f172a; }
@@ -267,22 +267,22 @@ function PlanDetailPanel({
     </head><body>
       <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:14px;border-bottom:3px solid #1d4ed8;padding-bottom:8px">
         <div>
-          <div style="font-size:20px;font-weight:800;color:#1d4ed8">แผนมอบหมาย AI — Agency Care</div>
+          <div style="font-size:20px;font-weight:800;color:#1d4ed8">AI Assignment Plan — Agency Care</div>
           <div style="font-size:13px;color:#475569;margin-top:2px">
-            ประจำเดือน: <strong>${plan.period}</strong>
-            &nbsp;|&nbsp; เซลส์: <strong>${empLabel}</strong>
-            &nbsp;|&nbsp; สถานะ: <strong>${plan.status}</strong>
+            Period: <strong>${plan.period}</strong>
+            &nbsp;|&nbsp; Sales: <strong>${empLabel}</strong>
+            &nbsp;|&nbsp; Status: <strong>${plan.status}</strong>
           </div>
         </div>
         <div style="text-align:right;font-size:11px;color:#94a3b8">
-          พิมพ์เมื่อ: ${todayStr}<br/>
-          รวม ${printEmployee ? items.filter((i) => i.employee.id === printEmployee).length : items.length} รายการ
-          &nbsp;|&nbsp; ${printEmployee ? 1 : uniqueEmployees.length} เซลส์
+          Printed: ${todayStr}<br/>
+          Total ${printEmployee ? items.filter((i) => i.employee.id === printEmployee).length : items.length} items
+          &nbsp;|&nbsp; ${printEmployee ? 1 : uniqueEmployees.length} sales
         </div>
       </div>
       ${bodyHtml}
       <div class="no-print" style="margin-top:20px;text-align:center">
-        <button onclick="window.print()" style="padding:10px 32px;background:#1d4ed8;color:#fff;border:none;border-radius:6px;font-size:14px;cursor:pointer">🖨️ พิมพ์</button>
+        <button onclick="window.print()" style="padding:10px 32px;background:#1d4ed8;color:#fff;border:none;border-radius:6px;font-size:14px;cursor:pointer">🖨️ Print</button>
       </div>
     </body></html>`;
 
@@ -340,7 +340,7 @@ function PlanDetailPanel({
             onClick={() => { setPrintEmployee(''); setPrintOpen(true); }}
             size="small"
           >
-            พิมพ์แผน
+            Print Plan
           </Button>
         )}
         {plan.status === 'draft' && (
@@ -431,18 +431,18 @@ function PlanDetailPanel({
       <Dialog open={printOpen} onClose={() => setPrintOpen(false)} maxWidth="xs" fullWidth>
         <DialogTitle>
           <PrintIcon sx={{ mr: 1, verticalAlign: 'middle' }} fontSize="small" />
-          พิมพ์แผนมอบหมาย — {plan.period}
+          Print Assignment Plan — {plan.period}
         </DialogTitle>
         <DialogContent>
           <Stack spacing={2} mt={1}>
             <FormControl size="small" fullWidth>
-              <InputLabel>เซลส์</InputLabel>
+              <InputLabel>Sales</InputLabel>
               <Select
                 value={printEmployee}
-                label="เซลส์"
+                label="Sales"
                 onChange={(e) => setPrintEmployee(e.target.value)}
               >
-                <MenuItem value="">ทั้งหมด (แยกกลุ่มตามคน — {uniqueEmployees.length} คน)</MenuItem>
+                <MenuItem value="">All (grouped by person — {uniqueEmployees.length} people)</MenuItem>
                 {uniqueEmployees.map((e) => (
                   <MenuItem key={e.id} value={e.id}>
                     {e.name} ({e.code}) — {items.filter((i) => i.employee.id === e.id).length} Agency
@@ -451,14 +451,14 @@ function PlanDetailPanel({
               </Select>
             </FormControl>
             <Alert severity="info" sx={{ py: 0.5, fontSize: 12 }}>
-              เปิดหน้าต่างใหม่ขนาด A4 แนวนอน พร้อมตาราง Agency–เซลส์
+              Opens a new A4 landscape window with an Agency–Sales table
             </Alert>
           </Stack>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setPrintOpen(false)}>{t('common.cancel')}</Button>
           <Button variant="contained" startIcon={<PrintIcon />} onClick={executePrint}>
-            พิมพ์
+            Print
           </Button>
         </DialogActions>
       </Dialog>

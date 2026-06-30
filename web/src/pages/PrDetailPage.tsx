@@ -51,14 +51,14 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 const STATUS_LABELS: Record<string, string> = {
-  draft: 'ร่าง', submitted: 'ส่งแล้ว', waiting_approval: 'รออนุมัติ',
-  approved: 'อนุมัติแล้ว', purchasing: 'กำลังซื้อ', ordered: 'สั่งซื้อแล้ว',
-  received: 'รับสินค้าแล้ว', completed: 'เสร็จสิ้น', cancelled: 'ยกเลิก',
+  draft: 'Draft', submitted: 'Submitted', waiting_approval: 'Pending Approval',
+  approved: 'Approved', purchasing: 'Purchasing', ordered: 'Ordered',
+  received: 'Received', completed: 'Completed', cancelled: 'Cancelled',
 };
 
 const ACTIVITY_LABELS: Record<string, string> = {
-  created: '📝 สร้าง PR', status_change: '🔄 เปลี่ยนสถานะ', edit: '✏️ แก้ไข',
-  comment: '💬 ความคิดเห็น', attachment: '📎 แนบไฟล์', assign: '👤 มอบหมาย',
+  created: '📝 Created PR', status_change: '🔄 Status Changed', edit: '✏️ Edited',
+  comment: '💬 Comment', attachment: '📎 Attachment', assign: '👤 Assigned',
 };
 
 const NEXT_STATUSES: Record<PrStatus, PrStatus[]> = {
@@ -81,11 +81,11 @@ function fmtBaht(n?: number | null) {
 function timeAgo(d: string) {
   const diff = Date.now() - new Date(d).getTime();
   const mins = Math.floor(diff / 60000);
-  if (mins < 1) return 'เมื่อกี้';
-  if (mins < 60) return `${mins} นาทีที่แล้ว`;
+  if (mins < 1) return 'Just now';
+  if (mins < 60) return `${mins} min ago`;
   const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs} ชม.ที่แล้ว`;
-  return new Date(d).toLocaleDateString('th-TH');
+  if (hrs < 24) return `${hrs} hr ago`;
+  return new Date(d).toLocaleDateString('en-GB');
 }
 
 export default function PrDetailPage() {
@@ -145,7 +145,7 @@ export default function PrDetailPage() {
   };
 
   if (loading) return <Box p={6} textAlign="center"><CircularProgress /></Box>;
-  if (!pr) return <Box p={3}><Alert severity="error">{error || 'ไม่พบ PR'}</Alert></Box>;
+  if (!pr) return <Box p={3}><Alert severity="error">{error || 'PR not found'}</Alert></Box>;
 
   const age = Math.floor((Date.now() - new Date(pr.createdAt).getTime()) / 86400000);
   const isOverdue = pr.dueDate && new Date(pr.dueDate) < new Date() && !['completed', 'cancelled'].includes(pr.status);
@@ -166,10 +166,10 @@ export default function PrDetailPage() {
         </Box>
         <Box display="flex" gap={1} flexWrap="wrap" justifyContent="flex-end">
           <Chip label={STATUS_LABELS[pr.status]} sx={{ bgcolor: STATUS_COLORS[pr.status] ?? '#E2E8F0', color: '#fff', fontWeight: 700 }} />
-          {canEdit && <Button variant="outlined" size="small" startIcon={<Edit />} onClick={() => navigate(`/pr/${pr.id}/edit`)}>แก้ไข</Button>}
+          {canEdit && <Button variant="outlined" size="small" startIcon={<Edit />} onClick={() => navigate(`/pr/${pr.id}/edit`)}>Edit</Button>}
           {nextStatuses.length > 0 && (
             <Button variant="contained" size="small" startIcon={<PlayArrow />} onClick={() => { setNewStatus(nextStatuses[0]); setStatusDialog(true); }}>
-              เปลี่ยนสถานะ
+              Change Status
             </Button>
           )}
         </Box>
@@ -186,12 +186,12 @@ export default function PrDetailPage() {
               {[
                 { label: t('prt.department'), value: pr.department },
                 { label: t('prt.type'), value: pr.prType },
-                { label: t('prt.priority'), value: <Chip label={{ low: 'ต่ำ', medium: 'ปานกลาง', high: 'สูง', urgent: 'เร่งด่วน' }[pr.priority] ?? pr.priority} size="small" color={pr.priority === 'urgent' ? 'error' : pr.priority === 'high' ? 'warning' : 'default'} /> },
+                { label: t('prt.priority'), value: <Chip label={{ low: 'Low', medium: 'Medium', high: 'High', urgent: 'Urgent' }[pr.priority] ?? pr.priority} size="small" color={pr.priority === 'urgent' ? 'error' : pr.priority === 'high' ? 'warning' : 'default'} /> },
                 { label: t('prt.responsible'), value: pr.responsible?.name ?? '—' },
                 { label: t('prt.approver'), value: pr.approver?.name ?? '—' },
                 { label: t('prt.budget'), value: fmtBaht(pr.budgetTotal) },
-                { label: t('prt.dueDate'), value: pr.dueDate ? <Typography color={isOverdue ? 'error' : 'inherit'} component="span" fontWeight={isOverdue ? 700 : 400}>{new Date(pr.dueDate).toLocaleDateString('th-TH')}{isOverdue ? ' ⚠️' : ''}</Typography> : '—' },
-                { label: `${t('prt.age')}`, value: <Chip label={`${age} วัน`} size="small" color={age > 14 ? 'error' : age > 7 ? 'warning' : 'default'} /> },
+                { label: t('prt.dueDate'), value: pr.dueDate ? <Typography color={isOverdue ? 'error' : 'inherit'} component="span" fontWeight={isOverdue ? 700 : 400}>{new Date(pr.dueDate).toLocaleDateString('en-GB')}{isOverdue ? ' ⚠️' : ''}</Typography> : '—' },
+                { label: `${t('prt.age')}`, value: <Chip label={`${age} days`} size="small" color={age > 14 ? 'error' : age > 7 ? 'warning' : 'default'} /> },
               ].map((row) => (
                 <Grid item xs={6} sm={3} key={row.label}>
                   <Typography variant="caption" color="text.secondary">{row.label}</Typography>
@@ -225,7 +225,7 @@ export default function PrDetailPage() {
                 );
               })}
               {pr.status === 'cancelled' && (
-                <Chip label="ยกเลิก" sx={{ bgcolor: '#EF4444', color: '#fff', ml: 1 }} size="small" />
+                <Chip label="Cancelled" sx={{ bgcolor: '#EF4444', color: '#fff', ml: 1 }} size="small" />
               )}
             </Box>
           </Paper>
@@ -238,7 +238,7 @@ export default function PrDetailPage() {
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                   <thead>
                     <tr style={{ background: '#F8FAFC' }}>
-                      {['ชื่อรายการ', 'รายละเอียด', 'จำนวน', 'หน่วย', 'งบ/ชิ้น', 'รวม', 'วันที่ต้องการ'].map((h) => (
+                      {['Item Name', 'Details', 'Qty', 'Unit', 'Budget/Unit', 'Total', 'Needed By'].map((h) => (
                         <th key={h} style={{ textAlign: 'left', padding: '6px 10px', borderBottom: '1px solid #E2E8F0', fontWeight: 600 }}>{h}</th>
                       ))}
                     </tr>
@@ -252,7 +252,7 @@ export default function PrDetailPage() {
                         <td style={{ padding: '6px 10px', borderBottom: '1px solid #F1F5F9' }}>{item.unit ?? '—'}</td>
                         <td style={{ padding: '6px 10px', borderBottom: '1px solid #F1F5F9' }}>{fmtBaht(item.budget)}</td>
                         <td style={{ padding: '6px 10px', borderBottom: '1px solid #F1F5F9', fontWeight: 600 }}>{item.budget ? fmtBaht(item.budget * Number(item.qty)) : '—'}</td>
-                        <td style={{ padding: '6px 10px', borderBottom: '1px solid #F1F5F9', color: '#6B7280' }}>{item.neededBy ? new Date(item.neededBy).toLocaleDateString('th-TH') : '—'}</td>
+                        <td style={{ padding: '6px 10px', borderBottom: '1px solid #F1F5F9', color: '#6B7280' }}>{item.neededBy ? new Date(item.neededBy).toLocaleDateString('en-GB') : '—'}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -265,7 +265,7 @@ export default function PrDetailPage() {
           <Paper sx={{ p: 2 }}>
             <Typography variant="subtitle2" fontWeight={700} mb={2}>{t('prt.comments')} ({pr.comments.length})</Typography>
             <List dense sx={{ maxHeight: 300, overflow: 'auto', mb: 2 }}>
-              {pr.comments.length === 0 && <Typography variant="body2" color="text.secondary" px={1}>ยังไม่มีความคิดเห็น</Typography>}
+              {pr.comments.length === 0 && <Typography variant="body2" color="text.secondary" px={1}>No comments yet</Typography>}
               {pr.comments.map((c) => (
                 <ListItem key={c.id} alignItems="flex-start" sx={{ px: 0 }}>
                   <Avatar sx={{ width: 28, height: 28, mr: 1, fontSize: 12, bgcolor: '#4F46E5' }}>{c.user.name[0]}</Avatar>
@@ -278,7 +278,7 @@ export default function PrDetailPage() {
             </List>
             <Box display="flex" gap={1}>
               <TextField
-                size="small" fullWidth multiline maxRows={3} placeholder="เพิ่มความคิดเห็น…"
+                size="small" fullWidth multiline maxRows={3} placeholder="Add a comment…"
                 value={comment} onChange={(e) => setComment(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendComment(); } }}
               />
@@ -313,7 +313,7 @@ export default function PrDetailPage() {
           {/* Attachments */}
           <Paper sx={{ p: 2, mb: 2 }}>
             <Typography variant="subtitle2" fontWeight={700} mb={1}>{t('prt.attachments')} ({pr.attachments.length})</Typography>
-            {pr.attachments.length === 0 && <Typography variant="caption" color="text.secondary">ยังไม่มีเอกสารแนบ</Typography>}
+            {pr.attachments.length === 0 && <Typography variant="caption" color="text.secondary">No attachments yet</Typography>}
             {pr.attachments.map((att) => (
               <Box key={att.id} display="flex" alignItems="center" gap={1} mb={0.5}>
                 <AttachFile fontSize="small" sx={{ color: '#6B7280' }} />
@@ -358,8 +358,8 @@ export default function PrDetailPage() {
         <DialogTitle>{t('prt.changeStatus')}</DialogTitle>
         <DialogContent>
           <FormControl fullWidth sx={{ mt: 1 }}>
-            <InputLabel>สถานะใหม่</InputLabel>
-            <Select value={newStatus} label="สถานะใหม่" onChange={(e) => setNewStatus(e.target.value as PrStatus)}>
+            <InputLabel>New Status</InputLabel>
+            <Select value={newStatus} label="New Status" onChange={(e) => setNewStatus(e.target.value as PrStatus)}>
               {nextStatuses.map((s) => (
                 <MenuItem key={s} value={s}>
                   <Chip label={STATUS_LABELS[s]} size="small" sx={{ bgcolor: STATUS_COLORS[s], color: '#fff' }} />
@@ -375,9 +375,9 @@ export default function PrDetailPage() {
           )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setStatusDialog(false)}>ยกเลิก</Button>
+          <Button onClick={() => setStatusDialog(false)}>Cancel</Button>
           <Button variant="contained" onClick={changeStatus} disabled={changingStatus}>
-            {changingStatus ? <CircularProgress size={18} /> : 'ยืนยัน'}
+            {changingStatus ? <CircularProgress size={18} /> : 'Confirm'}
           </Button>
         </DialogActions>
       </Dialog>

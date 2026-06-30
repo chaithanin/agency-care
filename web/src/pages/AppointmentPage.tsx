@@ -13,6 +13,8 @@ import {
 } from '@mui/icons-material';
 import { api } from '../api/client';
 import { useAuth } from '../auth/AuthContext';
+import { ActivityExportDialog } from '../components/ActivityExportDialog';
+import { Download } from '@mui/icons-material';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -27,19 +29,19 @@ const MEETING_TYPES = [
   { key: 'other', label: 'Other', color: '#64748B' },
 ];
 
-const MEETING_ROOMS = ['ห้องประชุม A', 'ห้องประชุม B', 'ห้องโชว์รูม 1', 'ห้องโชว์รูม 2', 'พื้นที่โชว์รูม'];
+const MEETING_ROOMS = ['Meeting Room A', 'Meeting Room B', 'Showroom 1', 'Showroom 2', 'Showroom Area'];
 
 const STATUS: Record<string, { label: string; color: string; bg: string }> = {
-  pending:    { label: 'รอยืนยัน',      color: '#D97706', bg: '#FEF3C7' },
-  confirmed:  { label: 'ยืนยันแล้ว',    color: '#2563EB', bg: '#EFF6FF' },
-  checked_in: { label: 'Check-in แล้ว', color: '#7C3AED', bg: '#F5F3FF' },
-  completed:  { label: 'เสร็จสิ้น',     color: '#16A34A', bg: '#ECFDF5' },
-  cancelled:  { label: 'ยกเลิก',        color: '#DC2626', bg: '#FEF2F2' },
-  no_show:    { label: 'ไม่มาตามนัด',   color: '#6B7280', bg: '#F9FAFB' },
+  pending:    { label: 'Pending',    color: '#D97706', bg: '#FEF3C7' },
+  confirmed:  { label: 'Confirmed',  color: '#2563EB', bg: '#EFF6FF' },
+  checked_in: { label: 'Checked In', color: '#7C3AED', bg: '#F5F3FF' },
+  completed:  { label: 'Completed',  color: '#16A34A', bg: '#ECFDF5' },
+  cancelled:  { label: 'Cancelled',  color: '#DC2626', bg: '#FEF2F2' },
+  no_show:    { label: 'No Show',    color: '#6B7280', bg: '#F9FAFB' },
 };
 
-const DAY_ABBR = ['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส'];
-const MONTHS_TH = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+const DAY_ABBR = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const MONTHS_TH = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const SLOT_HEIGHT = 40;
 const TIME_SLOTS = Array.from({ length: 28 }, (_, i) => {
   const h = Math.floor(i / 2) + 7;
@@ -49,7 +51,7 @@ const TIME_SLOTS = Array.from({ length: 28 }, (_, i) => {
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function fmtDate(d: Date) {
-  return `${d.getDate()} ${MONTHS_TH[d.getMonth()]} ${d.getFullYear() + 543}`;
+  return `${d.getDate()} ${MONTHS_TH[d.getMonth()]} ${d.getFullYear()}`;
 }
 function fmtTime(isoStr?: string) {
   if (!isoStr) return '';
@@ -148,6 +150,9 @@ export default function AppointmentPage() {
   const [filterSearch, setFilterSearch] = useState('');
   const [filterFrom, setFilterFrom] = useState('');
   const [filterTo, setFilterTo] = useState('');
+  const [filterSeller, setFilterSeller] = useState('');
+  const [filterAgency, setFilterAgency] = useState('');
+  const [filterCategory, setFilterCategory] = useState('');
 
   const [agencyOpts, setAgencyOpts] = useState<AgencyOpt[]>([]);
   const [userOpts, setUserOpts] = useState<UserOpt[]>([]);
@@ -155,6 +160,7 @@ export default function AppointmentPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
+  const [exportDialogOpen, setExportDialogOpen] = useState(false);
 
   const fetchDashboard = useCallback(async () => {
     try { const r = await api.get<DashboardData>('/appointments/dashboard'); setDashboard(r.data); } catch { /* ignore */ }
@@ -180,12 +186,15 @@ export default function AppointmentPage() {
       if (filterSearch) p.set('search', filterSearch);
       if (filterFrom) p.set('from', filterFrom);
       if (filterTo) p.set('to', filterTo);
+      if (filterSeller) p.set('saleId', filterSeller);
+      if (filterAgency) p.set('agencyId', filterAgency);
+      if (filterCategory) p.set('meetingType', filterCategory);
       const r = await api.get<{ total: number; items: Appointment[] }>(`/appointments?${p}`);
       setAppts(r.data.items);
       setApptTotal(r.data.total);
-    } catch { setError('โหลดข้อมูลไม่สำเร็จ'); }
+    } catch { setError('Failed to load data'); }
     finally { setLoading(false); }
-  }, [filterStatus, filterSearch, filterFrom, filterTo]);
+  }, [filterStatus, filterSearch, filterFrom, filterTo, filterSeller, filterAgency, filterCategory]);
 
   const fetchDetail = useCallback(async (id: string) => {
     try { const r = await api.get<Appointment>(`/appointments/${id}`); setDetail(r.data); } catch { /* ignore */ }
@@ -225,7 +234,7 @@ export default function AppointmentPage() {
       setAddOpen(false);
       setForm(blankForm());
       fetchDashboard(); fetchEvents(); if (view === 'list') fetchList();
-    } catch (e: any) { setError(e.response?.data?.message ?? 'สร้างนัดหมายไม่สำเร็จ'); }
+    } catch (e: any) { setError(e.response?.data?.message ?? 'Failed to create appointment'); }
     finally { setSaving(false); }
   };
 
@@ -240,7 +249,7 @@ export default function AppointmentPage() {
       });
       setEditOpen(false);
       fetchDetail(detail.id); fetchDashboard(); fetchEvents();
-    } catch { setError('บันทึกไม่สำเร็จ'); }
+    } catch { setError('Failed to save'); }
     finally { setSaving(false); }
   };
 
@@ -250,7 +259,7 @@ export default function AppointmentPage() {
     try {
       await api.post(`/appointments/${detail.id}/${action}`, data ?? {});
       fetchDetail(detail.id); fetchDashboard(); fetchEvents();
-    } catch { setError('ดำเนินการไม่สำเร็จ'); }
+    } catch { setError('Action failed'); }
     finally { setSaving(false); }
   };
 
@@ -266,7 +275,7 @@ export default function AppointmentPage() {
       });
       setReportOpen(false);
       fetchDetail(detail.id);
-    } catch { setError('บันทึก Report ไม่สำเร็จ'); }
+    } catch { setError('Failed to save report'); }
     finally { setSaving(false); }
   };
 
@@ -333,44 +342,45 @@ export default function AppointmentPage() {
                 }
               }}
               renderInput={p => <TextField {...p} label="Agency *" size="small" fullWidth />}
+
             />
           </Grid>
           <Grid item xs={12} sm={4}>
             <FormControl size="small" fullWidth>
-              <InputLabel>ประเภทนัด</InputLabel>
-              <Select value={form.apptType} label="ประเภทนัด" onChange={e => setForm(f => ({ ...f, apptType: e.target.value }))}>
+              <InputLabel>Appointment Type</InputLabel>
+              <Select value={form.apptType} label="Appointment Type" onChange={e => setForm(f => ({ ...f, apptType: e.target.value }))}>
                 <MenuItem value="showroom">🏢 Showroom Visit</MenuItem>
-                <MenuItem value="site_visit">🚗 Site Visit</MenuItem>
+                <MenuItem value="site_visit">🚗 Field Visit</MenuItem>
               </Select>
             </FormControl>
           </Grid>
           <Grid item xs={12} sm={6}>
-            <TextField size="small" fullWidth label="ผู้ติดต่อ" value={form.contactPerson} onChange={e => setForm(f => ({ ...f, contactPerson: e.target.value }))} />
+            <TextField size="small" fullWidth label="Contact Person" value={form.contactPerson} onChange={e => setForm(f => ({ ...f, contactPerson: e.target.value }))} />
           </Grid>
           <Grid item xs={12} sm={6}>
-            <TextField size="small" fullWidth label="เบอร์โทร" value={form.contactPhone} onChange={e => setForm(f => ({ ...f, contactPhone: e.target.value }))} />
+            <TextField size="small" fullWidth label="Phone Number" value={form.contactPhone} onChange={e => setForm(f => ({ ...f, contactPhone: e.target.value }))} />
           </Grid>
           <Grid item xs={12} sm={4}>
-            <TextField size="small" fullWidth label="วันที่ *" type="date" value={form.apptDate} onChange={e => setForm(f => ({ ...f, apptDate: e.target.value }))} InputLabelProps={{ shrink: true }} />
+            <TextField size="small" fullWidth label="Date *" type="date" value={form.apptDate} onChange={e => setForm(f => ({ ...f, apptDate: e.target.value }))} InputLabelProps={{ shrink: true }} />
           </Grid>
           <Grid item xs={12} sm={4}>
-            <TextField size="small" fullWidth label="เวลาเริ่ม" type="time" value={form.startTime} onChange={e => setForm(f => ({ ...f, startTime: e.target.value }))} InputLabelProps={{ shrink: true }} inputProps={{ step: 900 }} />
+            <TextField size="small" fullWidth label="Start Time" type="time" value={form.startTime} onChange={e => setForm(f => ({ ...f, startTime: e.target.value }))} InputLabelProps={{ shrink: true }} inputProps={{ step: 900 }} />
           </Grid>
           <Grid item xs={12} sm={4}>
-            <TextField size="small" fullWidth label="เวลาสิ้นสุด" type="time" value={form.endTime} onChange={e => setForm(f => ({ ...f, endTime: e.target.value }))} InputLabelProps={{ shrink: true }} inputProps={{ step: 900 }} />
+            <TextField size="small" fullWidth label="End Time" type="time" value={form.endTime} onChange={e => setForm(f => ({ ...f, endTime: e.target.value }))} InputLabelProps={{ shrink: true }} inputProps={{ step: 900 }} />
           </Grid>
           <Grid item xs={12} sm={6}>
             <FormControl size="small" fullWidth>
-              <InputLabel>ประเภทการประชุม</InputLabel>
-              <Select value={form.meetingType} label="ประเภทการประชุม" onChange={e => setForm(f => ({ ...f, meetingType: e.target.value }))}>
+              <InputLabel>Meeting Type</InputLabel>
+              <Select value={form.meetingType} label="Meeting Type" onChange={e => setForm(f => ({ ...f, meetingType: e.target.value }))}>
                 {MEETING_TYPES.map(m => <MenuItem key={m.key} value={m.key}>{m.label}</MenuItem>)}
               </Select>
             </FormControl>
           </Grid>
           <Grid item xs={12} sm={6}>
             <FormControl size="small" fullWidth>
-              <InputLabel>ห้องประชุม</InputLabel>
-              <Select value={form.meetingRoom} label="ห้องประชุม" onChange={e => setForm(f => ({ ...f, meetingRoom: e.target.value }))}>
+              <InputLabel>Meeting Room</InputLabel>
+              <Select value={form.meetingRoom} label="Meeting Room" onChange={e => setForm(f => ({ ...f, meetingRoom: e.target.value }))}>
                 <MenuItem value="">—</MenuItem>
                 {MEETING_ROOMS.map(r => <MenuItem key={r} value={r}>{r}</MenuItem>)}
               </Select>
@@ -381,7 +391,7 @@ export default function AppointmentPage() {
               options={userOpts} getOptionLabel={o => o.name}
               value={userOpts.find(u => u.id === form.saleId) ?? null}
               onChange={(_, v) => setForm(f => ({ ...f, saleId: v?.id ?? '', saleName: v?.name ?? '' }))}
-              renderInput={p => <TextField {...p} label="Sale" size="small" fullWidth />}
+              renderInput={p => <TextField {...p} label="Sales" size="small" fullWidth />}
             />
           </Grid>
           <Grid item xs={12} sm={6}>
@@ -389,21 +399,21 @@ export default function AppointmentPage() {
               options={userOpts} getOptionLabel={o => o.name}
               value={userOpts.find(u => u.id === form.closerId) ?? null}
               onChange={(_, v) => setForm(f => ({ ...f, closerId: v?.id ?? '', closerName: v?.name ?? '' }))}
-              renderInput={p => <TextField {...p} label="Closer (ไม่บังคับ)" size="small" fullWidth />}
+              renderInput={p => <TextField {...p} label="Closer (optional)" size="small" fullWidth />}
             />
           </Grid>
           <Grid item xs={12}>
-            <TextField size="small" fullWidth label="วัตถุประสงค์" value={form.purpose} onChange={e => setForm(f => ({ ...f, purpose: e.target.value }))} />
+            <TextField size="small" fullWidth label="Purpose" value={form.purpose} onChange={e => setForm(f => ({ ...f, purpose: e.target.value }))} />
           </Grid>
           <Grid item xs={12}>
-            <TextField size="small" fullWidth label="หมายเหตุ" value={form.notes} multiline rows={2} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} />
+            <TextField size="small" fullWidth label="Notes" value={form.notes} multiline rows={2} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} />
           </Grid>
         </Grid>
       </DialogContent>
       <DialogActions>
-        <Button onClick={onClose}>ยกเลิก</Button>
+        <Button onClick={onClose}>Cancel</Button>
         <Button variant="contained" onClick={onSave} disabled={saving || !form.agencyId}>
-          {saving ? <CircularProgress size={20} /> : 'บันทึก'}
+          {saving ? <CircularProgress size={20} /> : 'Save'}
         </Button>
       </DialogActions>
     </Dialog>
@@ -415,9 +425,9 @@ export default function AppointmentPage() {
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
         <Box>
           <Typography variant="h5" fontWeight={700}>Activity Calendar</Typography>
-          <Typography variant="body2" color="text.secondary">ปฏิทินกิจกรรมรวม · Showroom Appointment · Site Visit</Typography>
+          <Typography variant="body2" color="text.secondary">Combined Calendar · Showroom Appointments · Field Visits</Typography>
         </Box>
-        <Button variant="contained" startIcon={<Add />} onClick={() => { setForm(blankForm()); setAddOpen(true); }}>นัดหมายใหม่</Button>
+        <Button variant="contained" startIcon={<Add />} onClick={() => { setForm(blankForm()); setAddOpen(true); }}>New Appointment</Button>
       </Box>
 
       {error && <Alert severity="error" onClose={() => setError('')} sx={{ mb: 2 }}>{error}</Alert>}
@@ -425,9 +435,9 @@ export default function AppointmentPage() {
       {/* Tabs */}
       <Paper sx={{ mb: 2 }}>
         <Tabs value={view} onChange={(_, v) => setView(v)} sx={{ borderBottom: '1px solid #E2E8F0', px: 2 }}>
-          <Tab value="dashboard" label="Dashboard" icon={<DashboardIcon />} iconPosition="start" />
-          <Tab value="calendar" label="ปฏิทิน" icon={<CalendarMonth />} iconPosition="start" />
-          <Tab value="list" label="รายการทั้งหมด" icon={<ViewList />} iconPosition="start" />
+          <Tab value="dashboard" label="Overview" icon={<DashboardIcon />} iconPosition="start" />
+          <Tab value="calendar" label="Calendar" icon={<CalendarMonth />} iconPosition="start" />
+          <Tab value="list" label="All Appointments" icon={<ViewList />} iconPosition="start" />
         </Tabs>
       </Paper>
 
@@ -438,12 +448,12 @@ export default function AppointmentPage() {
             <>
               <Grid container spacing={2} mb={3}>
                 {[
-                  { label: 'นัดหมายวันนี้', value: dashboard.total,     color: '#4F46E5' },
-                  { label: 'ยืนยันแล้ว',   value: dashboard.confirmed, color: '#2563EB' },
-                  { label: 'รอยืนยัน',     value: dashboard.pending,   color: '#D97706' },
-                  { label: 'เสร็จสิ้น',    value: dashboard.completed, color: '#16A34A' },
-                  { label: 'ไม่มาตามนัด', value: dashboard.noShow,    color: '#6B7280' },
-                  { label: 'ยกเลิก',       value: dashboard.cancelled, color: '#DC2626' },
+                  { label: "Today's Appointments", value: dashboard.total,     color: '#4F46E5' },
+                  { label: 'Confirmed',             value: dashboard.confirmed, color: '#2563EB' },
+                  { label: 'Pending',               value: dashboard.pending,   color: '#D97706' },
+                  { label: 'Completed',             value: dashboard.completed, color: '#16A34A' },
+                  { label: 'No Show',               value: dashboard.noShow,    color: '#6B7280' },
+                  { label: 'Cancelled',             value: dashboard.cancelled, color: '#DC2626' },
                 ].map(k => (
                   <Grid item xs={6} sm={4} md={2} key={k.label}>
                     <Card variant="outlined" sx={{ borderTop: `3px solid ${k.color}` }}>
@@ -458,11 +468,11 @@ export default function AppointmentPage() {
 
               <Paper variant="outlined" sx={{ p: 2 }}>
                 <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-                  <Typography variant="subtitle1" fontWeight={700}>📅 วันนี้ — {fmtDate(new Date())}</Typography>
+                  <Typography variant="subtitle1" fontWeight={700}>📅 Today — {fmtDate(new Date())}</Typography>
                   <IconButton size="small" onClick={fetchDashboard}><Refresh /></IconButton>
                 </Box>
                 {dashboard.todayItems.length === 0 ? (
-                  <Typography color="text.secondary">ไม่มีนัดหมายวันนี้</Typography>
+                  <Typography color="text.secondary">No appointments today</Typography>
                 ) : (
                   <Stack spacing={1.5}>
                     {dashboard.todayItems.map(a => (
@@ -479,7 +489,7 @@ export default function AppointmentPage() {
                             {a.apptNo} · {MEETING_TYPES.find(m => m.key === a.meetingType)?.label ?? a.meetingType}
                             {a.meetingRoom && ` · ${a.meetingRoom}`}
                           </Typography>
-                          {a.sale && <Typography variant="caption" color="text.secondary">Sale: {a.sale.name}{a.closer && ` · Closer: ${a.closer.name}`}</Typography>}
+                          {a.sale && <Typography variant="caption" color="text.secondary">Sales: {a.sale.name}{a.closer && ` · Closer: ${a.closer.name}`}</Typography>}
                         </Box>
                         <StatusChip s={a.status} />
                       </Box>
@@ -502,18 +512,18 @@ export default function AppointmentPage() {
             <Box display="flex" alignItems="center" gap={1}>
               <IconButton onClick={() => navigate(-1)}><ChevronLeft /></IconButton>
               <Typography variant="h6" fontWeight={700} minWidth={240} textAlign="center">
-                {calMode === 'month' && `${MONTHS_TH[curDate.getMonth()]} ${curDate.getFullYear() + 543}`}
+                {calMode === 'month' && `${MONTHS_TH[curDate.getMonth()]} ${curDate.getFullYear()}`}
                 {calMode === 'week' && (() => { const w = getWeekDays(curDate); return `${fmtDate(w[0])} — ${fmtDate(w[6])}`; })()}
                 {calMode === 'day' && fmtDate(curDate)}
               </Typography>
               <IconButton onClick={() => navigate(1)}><ChevronRight /></IconButton>
-              <Button size="small" variant="outlined" onClick={() => setCurDate(new Date())}>วันนี้</Button>
+              <Button size="small" variant="outlined" onClick={() => setCurDate(new Date())}>Today</Button>
             </Box>
             <Box display="flex" gap={1} alignItems="center">
               <ToggleButtonGroup value={calMode} exclusive onChange={(_, v) => v && setCalMode(v)} size="small">
-                <ToggleButton value="month">เดือน</ToggleButton>
-                <ToggleButton value="week">สัปดาห์</ToggleButton>
-                <ToggleButton value="day">วัน</ToggleButton>
+                <ToggleButton value="month">Month</ToggleButton>
+                <ToggleButton value="week">Week</ToggleButton>
+                <ToggleButton value="day">Day</ToggleButton>
               </ToggleButtonGroup>
               <IconButton size="small" onClick={fetchEvents}><Refresh /></IconButton>
             </Box>
@@ -521,7 +531,7 @@ export default function AppointmentPage() {
 
           {/* Legend */}
           <Box display="flex" gap={1} flexWrap="wrap" mb={1.5}>
-            {[['#16A34A','🚗 Site Visit'],['#2563EB','🏢 Showroom'],['#D97706','🎓 Training'],['#DC2626','📝 Contract'],['#7C3AED','📣 Marketing'],['#EA580C','🔄 Follow-up']].map(([c,l])=>
+            {[['#16A34A','🚗 Field Visit'],['#2563EB','🏢 Showroom'],['#D97706','🎓 Training'],['#DC2626','📝 Contract'],['#7C3AED','📣 Marketing'],['#EA580C','🔄 Follow-up']].map(([c,l])=>
               <Chip key={l} size="small" label={l} sx={{ bgcolor: c, color: '#fff', fontWeight: 600, fontSize: 11 }} />
             )}
           </Box>
@@ -639,44 +649,91 @@ export default function AppointmentPage() {
       {view === 'list' && (
         <Box>
           <Paper variant="outlined" sx={{ p: 2, mb: 2 }}>
-            <Box display="flex" gap={1.5} flexWrap="wrap" alignItems="center">
-              <TextField size="small" placeholder="ค้นหา Agency, เลขที่..." value={filterSearch}
-                onChange={e => setFilterSearch(e.target.value)} onKeyDown={e => e.key === 'Enter' && fetchList()}
-                sx={{ minWidth: 200 }} />
-              <FormControl size="small" sx={{ minWidth: 140 }}>
-                <InputLabel>สถานะ</InputLabel>
-                <Select value={filterStatus} label="สถานะ" onChange={e => setFilterStatus(e.target.value)}>
-                  <MenuItem value="">ทั้งหมด</MenuItem>
-                  {Object.entries(STATUS).map(([k, v]) => <MenuItem key={k} value={k}>{v.label}</MenuItem>)}
-                </Select>
-              </FormControl>
-              <TextField size="small" label="ตั้งแต่" type="date" value={filterFrom}
-                onChange={e => setFilterFrom(e.target.value)} InputLabelProps={{ shrink: true }} sx={{ width: 150 }} />
-              <TextField size="small" label="ถึง" type="date" value={filterTo}
-                onChange={e => setFilterTo(e.target.value)} InputLabelProps={{ shrink: true }} sx={{ width: 150 }} />
-              <Button variant="contained" size="small" onClick={fetchList}>ค้นหา</Button>
-              <IconButton size="small" onClick={fetchList}><Refresh /></IconButton>
-            </Box>
+            <Stack spacing={1.5}>
+              {/* First Row: Search and Status */}
+              <Box display="flex" gap={1.5} flexWrap="wrap" alignItems="flex-end">
+                <TextField size="small" placeholder="Search Agency, number..." value={filterSearch}
+                  onChange={e => setFilterSearch(e.target.value)} onKeyDown={e => e.key === 'Enter' && fetchList()}
+                  sx={{ minWidth: 200 }} />
+                <FormControl size="small" sx={{ minWidth: 140 }}>
+                  <InputLabel>Status</InputLabel>
+                  <Select value={filterStatus} label="Status" onChange={e => setFilterStatus(e.target.value)}>
+                    <MenuItem value="">All</MenuItem>
+                    {Object.entries(STATUS).map(([k, v]) => <MenuItem key={k} value={k}>{v.label}</MenuItem>)}
+                  </Select>
+                </FormControl>
+                <TextField size="small" label="From" type="date" value={filterFrom}
+                  onChange={e => setFilterFrom(e.target.value)} InputLabelProps={{ shrink: true }} sx={{ width: 150 }} />
+                <TextField size="small" label="To" type="date" value={filterTo}
+                  onChange={e => setFilterTo(e.target.value)} InputLabelProps={{ shrink: true }} sx={{ width: 150 }} />
+              </Box>
+
+              {/* Second Row: Seller, Agency, Category */}
+              <Box display="flex" gap={1.5} flexWrap="wrap" alignItems="flex-end">
+                <Autocomplete
+                  size="small" options={userOpts} getOptionLabel={o => o.name}
+                  value={userOpts.find(u => u.id === filterSeller) ?? null}
+                  onChange={(_, v) => setFilterSeller(v?.id ?? '')}
+                  sx={{ minWidth: 180, maxWidth: 220 }}
+                  renderInput={p => <TextField {...p} label="Seller" />}
+                />
+                <Autocomplete
+                  size="small" options={agencyOpts} getOptionLabel={o => `${o.name} (${o.code})`}
+                  value={agencyOpts.find(a => a.id === filterAgency) ?? null}
+                  onChange={(_, v) => setFilterAgency(v?.id ?? '')}
+                  onInputChange={(_, v) => searchAgencies(v)}
+                  sx={{ minWidth: 200, maxWidth: 280 }}
+                  renderInput={p => <TextField {...p} label="Agency" />}
+                />
+                <FormControl size="small" sx={{ minWidth: 160 }}>
+                  <InputLabel>Category</InputLabel>
+                  <Select value={filterCategory} label="Category" onChange={e => setFilterCategory(e.target.value)}>
+                    <MenuItem value="">All</MenuItem>
+                    {MEETING_TYPES.map(m => <MenuItem key={m.key} value={m.key}>{m.label}</MenuItem>)}
+                  </Select>
+                </FormControl>
+
+                {/* Action Buttons */}
+                <Button variant="contained" size="small" onClick={fetchList}>Search</Button>
+                <IconButton size="small" onClick={fetchList} title="Refresh"><Refresh /></IconButton>
+                <Button size="small" variant="outlined" startIcon={<Download />} onClick={() => setExportDialogOpen(true)}>Export PDF</Button>
+
+                {/* Clear/Reset Button - Show if any filters are active */}
+                {(filterStatus || filterSearch || filterFrom || filterTo || filterSeller || filterAgency || filterCategory) && (
+                  <Button variant="outlined" size="small" onClick={() => {
+                    setFilterStatus('');
+                    setFilterSearch('');
+                    setFilterFrom('');
+                    setFilterTo('');
+                    setFilterSeller('');
+                    setFilterAgency('');
+                    setFilterCategory('');
+                  }}>
+                    Clear Filters
+                  </Button>
+                )}
+              </Box>
+            </Stack>
           </Paper>
           <Paper>
             {loading ? <Box p={6} textAlign="center"><CircularProgress /></Box> : (
               <>
-                <Box px={2} py={1}><Typography variant="caption" color="text.secondary">ทั้งหมด {apptTotal} รายการ</Typography></Box>
-                <Table size="small">
+                <Box px={2} py={1}><Typography variant="caption" color="text.secondary">Total {apptTotal} records</Typography></Box>
+                <Table id="appointments-table" size="small">
                   <TableHead>
                     <TableRow sx={{ bgcolor: '#F8FAFC' }}>
-                      {['เลขที่','วันที่','เวลา','Agency','ประเภท','ห้อง','Sale','สถานะ',''].map(h => (
+                      {['No.','Date','Time','Agency','Type','Room','Sales','Status',''].map(h => (
                         <TableCell key={h} sx={{ fontWeight: 700 }}>{h}</TableCell>
                       ))}
                     </TableRow>
                   </TableHead>
                   <TableBody>
                     {appts.length === 0 ? (
-                      <TableRow><TableCell colSpan={9} align="center" sx={{ py: 6, color: 'text.secondary' }}>ไม่มีนัดหมาย</TableCell></TableRow>
+                      <TableRow><TableCell colSpan={9} align="center" sx={{ py: 6, color: 'text.secondary' }}>No appointments</TableCell></TableRow>
                     ) : appts.map(a => (
                       <TableRow key={a.id} hover sx={{ cursor: 'pointer' }} onClick={() => { setDetailId(a.id); setDetail(null); }}>
                         <TableCell><Typography variant="body2" fontWeight={700} color="primary">{a.apptNo}</Typography></TableCell>
-                        <TableCell><Typography variant="body2">{new Date(a.apptDate).toLocaleDateString('th-TH')}</Typography></TableCell>
+                        <TableCell><Typography variant="body2">{new Date(a.apptDate).toLocaleDateString('en-GB')}</Typography></TableCell>
                         <TableCell><Typography variant="body2">{fmtTime(a.startTime)}–{fmtTime(a.endTime)}</Typography></TableCell>
                         <TableCell>
                           <Typography variant="body2" fontWeight={600}>{a.agency?.name}</Typography>
@@ -689,7 +746,7 @@ export default function AppointmentPage() {
                         <TableCell><Typography variant="body2">{a.meetingRoom ?? '—'}</Typography></TableCell>
                         <TableCell><Typography variant="body2">{a.sale?.name ?? '—'}</Typography></TableCell>
                         <TableCell><StatusChip s={a.status} /></TableCell>
-                        <TableCell><Tooltip title="รายละเอียด"><IconButton size="small"><Assignment /></IconButton></Tooltip></TableCell>
+                        <TableCell><Tooltip title="Details"><IconButton size="small"><Assignment /></IconButton></Tooltip></TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -701,8 +758,8 @@ export default function AppointmentPage() {
       )}
 
       {/* ── ADD/EDIT DIALOGS ── */}
-      <FormDialog open={addOpen} title="สร้างนัดหมายใหม่" onClose={() => setAddOpen(false)} onSave={handleCreate} />
-      <FormDialog open={editOpen} title="แก้ไขนัดหมาย" onClose={() => setEditOpen(false)} onSave={handleUpdate} />
+      <FormDialog open={addOpen} title="Create New Appointment" onClose={() => setAddOpen(false)} onSave={handleCreate} />
+      <FormDialog open={editOpen} title="Edit Appointment" onClose={() => setEditOpen(false)} onSave={handleUpdate} />
 
       {/* ── DETAIL DIALOG ── */}
       {detailId && (
@@ -732,7 +789,7 @@ export default function AppointmentPage() {
                   <Box display="flex" gap={1} alignItems="center">
                     <Schedule sx={{ color: 'text.secondary', fontSize: 20 }} />
                     <Typography variant="body2">
-                      {new Date(detail.apptDate).toLocaleDateString('th-TH', { dateStyle: 'long', timeZone: 'Asia/Bangkok' })} · {fmtTime(detail.startTime)} – {fmtTime(detail.endTime)}
+                      {new Date(detail.apptDate).toLocaleDateString('en-GB', { dateStyle: 'long', timeZone: 'Asia/Bangkok' })} · {fmtTime(detail.startTime)} – {fmtTime(detail.endTime)}
                     </Typography>
                   </Box>
                   {detail.meetingRoom && (
@@ -751,30 +808,30 @@ export default function AppointmentPage() {
                   <Box display="flex" gap={1} flexWrap="wrap">
                     <Chip label={MEETING_TYPES.find(m => m.key === detail.meetingType)?.label ?? detail.meetingType}
                       size="small" sx={{ bgcolor: getColor(detail.apptType, detail.meetingType), color: '#fff' }} />
-                    {detail.sale && <Chip label={`Sale: ${detail.sale.name}`} size="small" variant="outlined" />}
+                    {detail.sale && <Chip label={`Sales: ${detail.sale.name}`} size="small" variant="outlined" />}
                     {detail.closer && <Chip label={`Closer: ${detail.closer.name}`} size="small" variant="outlined" />}
                   </Box>
-                  {detail.purpose && <Typography variant="body2"><strong>วัตถุประสงค์:</strong> {detail.purpose}</Typography>}
+                  {detail.purpose && <Typography variant="body2"><strong>Purpose:</strong> {detail.purpose}</Typography>}
                   {detail.checkInAt && (
                     <Alert severity="success" sx={{ py: 0.5 }}>
-                      Check-in: {new Date(detail.checkInAt).toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' })}
-                      {detail.receptionName && ` · ผู้รับ: ${detail.receptionName}`}
+                      Check-in: {new Date(detail.checkInAt).toLocaleString('en-GB', { timeZone: 'Asia/Bangkok' })}
+                      {detail.receptionName && ` · Received by: ${detail.receptionName}`}
                       {detail.meetingRoomActual && ` · ${detail.meetingRoomActual}`}
                     </Alert>
                   )}
                   {detail.report && (
                     <Paper variant="outlined" sx={{ p: 1.5 }}>
-                      <Typography variant="subtitle2" fontWeight={700} mb={1}>📋 Meeting Report</Typography>
+                      <Typography variant="subtitle2" fontWeight={700} mb={1}>📋 Meeting Notes</Typography>
                       {detail.report.interestScore != null && (
                         <Box display="flex" alignItems="center" gap={1} mb={0.5}>
-                          <Typography variant="caption">ความสนใจ:</Typography>
+                          <Typography variant="caption">Interest:</Typography>
                           <Rating value={detail.report.interestScore} max={5} readOnly size="small" />
                         </Box>
                       )}
-                      {detail.report.topics && <Typography variant="body2"><strong>หัวข้อ:</strong> {detail.report.topics}</Typography>}
+                      {detail.report.topics && <Typography variant="body2"><strong>Topics:</strong> {detail.report.topics}</Typography>}
                       {!!detail.report.newLeads && <Typography variant="body2"><strong>New Leads:</strong> {detail.report.newLeads}</Typography>}
-                      {detail.report.salesOpportunity && <Typography variant="body2"><strong>โอกาสขาย:</strong> {detail.report.salesOpportunity}</Typography>}
-                      {detail.report.remarks && <Typography variant="body2"><strong>หมายเหตุ:</strong> {detail.report.remarks}</Typography>}
+                      {detail.report.salesOpportunity && <Typography variant="body2"><strong>Sales Opportunity:</strong> {detail.report.salesOpportunity}</Typography>}
+                      {detail.report.remarks && <Typography variant="body2"><strong>Remarks:</strong> {detail.report.remarks}</Typography>}
                     </Paper>
                   )}
                 </Stack>
@@ -784,28 +841,28 @@ export default function AppointmentPage() {
                   <Button size="small" variant="outlined" color="primary" onClick={() => handleAction('confirm')} disabled={saving}>✅ Confirm</Button>
                 )}
                 {['pending', 'confirmed'].includes(detail.status) && (
-                  <Button size="small" variant="outlined" color="secondary" startIcon={<LoginIcon />} onClick={() => setCheckinOpen(true)}>Check-in</Button>
+                  <Button size="small" variant="outlined" color="secondary" startIcon={<LoginIcon />} onClick={() => setCheckinOpen(true)}>Check In</Button>
                 )}
                 {detail.status === 'checked_in' && (
                   <>
-                    <Button size="small" variant="contained" color="success" onClick={() => handleAction('complete')} disabled={saving}>✅ เสร็จสิ้น</Button>
+                    <Button size="small" variant="contained" color="success" onClick={() => handleAction('complete')} disabled={saving}>✅ Complete</Button>
                     <Button size="small" variant="outlined" startIcon={<Assignment />}
                       onClick={() => { setReportForm({ topics: detail.report?.topics ?? '', promotions: detail.report?.promotions ?? '', projects: detail.report?.projects ?? '', newLeads: detail.report?.newLeads ?? 0, salesOpportunity: detail.report?.salesOpportunity ?? '', interestScore: detail.report?.interestScore ?? 3, nextApptDate: '', remarks: detail.report?.remarks ?? '' }); setReportOpen(true); }}>
-                      Meeting Report
+                      Save Meeting Notes
                     </Button>
                   </>
                 )}
                 {detail.status === 'completed' && (
                   <Button size="small" variant="outlined" startIcon={<Assignment />}
                     onClick={() => { setReportForm({ topics: detail.report?.topics ?? '', promotions: detail.report?.promotions ?? '', projects: detail.report?.projects ?? '', newLeads: detail.report?.newLeads ?? 0, salesOpportunity: detail.report?.salesOpportunity ?? '', interestScore: detail.report?.interestScore ?? 3, nextApptDate: '', remarks: detail.report?.remarks ?? '' }); setReportOpen(true); }}>
-                    {detail.report ? 'แก้ไข Report' : 'Meeting Report'}
+                    {detail.report ? 'Edit Report' : 'Save Meeting Notes'}
                   </Button>
                 )}
                 {isCloser && ['pending', 'confirmed', 'checked_in'].includes(detail.status) && (
-                  <Button size="small" color="error" onClick={() => { if (window.confirm('ยืนยันการยกเลิกนัด?')) handleAction('cancel', { reason: '' }); }}>ยกเลิกนัด</Button>
+                  <Button size="small" color="error" onClick={() => { if (window.confirm('Confirm cancellation?')) handleAction('cancel', { reason: '' }); }}>Cancel Appointment</Button>
                 )}
                 {isAdmin && (
-                  <Button size="small" startIcon={<Edit />} onClick={openEdit}>แก้ไข</Button>
+                  <Button size="small" startIcon={<Edit />} onClick={openEdit}>Edit</Button>
                 )}
               </DialogActions>
             </>
@@ -817,29 +874,29 @@ export default function AppointmentPage() {
       <Dialog open={checkinOpen} maxWidth="xs" fullWidth onClose={() => setCheckinOpen(false)}>
         <DialogTitle>
           <Box display="flex" justifyContent="space-between">
-            <Typography fontWeight={700}>Check-in Agency</Typography>
+            <Typography fontWeight={700}>Agency Check-In</Typography>
             <IconButton onClick={() => setCheckinOpen(false)}><Close /></IconButton>
           </Box>
         </DialogTitle>
         <DialogContent dividers>
           <Stack spacing={2} mt={0.5}>
-            <TextField size="small" fullWidth label="ชื่อผู้รับ" value={checkinForm.receptionName}
+            <TextField size="small" fullWidth label="Receptionist Name" value={checkinForm.receptionName}
               onChange={e => setCheckinForm(f => ({ ...f, receptionName: e.target.value }))} />
             <FormControl size="small" fullWidth>
-              <InputLabel>ห้องประชุมจริง</InputLabel>
-              <Select value={checkinForm.meetingRoomActual} label="ห้องประชุมจริง"
+              <InputLabel>Actual Meeting Room</InputLabel>
+              <Select value={checkinForm.meetingRoomActual} label="Actual Meeting Room"
                 onChange={e => setCheckinForm(f => ({ ...f, meetingRoomActual: e.target.value }))}>
                 <MenuItem value="">—</MenuItem>
                 {MEETING_ROOMS.map(r => <MenuItem key={r} value={r}>{r}</MenuItem>)}
               </Select>
             </FormControl>
-            <TextField size="small" fullWidth label="หมายเหตุ" value={checkinForm.notes}
+            <TextField size="small" fullWidth label="Notes" value={checkinForm.notes}
               onChange={e => setCheckinForm(f => ({ ...f, notes: e.target.value }))} multiline rows={2} />
           </Stack>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setCheckinOpen(false)}>ยกเลิก</Button>
-          <Button variant="contained" onClick={handleCheckin} disabled={saving}>Check-in</Button>
+          <Button onClick={() => setCheckinOpen(false)}>Cancel</Button>
+          <Button variant="contained" onClick={handleCheckin} disabled={saving}>Check In</Button>
         </DialogActions>
       </Dialog>
 
@@ -847,22 +904,22 @@ export default function AppointmentPage() {
       <Dialog open={reportOpen} maxWidth="sm" fullWidth onClose={() => setReportOpen(false)}>
         <DialogTitle>
           <Box display="flex" justifyContent="space-between">
-            <Typography fontWeight={700}>Meeting Report</Typography>
+            <Typography fontWeight={700}>Meeting Notes</Typography>
             <IconButton onClick={() => setReportOpen(false)}><Close /></IconButton>
           </Box>
         </DialogTitle>
         <DialogContent dividers>
           <Grid container spacing={2} mt={0}>
             <Grid item xs={12}>
-              <TextField size="small" fullWidth label="หัวข้อที่คุย" value={reportForm.topics}
+              <TextField size="small" fullWidth label="Topics Discussed" value={reportForm.topics}
                 onChange={e => setReportForm(f => ({ ...f, topics: e.target.value }))} multiline rows={2} />
             </Grid>
             <Grid item xs={12} sm={6}>
-              <TextField size="small" fullWidth label="โปรโมชั่น" value={reportForm.promotions}
+              <TextField size="small" fullWidth label="Promotions" value={reportForm.promotions}
                 onChange={e => setReportForm(f => ({ ...f, promotions: e.target.value }))} />
             </Grid>
             <Grid item xs={12} sm={6}>
-              <TextField size="small" fullWidth label="โครงการที่นำเสนอ" value={reportForm.projects}
+              <TextField size="small" fullWidth label="Projects Presented" value={reportForm.projects}
                 onChange={e => setReportForm(f => ({ ...f, projects: e.target.value }))} />
             </Grid>
             <Grid item xs={12} sm={4}>
@@ -870,32 +927,40 @@ export default function AppointmentPage() {
                 onChange={e => setReportForm(f => ({ ...f, newLeads: parseInt(e.target.value) || 0 }))} inputProps={{ min: 0 }} />
             </Grid>
             <Grid item xs={12} sm={8}>
-              <TextField size="small" fullWidth label="โอกาสการขาย" value={reportForm.salesOpportunity}
+              <TextField size="small" fullWidth label="Sales Opportunity" value={reportForm.salesOpportunity}
                 onChange={e => setReportForm(f => ({ ...f, salesOpportunity: e.target.value }))} />
             </Grid>
             <Grid item xs={12} sm={6}>
               <Box>
-                <Typography variant="caption" color="text.secondary" display="block" mb={0.5}>คะแนนความสนใจ</Typography>
+                <Typography variant="caption" color="text.secondary" display="block" mb={0.5}>Interest Score</Typography>
                 <Rating value={reportForm.interestScore} max={5} onChange={(_, v) => setReportForm(f => ({ ...f, interestScore: v ?? 3 }))} />
               </Box>
             </Grid>
             <Grid item xs={12} sm={6}>
-              <TextField size="small" fullWidth label="นัดครั้งต่อไป" type="date" value={reportForm.nextApptDate}
+              <TextField size="small" fullWidth label="Next Appointment" type="date" value={reportForm.nextApptDate}
                 onChange={e => setReportForm(f => ({ ...f, nextApptDate: e.target.value }))} InputLabelProps={{ shrink: true }} />
             </Grid>
             <Grid item xs={12}>
-              <TextField size="small" fullWidth label="หมายเหตุ" value={reportForm.remarks}
+              <TextField size="small" fullWidth label="Remarks" value={reportForm.remarks}
                 onChange={e => setReportForm(f => ({ ...f, remarks: e.target.value }))} multiline rows={2} />
             </Grid>
           </Grid>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setReportOpen(false)}>ยกเลิก</Button>
+          <Button onClick={() => setReportOpen(false)}>Cancel</Button>
           <Button variant="contained" onClick={handleReport} disabled={saving}>
-            {saving ? <CircularProgress size={20} /> : 'บันทึก'}
+            {saving ? <CircularProgress size={20} /> : 'Save'}
           </Button>
         </DialogActions>
       </Dialog>
+
+      <ActivityExportDialog
+        open={exportDialogOpen}
+        onClose={() => setExportDialogOpen(false)}
+        employees={userOpts.map(u => ({ id: u.id, name: u.name }))}
+        tableId="appointments-table"
+        filename="activity-calendar"
+      />
     </Box>
   );
 }

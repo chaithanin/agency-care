@@ -6,6 +6,7 @@ import {
 import { Link } from 'react-router-dom';
 import { api } from '../api/client';
 import { useT } from '../i18n';
+import { ExportPdfButton } from '../components/ExportPdfButton';
 
 interface Summary {
   date: string;
@@ -159,10 +160,13 @@ export default function DashboardPage() {
         {/* Per-seller summary */}
         {data && (
           <Paper sx={{ p: 2 }}>
-            <Typography variant="subtitle1" fontWeight={700} mb={1}>
-              {t('dash.sellerToday')} — {date}
-            </Typography>
-            <Table size="small">
+            <Stack direction="row" justifyContent="space-between" alignItems="center" mb={1} flexWrap="wrap" gap={1}>
+              <Typography variant="subtitle1" fontWeight={700}>
+                {t('dash.sellerToday')} — {date}
+              </Typography>
+              <ExportPdfButton tableId="seller-summary-table" filename="seller-summary" title="Seller Summary" size="small" variant="outlined" />
+            </Stack>
+            <Table size="small" id="seller-summary-table">
               <TableHead>
                 <TableRow>
                   <TableCell>{t('c.seller')}</TableCell>
@@ -201,16 +205,17 @@ export default function DashboardPage() {
         <Paper sx={{ p: 2 }}>
           <Stack direction="row" justifyContent="space-between" alignItems="center" mb={1} flexWrap="wrap" gap={1}>
             <Typography variant="subtitle1" fontWeight={700}>
-              {rangeMode ? 'แผนงาน' : t('dash.todayPlanList')} ({todayPlans.length})
+              {rangeMode ? 'Visit Plan' : t('dash.todayPlanList')} ({todayPlans.length})
             </Typography>
             <Stack direction="row" spacing={1} alignItems="center">
-              <Chip size="small" label={rangeMode ? 'ช่วงวันที่' : 'วันเดียว'}
+              <ExportPdfButton tableId="today-plans-table" filename="today-plans" title="Today's Plans" size="small" variant="outlined" />
+              <Chip size="small" label={rangeMode ? 'Date Range' : 'Single Day'}
                 color={rangeMode ? 'primary' : 'default'} clickable onClick={() => setRangeMode((v) => !v)} />
               {rangeMode && (
                 <>
-                  <TextField size="small" type="date" label="จาก" value={planFrom}
+                  <TextField size="small" type="date" label="From" value={planFrom}
                     onChange={(e) => setPlanFrom(e.target.value)} InputLabelProps={{ shrink: true }} />
-                  <TextField size="small" type="date" label="ถึง" value={planTo}
+                  <TextField size="small" type="date" label="To" value={planTo}
                     onChange={(e) => setPlanTo(e.target.value)} InputLabelProps={{ shrink: true }} />
                 </>
               )}
@@ -218,10 +223,10 @@ export default function DashboardPage() {
           </Stack>
           {plansLoading && <LinearProgress sx={{ mb: 1 }} />}
           <Box sx={{ maxHeight: 400, overflowY: 'auto' }}>
-            <Table size="small" stickyHeader>
+            <Table size="small" stickyHeader id="today-plans-table">
               <TableHead>
                 <TableRow>
-                  {rangeMode && <TableCell>วันที่</TableCell>}
+                  {rangeMode && <TableCell>Date</TableCell>}
                   <TableCell>Agency</TableCell>
                   <TableCell>{t('c.seller')}</TableCell>
                   <TableCell>{t('c.status')}</TableCell>

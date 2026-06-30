@@ -47,8 +47,8 @@ export default function DocPrintPage() {
     if (doc) setTimeout(() => window.print(), 500);
   }, [doc]);
 
-  if (loading) return <div style={{ padding: 40, textAlign: 'center' }}>กำลังโหลด...</div>;
-  if (!doc) return <div style={{ padding: 40 }}>ไม่พบเอกสาร</div>;
+  if (loading) return <div style={{ padding: 40, textAlign: 'center' }}>Loading...</div>;
+  if (!doc) return <div style={{ padding: 40 }}>Document not found</div>;
 
   const scheduleRows = doc.rows.filter(r => r.rowType === 'schedule').sort((a, b) => a.sortOrder - b.sortOrder);
   const kpiRows = doc.rows.filter(r => r.rowType === 'kpi');
@@ -74,7 +74,7 @@ export default function DocPrintPage() {
       {/* Print button — hidden on print */}
       <div className="no-print" style={{ textAlign: 'right', marginBottom: 16 }}>
         <button onClick={() => window.print()} style={{ background: '#1e3a5f', color: '#fff', border: 'none', padding: '8px 20px', borderRadius: 4, cursor: 'pointer', fontSize: 13 }}>
-          🖨️ พิมพ์ / Export PDF
+          🖨️ Print / Export PDF
         </button>
       </div>
 
@@ -90,12 +90,12 @@ export default function DocPrintPage() {
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <tbody>
                   {[
-                    ['เลขที่', doc.docNumber ?? '—'],
-                    ['เดือน', `${MONTH_TH_FULL[doc.month]} ${thaiYear}`],
+                    ['Doc No.', doc.docNumber ?? '—'],
+                    ['Month', `${MONTH_TH_FULL[doc.month]} ${thaiYear}`],
                     ['Version', `${doc.year}-${String(doc.month).padStart(2,'0')} V${doc.version}`],
-                    ['วันที่สร้าง', new Date(doc.createdAt).toLocaleDateString('th-TH')],
-                    ['วันที่อนุมัติ', doc.approvedAt ? new Date(doc.approvedAt).toLocaleDateString('th-TH') : '—'],
-                    ['อนุมัติโดย', doc.approvedBy?.name ?? '—'],
+                    ['Created Date', new Date(doc.createdAt).toLocaleDateString('th-TH')],
+                    ['Approved Date', doc.approvedAt ? new Date(doc.approvedAt).toLocaleDateString('th-TH') : '—'],
+                    ['Approved By', doc.approvedBy?.name ?? '—'],
                   ].map(([k, v]) => (
                     <tr key={k}>
                       <td style={{ border: '1px solid #333', padding: '2px 6px', background: '#f0f4f8', fontWeight: 600, width: 110 }}>{k}</td>
@@ -110,11 +110,11 @@ export default function DocPrintPage() {
       </table>
 
       {/* Employee Info */}
-      <div style={{ background: '#1e3a5f', color: '#fff', padding: '5px 10px', fontWeight: 700, marginBottom: 4, fontSize: 12 }}>ข้อมูลพนักงาน</div>
+      <div style={{ background: '#1e3a5f', color: '#fff', padding: '5px 10px', fontWeight: 700, marginBottom: 4, fontSize: 12 }}>Employee Information</div>
       <table style={{ marginBottom: 12 }}>
         <tbody>
           <tr>
-            {[['รหัสพนักงาน', doc.employee.code], ['ชื่อ-สกุล', doc.employee.name], ['ตำแหน่ง', doc.employee.position], ['ทีม', doc.employee.team?.name ?? '—']].map(([k, v]) => (
+            {[['Employee Code', doc.employee.code], ['Full Name', doc.employee.name], ['Position', doc.employee.position], ['Team', doc.employee.team?.name ?? '—']].map(([k, v]) => (
               <>
                 <td key={`k${k}`} style={{ border: '1px solid #333', background: '#f0f4f8', padding: '4px 8px', fontWeight: 600, width: 100 }}>{k}</td>
                 <td key={`v${k}`} style={{ border: '1px solid #333', padding: '4px 8px', width: 120 }}>{v}</td>
@@ -122,7 +122,7 @@ export default function DocPrintPage() {
             ))}
           </tr>
           <tr>
-            {[['โซน', doc.employee.zone ?? '—'], ['หัวหน้างาน', doc.supervisor?.name ?? '—'], ['Closer', doc.closer?.name ?? '—'], ['วันทำงาน', doc.workingDays ?? '—']].map(([k, v]) => (
+            {[['Zone', doc.employee.zone ?? '—'], ['Supervisor', doc.supervisor?.name ?? '—'], ['Closer', doc.closer?.name ?? '—'], ['Working Days', doc.workingDays ?? '—']].map(([k, v]) => (
               <>
                 <td key={`k${k}`} style={{ border: '1px solid #333', background: '#f0f4f8', padding: '4px 8px', fontWeight: 600, width: 100 }}>{k}</td>
                 <td key={`v${k}`} style={{ border: '1px solid #333', padding: '4px 8px', width: 120 }}>{v}</td>
@@ -133,12 +133,12 @@ export default function DocPrintPage() {
       </table>
 
       {/* KPI Section */}
-      <div style={{ background: '#1e3a5f', color: '#fff', padding: '5px 10px', fontWeight: 700, marginBottom: 4, fontSize: 12 }}>KPI ประจำเดือน</div>
+      <div style={{ background: '#1e3a5f', color: '#fff', padding: '5px 10px', fontWeight: 700, marginBottom: 4, fontSize: 12 }}>Monthly KPI</div>
       <table style={{ marginBottom: 12 }}>
         <thead>
           <tr>
-            <th>KPI</th><th>เป้าหมาย</th>
-            {doc.docType !== 'sva' && <><th>จริง</th><th>Achievement</th></>}
+            <th>KPI</th><th>Target</th>
+            {doc.docType !== 'sva' && <><th>Actual</th><th>Achievement</th></>}
           </tr>
         </thead>
         <tbody>
@@ -170,16 +170,16 @@ export default function DocPrintPage() {
       {/* Schedule (SVA/SVR) */}
       {(doc.docType === 'sva' || doc.docType === 'svr') && scheduleRows.length > 0 && (
         <>
-          <div style={{ background: '#1e3a5f', color: '#fff', padding: '5px 10px', fontWeight: 700, marginBottom: 4, fontSize: 12 }}>ตารางปฏิบัติงาน</div>
+          <div style={{ background: '#1e3a5f', color: '#fff', padding: '5px 10px', fontWeight: 700, marginBottom: 4, fontSize: 12 }}>Work Schedule</div>
           <table style={{ marginBottom: 12, fontSize: 10.5 }}>
             <thead>
               <tr>
-                <th style={{ width: 70 }}>วันที่</th><th style={{ width: 50 }}>เวลา</th>
-                <th>Agency</th><th>ผู้ติดต่อ</th><th>จังหวัด</th>
-                <th style={{ width: 80 }}>ประเภท</th><th style={{ width: 65 }}>Priority</th>
-                <th style={{ width: 80 }}>สถานะ</th>
-                {doc.docType === 'svr' && <th>ผลการเยี่ยม</th>}
-                <th>หมายเหตุ</th>
+                <th style={{ width: 70 }}>Date</th><th style={{ width: 50 }}>Time</th>
+                <th>Agency</th><th>Contact Person</th><th>Province</th>
+                <th style={{ width: 80 }}>Type</th><th style={{ width: 65 }}>Priority</th>
+                <th style={{ width: 80 }}>Status</th>
+                {doc.docType === 'svr' && <th>Visit Result</th>}
+                <th>Remarks</th>
               </tr>
             </thead>
             <tbody>
@@ -205,10 +205,10 @@ export default function DocPrintPage() {
       {/* Responsibilities (SVA) */}
       {doc.docType === 'sva' && (
         <>
-          <div style={{ background: '#1e3a5f', color: '#fff', padding: '5px 10px', fontWeight: 700, marginBottom: 4, fontSize: 12 }}>ความรับผิดชอบของพนักงาน</div>
+          <div style={{ background: '#1e3a5f', color: '#fff', padding: '5px 10px', fontWeight: 700, marginBottom: 4, fontSize: 12 }}>Employee Responsibilities</div>
           <div style={{ border: '1px solid #333', padding: '8px 12px', marginBottom: 12, fontSize: 11 }}>
-            {['โทร Confirm ก่อนเข้าเยี่ยม', 'Check-in ผ่าน GPS', 'ถ่ายรูปอย่างน้อย 3 รูป',
-              'บันทึกผลการเข้าเยี่ยม', 'สร้าง Follow-up Task', 'ปิดงานภายในวันเดียวกัน'].map(r => (
+            {['Call to confirm before visiting', 'Check-in via GPS', 'Take at least 3 photos',
+              'Record visit result', 'Create Follow-up Task', 'Close task on the same day'].map(r => (
               <div key={r}>□ {r}</div>
             ))}
           </div>
@@ -220,7 +220,7 @@ export default function DocPrintPage() {
         <>
           <div style={{ background: '#1e3a5f', color: '#fff', padding: '5px 10px', fontWeight: 700, marginBottom: 4, fontSize: 12 }}>Activity Summary</div>
           <table style={{ marginBottom: 12 }}>
-            <thead><tr><th>กิจกรรม</th><th style={{ width: 60 }}>ดำเนินการ</th></tr></thead>
+            <thead><tr><th>Activity</th><th style={{ width: 60 }}>Completed</th></tr></thead>
             <tbody>
               {activityRows.map(row => (
                 <tr key={row.id}>{cell(row.activityName)}<td style={{ border: '1px solid #333', padding: '4px 8px', textAlign: 'center' }}>{row.activityDone ? '✓' : '□'}</td></tr>
@@ -233,11 +233,11 @@ export default function DocPrintPage() {
       {/* Evaluations (SVR/MPA) */}
       {doc.supervisorComment && (
         <>
-          <div style={{ background: '#1e3a5f', color: '#fff', padding: '5px 10px', fontWeight: 700, marginBottom: 4, fontSize: 12 }}>ความเห็นหัวหน้างาน</div>
+          <div style={{ background: '#1e3a5f', color: '#fff', padding: '5px 10px', fontWeight: 700, marginBottom: 4, fontSize: 12 }}>Supervisor Comments</div>
           <div style={{ border: '1px solid #333', padding: '8px 12px', marginBottom: 8, fontSize: 11 }}>
-            {doc.supervisorScore != null && <div>คะแนน: <strong>{doc.supervisorScore}/100</strong></div>}
+            {doc.supervisorScore != null && <div>Score: <strong>{doc.supervisorScore}/100</strong></div>}
             <div>{doc.supervisorComment}</div>
-            {doc.supervisorPlan && <div style={{ marginTop: 4 }}>แผนพัฒนา: {doc.supervisorPlan}</div>}
+            {doc.supervisorPlan && <div style={{ marginTop: 4 }}>Development Plan: {doc.supervisorPlan}</div>}
           </div>
         </>
       )}
@@ -245,7 +245,7 @@ export default function DocPrintPage() {
       {/* Notes */}
       {doc.notes && (
         <div style={{ border: '1px solid #333', padding: '8px 12px', marginBottom: 12, fontSize: 11 }}>
-          <strong>หมายเหตุ:</strong> {doc.notes}
+          <strong>Remarks:</strong> {doc.notes}
         </div>
       )}
 
@@ -257,13 +257,13 @@ export default function DocPrintPage() {
       )}
 
       {/* Signatures */}
-      <div style={{ background: '#1e3a5f', color: '#fff', padding: '5px 10px', fontWeight: 700, marginBottom: 8, fontSize: 12 }}>ลายเซ็น</div>
+      <div style={{ background: '#1e3a5f', color: '#fff', padding: '5px 10px', fontWeight: 700, marginBottom: 8, fontSize: 12 }}>Signatures</div>
       <table style={{ marginBottom: 16 }}>
         <tbody>
           <tr>
             {['employee','supervisor','manager'].map(type => {
               const sig = signedMap.get(type);
-              const label = type === 'employee' ? 'ผู้ปฏิบัติงาน' : type === 'supervisor' ? 'หัวหน้างาน' : 'ผู้จัดการ';
+              const label = type === 'employee' ? 'Employee' : type === 'supervisor' ? 'Supervisor' : 'Manager';
               return (
                 <td key={type} style={{ border: '1px solid #333', padding: 12, width: '33%', textAlign: 'center' }}>
                   <div style={{ fontWeight: 600, marginBottom: 8 }}>{label}</div>
@@ -271,13 +271,13 @@ export default function DocPrintPage() {
                     <>
                       <img src={sig.signatureData} alt="sig" style={{ height: 50, maxWidth: '80%', objectFit: 'contain', display: 'block', margin: '0 auto 4px' }} />
                       <div style={{ fontSize: 10, color: '#555' }}>{sig.signedBy.name}</div>
-                      <div style={{ fontSize: 10, color: '#555' }}>วันที่: {new Date(sig.signedAt).toLocaleDateString('th-TH')}</div>
+                      <div style={{ fontSize: 10, color: '#555' }}>Date: {new Date(sig.signedAt).toLocaleDateString('th-TH')}</div>
                     </>
                   ) : (
                     <>
                       <div className="sig-box" style={{ height: 50 }} />
-                      <div style={{ marginTop: 6, fontSize: 10 }}>ชื่อ: __________________________</div>
-                      <div style={{ fontSize: 10 }}>วันที่: _________________________</div>
+                      <div style={{ marginTop: 6, fontSize: 10 }}>Name: __________________________</div>
+                      <div style={{ fontSize: 10 }}>Date: _________________________</div>
                     </>
                   )}
                 </td>
@@ -290,9 +290,9 @@ export default function DocPrintPage() {
       {/* QR Code placeholder */}
       <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 12, marginTop: 8 }}>
         <div style={{ fontSize: 9, color: '#999', textAlign: 'right' }}>
-          <div>เอกสารอ้างอิง: {doc.docNumber}</div>
-          <div>Version: {doc.version} | สถานะ: {doc.status}</div>
-          <div>สร้างโดย: {doc.createdBy.name}</div>
+          <div>Reference: {doc.docNumber}</div>
+          <div>Version: {doc.version} | Status: {doc.status}</div>
+          <div>Created by: {doc.createdBy.name}</div>
           <div>URL: /docs/{doc.id}</div>
         </div>
         {/* Simple QR placeholder — real QR requires qrcode library */}

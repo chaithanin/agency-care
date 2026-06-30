@@ -3,13 +3,14 @@ import { useParams, useNavigate } from 'react-router-dom';
 import {
   Box, Typography, Paper, Grid, Card, Chip, Tabs, Tab, Table,
   TableHead, TableRow, TableCell, TableBody, Button, Avatar, LinearProgress,
-  CircularProgress, Alert, Divider,
+  CircularProgress, Alert, Divider, Stack,
 } from '@mui/material';
 import {
   ArrowBack, Assignment, DirectionsWalk, School, Assessment, Description,
   BeachAccess, ReceiptLong, EmojiEvents,
 } from '@mui/icons-material';
 import { api } from '../api/client';
+import { ExportPdfButton } from '../components/ExportPdfButton';
 
 const GRADE_COLOR: Record<string, string> = { A: '#16A34A', B: '#2563EB', C: '#D97706', D: '#DC2626' };
 const MONTH_TH = ['','ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
@@ -55,7 +56,7 @@ export default function EmployeeFilePage() {
   }, [id]);
 
   if (loading) return <Box p={6} textAlign="center"><CircularProgress /></Box>;
-  if (!emp) return <Alert severity="error" sx={{ m: 3 }}>ไม่พบข้อมูลพนักงาน</Alert>;
+  if (!emp) return <Alert severity="error" sx={{ m: 3 }}>Employee not found</Alert>;
 
   const latestKpi = emp.kpiTargets?.[0];
   const totalLeave = emp.leaveRequests?.reduce((s, l) => s + l.days, 0) ?? 0;
@@ -66,7 +67,7 @@ export default function EmployeeFilePage() {
     <Box p={3}>
       {/* Header */}
       <Box display="flex" alignItems="center" gap={1} mb={3}>
-        <Button startIcon={<ArrowBack />} onClick={() => navigate('/employees')}>กลับ</Button>
+        <Button startIcon={<ArrowBack />} onClick={() => navigate('/employees')}>Back</Button>
         <Typography variant="h5" fontWeight={700} flex={1}>{emp.name}</Typography>
         <Chip label={emp.isActive ? 'Active' : 'Inactive'} color={emp.isActive ? 'success' : 'default'} />
       </Box>
@@ -79,17 +80,17 @@ export default function EmployeeFilePage() {
           </Grid>
           <Grid item xs>
             <Typography variant="h5" fontWeight={700}>{emp.name}</Typography>
-            <Typography color="text.secondary">{emp.code} · {emp.position} · {emp.team?.name ?? 'ไม่มีทีม'}</Typography>
+            <Typography color="text.secondary">{emp.code} · {emp.position} · {emp.team?.name ?? 'No Team'}</Typography>
             <Typography color="text.secondary">📞 {emp.phone ?? '—'} · 📍 {emp.zone ?? '—'}</Typography>
             {emp.user && <Typography color="text.secondary" variant="body2">✉️ {emp.user.email}</Typography>}
           </Grid>
           {latestEval && (
             <Grid item xs={12} sm="auto" textAlign="center">
-              <Typography variant="caption" color="text.secondary">ผลประเมินล่าสุด</Typography>
+              <Typography variant="caption" color="text.secondary">Latest Evaluation</Typography>
               <Typography variant="h2" fontWeight={700} sx={{ color: GRADE_COLOR[latestEval.grade ?? ''] ?? '#666' }}>
                 {latestEval.grade ?? '—'}
               </Typography>
-              <Typography variant="caption">คะแนน {latestEval.overallScore ?? '—'}/100</Typography>
+              <Typography variant="caption">Score {latestEval.overallScore ?? '—'}/100</Typography>
             </Grid>
           )}
         </Grid>
@@ -98,14 +99,14 @@ export default function EmployeeFilePage() {
         {latestKpi && (
           <Box mt={2}>
             <Divider sx={{ mb: 2 }} />
-            <Typography variant="subtitle2" color="text.secondary" mb={1}>KPI เป้าหมาย {MONTH_TH[latestKpi.month]} {latestKpi.year + 543}</Typography>
+            <Typography variant="subtitle2" color="text.secondary" mb={1}>KPI Target {MONTH_TH[latestKpi.month]} {latestKpi.year + 543}</Typography>
             <Grid container spacing={2}>
               {[
                 ['Site Visit', latestKpi.siteVisit],
                 ['Follow-up', latestKpi.followUp],
                 ['New Agency', latestKpi.newAgency],
-                ['ใบลาใช้', totalLeave, 'วัน'],
-                ['งานค้าง', pendingTasks, 'งาน'],
+                ['Leave Used', totalLeave, 'days'],
+                ['Pending Tasks', pendingTasks, 'tasks'],
               ].map(([label, val, unit]) => (
                 <Grid item xs={6} sm={2.4} key={String(label)}>
                   <Card variant="outlined" sx={{ textAlign: 'center', py: 1 }}>
@@ -123,13 +124,13 @@ export default function EmployeeFilePage() {
       <Paper>
         <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ borderBottom: '1px solid #E2E8F0', px: 2 }}>
           {[
-            { label: 'งาน', icon: <Assignment /> },
+            { label: 'Tasks', icon: <Assignment /> },
             { label: 'Site Visit', icon: <DirectionsWalk /> },
-            { label: 'การอบรม', icon: <School /> },
-            { label: 'ผลประเมิน', icon: <Assessment /> },
-            { label: 'เอกสาร', icon: <Description /> },
-            { label: 'ใบลา', icon: <BeachAccess /> },
-            { label: 'ค่าใช้จ่าย', icon: <ReceiptLong /> },
+            { label: 'Training', icon: <School /> },
+            { label: 'Evaluations', icon: <Assessment /> },
+            { label: 'Documents', icon: <Description /> },
+            { label: 'Leave', icon: <BeachAccess /> },
+            { label: 'Expenses', icon: <ReceiptLong /> },
             { label: 'PR', icon: <EmojiEvents /> },
           ].map((t, i) => <Tab key={i} label={t.label} icon={t.icon} iconPosition="start" sx={{ minHeight: 48 }} />)}
         </Tabs>
@@ -137,9 +138,12 @@ export default function EmployeeFilePage() {
         {/* Tasks */}
         <TabPanel value={tab} index={0}>
           <Box p={2}>
-            <Table size="small">
+            <Stack direction="row" gap={1} mb={2} justifyContent="flex-end">
+              <ExportPdfButton tableId="tasks-table" filename="employee-tasks" title={`Tasks - ${emp.name}`} size="small" />
+            </Stack>
+            <Table size="small" id="tasks-table">
               <TableHead><TableRow sx={{ bgcolor: '#F8FAFC' }}>
-                {['งาน','Priority','กำหนด','สถานะ'].map(h => <TableCell key={h} sx={{ fontWeight: 700 }}>{h}</TableCell>)}
+                {['Task','Priority','Due Date','Status'].map(h => <TableCell key={h} sx={{ fontWeight: 700 }}>{h}</TableCell>)}
               </TableRow></TableHead>
               <TableBody>
                 {(emp.tasks ?? []).slice(0, 20).map(t => (
@@ -150,7 +154,7 @@ export default function EmployeeFilePage() {
                     <TableCell><Chip label={t.status} size="small" color={t.status === 'done' ? 'success' : 'default'} /></TableCell>
                   </TableRow>
                 ))}
-                {!emp.tasks?.length && <TableRow><TableCell colSpan={4} align="center" sx={{ py: 4, color: 'text.secondary' }}>ไม่มีงาน</TableCell></TableRow>}
+                {!emp.tasks?.length && <TableRow><TableCell colSpan={4} align="center" sx={{ py: 4, color: 'text.secondary' }}>No tasks</TableCell></TableRow>}
               </TableBody>
             </Table>
           </Box>
@@ -159,9 +163,9 @@ export default function EmployeeFilePage() {
         {/* Site Visit — placeholder pulling from employee.visitPlans relation */}
         <TabPanel value={tab} index={1}>
           <Box p={2}>
-            <Typography color="text.secondary" textAlign="center" py={4}>ประวัติ Site Visit — ดูได้ที่ Site Visit Report</Typography>
+            <Typography color="text.secondary" textAlign="center" py={4}>Site Visit History — view in Site Visit Report</Typography>
             <Box textAlign="center">
-              <Button variant="outlined" onClick={() => navigate(`/site-visit-report?employeeId=${emp.id}`)}>ดู Site Visit Report</Button>
+              <Button variant="outlined" onClick={() => navigate(`/site-visit-report?employeeId=${emp.id}`)}>View Site Visit Report</Button>
             </Box>
           </Box>
         </TabPanel>
@@ -169,9 +173,12 @@ export default function EmployeeFilePage() {
         {/* Training */}
         <TabPanel value={tab} index={2}>
           <Box p={2}>
-            <Table size="small">
+            <Stack direction="row" gap={1} mb={2} justifyContent="flex-end">
+              <ExportPdfButton tableId="training-table" filename="employee-training" title={`Training - ${emp.name}`} size="small" />
+            </Stack>
+            <Table size="small" id="training-table">
               <TableHead><TableRow sx={{ bgcolor: '#F8FAFC' }}>
-                {['หลักสูตร','วันที่','ชั่วโมง','คะแนน','ผล'].map(h => <TableCell key={h} sx={{ fontWeight: 700 }}>{h}</TableCell>)}
+                {['Course','Date','Hours','Score','Result'].map(h => <TableCell key={h} sx={{ fontWeight: 700 }}>{h}</TableCell>)}
               </TableRow></TableHead>
               <TableBody>
                 {trainings.map(t => (
@@ -180,10 +187,10 @@ export default function EmployeeFilePage() {
                     <TableCell>{new Date(t.trainingDate).toLocaleDateString('th-TH')}</TableCell>
                     <TableCell>{t.hours ?? '—'}</TableCell>
                     <TableCell>{t.score ?? '—'}</TableCell>
-                    <TableCell><Chip label={t.passed ? 'ผ่าน' : 'ไม่ผ่าน'} size="small" color={t.passed ? 'success' : 'error'} /></TableCell>
+                    <TableCell><Chip label={t.passed ? 'Passed' : 'Failed'} size="small" color={t.passed ? 'success' : 'error'} /></TableCell>
                   </TableRow>
                 ))}
-                {!trainings.length && <TableRow><TableCell colSpan={5} align="center" sx={{ py: 4, color: 'text.secondary' }}>ไม่มีประวัติการอบรม</TableCell></TableRow>}
+                {!trainings.length && <TableRow><TableCell colSpan={5} align="center" sx={{ py: 4, color: 'text.secondary' }}>No training history</TableCell></TableRow>}
               </TableBody>
             </Table>
           </Box>
@@ -192,9 +199,12 @@ export default function EmployeeFilePage() {
         {/* Evaluations */}
         <TabPanel value={tab} index={3}>
           <Box p={2}>
-            <Table size="small">
+            <Stack direction="row" gap={1} mb={2} justifyContent="flex-end">
+              <ExportPdfButton tableId="evaluations-table" filename="employee-evaluations" title={`Evaluations - ${emp.name}`} size="small" />
+            </Stack>
+            <Table size="small" id="evaluations-table">
               <TableHead><TableRow sx={{ bgcolor: '#F8FAFC' }}>
-                {['เดือน','KPI','พฤติกรรม','รวม','เกรด','ประเมินโดย'].map(h => <TableCell key={h} sx={{ fontWeight: 700 }}>{h}</TableCell>)}
+                {['Month','KPI','Behavior','Total','Grade','Evaluated By'].map(h => <TableCell key={h} sx={{ fontWeight: 700 }}>{h}</TableCell>)}
               </TableRow></TableHead>
               <TableBody>
                 {evaluations.map(e => (
@@ -214,7 +224,7 @@ export default function EmployeeFilePage() {
                     <TableCell>{e.evaluatedBy?.name ?? '—'}</TableCell>
                   </TableRow>
                 ))}
-                {!evaluations.length && <TableRow><TableCell colSpan={6} align="center" sx={{ py: 4, color: 'text.secondary' }}>ไม่มีผลประเมิน</TableCell></TableRow>}
+                {!evaluations.length && <TableRow><TableCell colSpan={6} align="center" sx={{ py: 4, color: 'text.secondary' }}>No evaluations</TableCell></TableRow>}
               </TableBody>
             </Table>
           </Box>
@@ -223,9 +233,12 @@ export default function EmployeeFilePage() {
         {/* Documents */}
         <TabPanel value={tab} index={4}>
           <Box p={2}>
-            <Table size="small">
+            <Stack direction="row" gap={1} mb={2} justifyContent="flex-end">
+              <ExportPdfButton tableId="documents-table" filename="employee-documents" title={`Documents - ${emp.name}`} size="small" />
+            </Stack>
+            <Table size="small" id="documents-table">
               <TableHead><TableRow sx={{ bgcolor: '#F8FAFC' }}>
-                {['เลขที่','ประเภท','เดือน','สถานะ'].map(h => <TableCell key={h} sx={{ fontWeight: 700 }}>{h}</TableCell>)}
+                {['Number','Type','Month','Status'].map(h => <TableCell key={h} sx={{ fontWeight: 700 }}>{h}</TableCell>)}
               </TableRow></TableHead>
               <TableBody>
                 {(emp.documents ?? []).map(d => (
@@ -236,7 +249,7 @@ export default function EmployeeFilePage() {
                     <TableCell><Chip label={d.status} size="small" /></TableCell>
                   </TableRow>
                 ))}
-                {!emp.documents?.length && <TableRow><TableCell colSpan={4} align="center" sx={{ py: 4, color: 'text.secondary' }}>ไม่มีเอกสาร</TableCell></TableRow>}
+                {!emp.documents?.length && <TableRow><TableCell colSpan={4} align="center" sx={{ py: 4, color: 'text.secondary' }}>No documents</TableCell></TableRow>}
               </TableBody>
             </Table>
           </Box>
@@ -245,9 +258,12 @@ export default function EmployeeFilePage() {
         {/* Leave */}
         <TabPanel value={tab} index={5}>
           <Box p={2}>
-            <Table size="small">
+            <Stack direction="row" gap={1} mb={2} justifyContent="flex-end">
+              <ExportPdfButton tableId="leave-table" filename="employee-leave" title={`Leave Requests - ${emp.name}`} size="small" />
+            </Stack>
+            <Table size="small" id="leave-table">
               <TableHead><TableRow sx={{ bgcolor: '#F8FAFC' }}>
-                {['ประเภท','วันเริ่ม','วันสิ้นสุด','จำนวน','สถานะ'].map(h => <TableCell key={h} sx={{ fontWeight: 700 }}>{h}</TableCell>)}
+                {['Type','Start Date','End Date','Days','Status'].map(h => <TableCell key={h} sx={{ fontWeight: 700 }}>{h}</TableCell>)}
               </TableRow></TableHead>
               <TableBody>
                 {(emp.leaveRequests ?? []).map(l => (
@@ -255,11 +271,11 @@ export default function EmployeeFilePage() {
                     <TableCell>{l.leaveType}</TableCell>
                     <TableCell>{new Date(l.startDate).toLocaleDateString('th-TH')}</TableCell>
                     <TableCell>{new Date(l.endDate).toLocaleDateString('th-TH')}</TableCell>
-                    <TableCell>{l.days} วัน</TableCell>
+                    <TableCell>{l.days} days</TableCell>
                     <TableCell><Chip label={l.status} size="small" color={l.status === 'approved' ? 'success' : l.status === 'rejected' ? 'error' : 'default'} /></TableCell>
                   </TableRow>
                 ))}
-                {!emp.leaveRequests?.length && <TableRow><TableCell colSpan={5} align="center" sx={{ py: 4, color: 'text.secondary' }}>ไม่มีใบลา</TableCell></TableRow>}
+                {!emp.leaveRequests?.length && <TableRow><TableCell colSpan={5} align="center" sx={{ py: 4, color: 'text.secondary' }}>No leave requests</TableCell></TableRow>}
               </TableBody>
             </Table>
           </Box>
@@ -268,9 +284,12 @@ export default function EmployeeFilePage() {
         {/* Expenses */}
         <TabPanel value={tab} index={6}>
           <Box p={2}>
-            <Table size="small">
+            <Stack direction="row" gap={1} mb={2} justifyContent="flex-end">
+              <ExportPdfButton tableId="expenses-table" filename="employee-expenses" title={`Expenses - ${emp.name}`} size="small" />
+            </Stack>
+            <Table size="small" id="expenses-table">
               <TableHead><TableRow sx={{ bgcolor: '#F8FAFC' }}>
-                {['วันที่','ประเภท','จำนวน','รายละเอียด','สถานะ'].map(h => <TableCell key={h} sx={{ fontWeight: 700 }}>{h}</TableCell>)}
+                {['Date','Type','Amount','Details','Status'].map(h => <TableCell key={h} sx={{ fontWeight: 700 }}>{h}</TableCell>)}
               </TableRow></TableHead>
               <TableBody>
                 {expenses.map(e => (
@@ -282,7 +301,7 @@ export default function EmployeeFilePage() {
                     <TableCell><Chip label={e.status} size="small" color={e.status === 'approved' ? 'success' : e.status === 'rejected' ? 'error' : 'default'} /></TableCell>
                   </TableRow>
                 ))}
-                {!expenses.length && <TableRow><TableCell colSpan={5} align="center" sx={{ py: 4, color: 'text.secondary' }}>ไม่มีค่าใช้จ่าย</TableCell></TableRow>}
+                {!expenses.length && <TableRow><TableCell colSpan={5} align="center" sx={{ py: 4, color: 'text.secondary' }}>No expenses</TableCell></TableRow>}
               </TableBody>
             </Table>
           </Box>
@@ -291,7 +310,7 @@ export default function EmployeeFilePage() {
         {/* PR */}
         <TabPanel value={tab} index={7}>
           <Box p={2} textAlign="center" color="text.secondary" py={4}>
-            <Button variant="outlined" onClick={() => navigate('/pr')}>ดู PR Tracking</Button>
+            <Button variant="outlined" onClick={() => navigate('/pr')}>View PR Tracking</Button>
           </Box>
         </TabPanel>
       </Paper>

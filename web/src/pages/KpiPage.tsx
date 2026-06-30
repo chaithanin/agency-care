@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, useMemo } from 'react';
 import {
   Box,
   Typography,
@@ -26,6 +26,7 @@ import {
 import RefreshIcon from '@mui/icons-material/Refresh';
 import { api } from '../api/client';
 import { PdfExportButton } from '../utils/pdf';
+import { ExportPdfButton } from '../components/ExportPdfButton';
 import { useT } from '../i18n';
 import { useAuth } from '../auth/AuthContext';
 
@@ -161,7 +162,7 @@ function SalesKpiView({ kpi }: { kpi: EmployeeKpi }) {
           <MetricCard label={t('kpi.followup')} actual={kpi.followupActual} />
         </Grid>
         <Grid item xs={12} sm={6} md={3}>
-          <MetricCard label={t('kpi.sales')} actual={isNaN(salesNum) ? 0 : salesNum} suffix=" บาท" />
+          <MetricCard label={t('kpi.sales')} actual={isNaN(salesNum) ? 0 : salesNum} suffix=" THB" />
         </Grid>
       </Grid>
       {/* Activity breakdown */}
@@ -192,15 +193,44 @@ function SalesKpiView({ kpi }: { kpi: EmployeeKpi }) {
 
 // ─── Admin / team table ───────────────────────────────────────────────────────
 
-function TeamKpiTable({ rows, searchQ }: { rows: TeamKpiRow[]; searchQ: string }) {
+function TeamKpiTable({
+  rows,
+  searchQ,
+  dateRangeStart,
+  dateRangeEnd,
+}: {
+  rows: TeamKpiRow[];
+  searchQ: string;
+  dateRangeStart?: string;
+  dateRangeEnd?: string;
+}) {
   const { t } = useT();
-  const filtered = searchQ
-    ? rows.filter((r) => (r.employee?.name ?? '').toLowerCase().includes(searchQ.toLowerCase()) ||
-        (r.employee?.code ?? '').toLowerCase().includes(searchQ.toLowerCase()))
-    : rows;
+  const filtered = useMemo(() => {
+    let result = rows;
+
+    // Filter by search query
+    if (searchQ) {
+      result = result.filter((r) =>
+        (r.employee?.name ?? '').toLowerCase().includes(searchQ.toLowerCase()) ||
+        (r.employee?.code ?? '').toLowerCase().includes(searchQ.toLowerCase())
+      );
+    }
+
+    // Filter by date range (period)
+    if (dateRangeStart || dateRangeEnd) {
+      result = result.filter((r) => {
+        const rPeriod = r.period;
+        if (dateRangeStart && rPeriod < dateRangeStart) return false;
+        if (dateRangeEnd && rPeriod > dateRangeEnd) return false;
+        return true;
+      });
+    }
+
+    return result;
+  }, [rows, searchQ, dateRangeStart, dateRangeEnd]);
 
   return (
-    <Paper variant="outlined" sx={{ overflowX: 'auto' }}>
+    <Paper id="kpi-table" variant="outlined" sx={{ overflowX: 'auto' }}>
       <Table size="small">
         <TableHead>
           <TableRow>
@@ -321,6 +351,10 @@ export default function KpiPage() {
   const [teamKpi, setTeamKpi] = useState<TeamKpiRow[]>([]);
   const [orgKpi, setOrgKpi] = useState<OrgKpi | null>(null);
 
+  // Filter states
+  const [dateRangeStart, setDateRangeStart] = useState<string>('');
+  const [dateRangeEnd, setDateRangeEnd] = useState<string>('');
+
   const activeRole = user?.activeRole;
   const employeeId = user?.employee?.id ?? '';
 
@@ -361,6 +395,12 @@ export default function KpiPage() {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  // Reset filters when data changes
+  useEffect(() => {
+    setDateRangeStart('');
+    setDateRangeEnd('');
+  }, [period]);
 
   return (
     <Box ref={pdfRef}>
@@ -484,27 +524,153 @@ export default function KpiPage() {
             <>
               <Divider />
               <Box>
-                <Stack direction="row" justifyContent="space-between" alignItems="center" mb={1} flexWrap="wrap" gap={1}>
-                  <Typography variant="subtitle1" fontWeight={600}>
-                    {t('kpi.individualTitle')}
-                  </Typography>
-                  <Stack direction="row" spacing={1} alignItems="center">
-                    <TextField size="small" label={t('c.searchSeller')} value={sellerSearch}
-                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSellerSearch(e.target.value)} sx={{ width: 200 }} />
-                    <Button size="small" variant="outlined" onClick={() => {
-                      const headers = ['ชื่อ', 'รหัส', 'เยี่ยม', 'เป้า', '%', 'Agency', 'Call', 'Orientation', 'ลูกค้า', 'Holding', 'ติดตาม', 'ยอดขาย'];
+                <Typography variant="subtitle1" fontWeight={600} mb={2}>
+                  {t('kpi.individualTitle')}
+                </Typography>
+
+                {/* Filter Section */}
+                <Paper
+                  variant="outlined"
+                  sx={{
+                    p: 2,
+                    mb: 2,
+                    backgroundColor: 'background.default',
+                    borderRadius: 1,
+                  }}
+                >
+                  <Stack spacing={2}>
+                    <Typography variant="subtitle2" fontWeight={600}>
+                      {t('c.filters')} / {t('c.search')}
+                    </Typography>
+
+                    <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems="flex-end">
+                      {/* Text search */}
+                      <TextField
+                        size="small"
+                        label={t('c.searchSeller')}
+                        placeholder="Name or code"
+                        value={sellerSearch}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSellerSearch(e.target.value)}
+                        sx={{ width: { xs: '100%', sm: 200 } }}
+                      />
+
+                      {/* Date range start */}
+                      <TextField
+                        size="small"
+                        type="month"
+                        label="From (YYYY-MM)"
+                        value={dateRangeStart}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setDateRangeStart(e.target.value)}
+                        InputLabelProps={{ shrink: true }}
+                        sx={{ width: { xs: '100%', sm: 160 } }}
+                      />
+
+                      {/* Date range end */}
+                      <TextField
+                        size="small"
+                        type="month"
+                        label="To (YYYY-MM)"
+                        value={dateRangeEnd}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setDateRangeEnd(e.target.value)}
+                        InputLabelProps={{ shrink: true }}
+                        sx={{ width: { xs: '100%', sm: 160 } }}
+                      />
+
+                      {/* Reset filters button */}
+                      {(sellerSearch || dateRangeStart || dateRangeEnd) && (
+                        <Button
+                          size="small"
+                          variant="text"
+                          onClick={() => {
+                            setSellerSearch('');
+                            setDateRangeStart('');
+                            setDateRangeEnd('');
+                          }}
+                        >
+                          {t('c.clearFilters') || 'Clear Filters'}
+                        </Button>
+                      )}
+                    </Stack>
+
+                    {/* Result count */}
+                    <Typography variant="caption" color="text.secondary">
+                      Showing{' '}
+                      {teamKpi
+                        .filter((r) =>
+                          (!sellerSearch ||
+                            (r.employee?.name ?? '').toLowerCase().includes(sellerSearch.toLowerCase()) ||
+                            (r.employee?.code ?? '').toLowerCase().includes(sellerSearch.toLowerCase())) &&
+                          (!dateRangeStart || r.period >= dateRangeStart) &&
+                          (!dateRangeEnd || r.period <= dateRangeEnd)
+                        )
+                        .length.toLocaleString()}{' '}
+                      of {teamKpi.length.toLocaleString()} records
+                    </Typography>
+                  </Stack>
+                </Paper>
+
+                {/* Action buttons and table */}
+                <Stack direction="row" justifyContent="flex-end" spacing={1} mb={2}>
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    onClick={() => {
+                      const headers = ['Name', 'Code', 'Period', 'Visits', 'Target', '%', 'Agency', 'Call', 'Orientation', 'Customer', 'Holding', 'Follow-up', 'Sales'];
                       const rows2 = teamKpi
-                        .filter((r) => !sellerSearch || (r.employee?.name ?? '').toLowerCase().includes(sellerSearch.toLowerCase()) || (r.employee?.code ?? '').toLowerCase().includes(sellerSearch.toLowerCase()))
-                        .map((r) => [r.employee?.name ?? '', r.employee?.code ?? '', r.visitActual, r.visitTarget, r.visitRate, r.newAgencyActual, r.callCount ?? 0, r.orientationCount ?? 0, r.customerCount ?? 0, r.holdingCount ?? 0, r.followupActual, r.salesActual]);
-                      const lines = [headers, ...rows2].map((row) => row.map((c) => `"${String(c ?? '').replace(/"/g, '""')}"`).join(','));
+                        .filter(
+                          (r) =>
+                            (!sellerSearch ||
+                              (r.employee?.name ?? '').toLowerCase().includes(sellerSearch.toLowerCase()) ||
+                              (r.employee?.code ?? '').toLowerCase().includes(sellerSearch.toLowerCase())) &&
+                            (!dateRangeStart || r.period >= dateRangeStart) &&
+                            (!dateRangeEnd || r.period <= dateRangeEnd)
+                        )
+                        .map((r) => [
+                          r.employee?.name ?? '',
+                          r.employee?.code ?? '',
+                          r.period,
+                          r.visitActual,
+                          r.visitTarget,
+                          r.visitRate,
+                          r.newAgencyActual,
+                          r.callCount ?? 0,
+                          r.orientationCount ?? 0,
+                          r.customerCount ?? 0,
+                          r.holdingCount ?? 0,
+                          r.followupActual,
+                          r.salesActual,
+                        ]);
+                      const lines = [headers, ...rows2].map((row) =>
+                        row
+                          .map((c) => `"${String(c ?? '').replace(/"/g, '""')}"`)
+                          .join(',')
+                      );
                       const blob = new Blob(['﻿' + lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
                       const url = URL.createObjectURL(blob);
-                      const a = document.createElement('a'); a.href = url; a.download = `kpi-team-${period}.csv`; a.click();
+                      const a = document.createElement('a');
+                      a.href = url;
+                      a.download = `kpi-team-${period}.csv`;
+                      a.click();
                       URL.revokeObjectURL(url);
-                    }}>Export CSV</Button>
-                  </Stack>
+                    }}
+                  >
+                    Export CSV
+                  </Button>
+                  <ExportPdfButton
+                    tableId="kpi-table"
+                    filename={`kpi-team-${period}.pdf`}
+                    title="KPI Report"
+                    size="small"
+                    variant="outlined"
+                  />
                 </Stack>
-                <TeamKpiTable rows={teamKpi} searchQ={sellerSearch} />
+
+                <TeamKpiTable
+                  rows={teamKpi}
+                  searchQ={sellerSearch}
+                  dateRangeStart={dateRangeStart}
+                  dateRangeEnd={dateRangeEnd}
+                />
               </Box>
             </>
           )}

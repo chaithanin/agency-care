@@ -6,6 +6,7 @@ import {
 } from '@mui/material';
 import { Refresh, Stars, TrendingUp } from '@mui/icons-material';
 import { api, errMsg } from '../api/client';
+import { ExportPdfButton } from '../components/ExportPdfButton';
 
 const GRADE_COLOR: Record<string,string> = { A:'#16A34A', B:'#2563EB', C:'#D97706', D:'#DC2626' };
 
@@ -50,7 +51,7 @@ export default function AgencyScorePage() {
     setError('');
     try {
       const res = await api.post<{ calculated: number }>('/agency-scores/bulk-calculate', { month, year });
-      setSuccess(`คำนวณเสร็จ ${res.data.calculated} Agency`);
+      setSuccess(`Calculation complete — ${res.data.calculated} Agencies`);
       load();
     } catch (e) { setError(errMsg(e)); }
     setCalcLoading(false);
@@ -64,19 +65,20 @@ export default function AgencyScorePage() {
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
         <Box>
           <Box display="flex" alignItems="center" gap={1}><Stars sx={{ color:'#D97706' }} /><Typography variant="h5" fontWeight={700}>Agency Score</Typography></Box>
-          <Typography variant="body2" color="text.secondary">คะแนนประเมิน Agency รายเดือน</Typography>
+          <Typography variant="body2" color="text.secondary">Monthly Agency evaluation scores</Typography>
         </Box>
         <Box display="flex" gap={1} alignItems="center">
           <FormControl size="small" sx={{ minWidth:80 }}>
-            <InputLabel>เดือน</InputLabel>
-            <Select value={month} label="เดือน" onChange={e => setMonth(Number(e.target.value))}>
+            <InputLabel>Month</InputLabel>
+            <Select value={month} label="Month" onChange={e => setMonth(Number(e.target.value))}>
               {Array.from({length:12},(_,i)=><MenuItem key={i+1} value={i+1}>{i+1}</MenuItem>)}
             </Select>
           </FormControl>
-          <TextField size="small" label="ปี" type="number" value={year} onChange={e=>setYear(Number(e.target.value))} sx={{ width:90 }} />
+          <TextField size="small" label="Year" type="number" value={year} onChange={e=>setYear(Number(e.target.value))} sx={{ width:90 }} />
           <Button variant="contained" onClick={calcBulk} disabled={calcLoading} startIcon={<TrendingUp />}>
-            {calcLoading ? 'กำลังคำนวณ...' : 'AI คำนวณ'}
+            {calcLoading ? 'Calculating...' : 'AI Calculate'}
           </Button>
+          <ExportPdfButton tableId="agency-score-table" filename="agency-scores" title="Agency Score" size="small" />
           <IconButton onClick={load}><Refresh /></IconButton>
         </Box>
       </Box>
@@ -101,22 +103,22 @@ export default function AgencyScorePage() {
 
       {/* Tabs */}
       <Box display="flex" gap={1} mb={2}>
-        <Button variant={tab==='leaderboard'?'contained':'outlined'} size="small" onClick={() => setTab('leaderboard')}>Leaderboard</Button>
-        <Button variant={tab==='list'?'contained':'outlined'} size="small" onClick={() => setTab('list')}>ทั้งหมด</Button>
+        <Button variant={tab==='leaderboard'?'contained':'outlined'} size="small" onClick={() => setTab('leaderboard')}>Ranking</Button>
+        <Button variant={tab==='list'?'contained':'outlined'} size="small" onClick={() => setTab('list')}>All</Button>
       </Box>
 
       <Paper>
         {loading ? <Box p={6} textAlign="center"><CircularProgress /></Box> : (
-          <Table size="small">
+          <Table id="agency-score-table" size="small">
             <TableHead><TableRow sx={{ bgcolor:'#F8FAFC' }}>
               {tab==='leaderboard'
-                ? ['#','Agency','Level','Visit','Sales','Growth','Risk','รวม','เกรด'].map(h=><TableCell key={h} sx={{ fontWeight:700 }}>{h}</TableCell>)
-                : ['Agency','Level','เดือน','Visit','Sales','Growth','Risk','รวม','เกรด','หมายเหตุ'].map(h=><TableCell key={h} sx={{ fontWeight:700 }}>{h}</TableCell>)
+                ? ['#','Agency','Level','Visits','Sales','Growth','Risk','Total','Grade'].map(h=><TableCell key={h} sx={{ fontWeight:700 }}>{h}</TableCell>)
+                : ['Agency','Level','Month','Visits','Sales','Growth','Risk','Total','Grade','Notes'].map(h=><TableCell key={h} sx={{ fontWeight:700 }}>{h}</TableCell>)
               }
             </TableRow></TableHead>
             <TableBody>
               {(tab==='leaderboard'?leaderboard:scores).length === 0 ? (
-                <TableRow><TableCell colSpan={10} align="center" sx={{ py:6, color:'text.secondary' }}>ไม่มีข้อมูลคะแนน — คลิก "AI คำนวณ" เพื่อสร้าง</TableCell></TableRow>
+                <TableRow><TableCell colSpan={10} align="center" sx={{ py:6, color:'text.secondary' }}>No score data — click "AI Calculate" to generate</TableCell></TableRow>
               ) : (tab==='leaderboard'?leaderboard:scores).map((s, idx) => (
                 <TableRow key={s.id} hover>
                   {tab==='leaderboard' && <TableCell><Typography fontWeight={700} sx={{ color: idx<3?['#D97706','#6B7280','#92400E'][idx]:'inherit' }}>#{idx+1}</Typography></TableCell>}

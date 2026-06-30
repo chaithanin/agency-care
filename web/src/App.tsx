@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { CircularProgress, Box } from '@mui/material';
 import { useAuth } from './auth/AuthContext';
+import { AppThemeProvider } from './theme/ThemeContext';
 import Layout from './components/Layout';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
@@ -12,7 +13,7 @@ import ProductsPage from './pages/ProductsPage';
 import KpiPage from './pages/KpiPage';
 import ModelsPage from './pages/ModelsPage';
 import RoutePage from './pages/RoutePage';
-import AssignmentPlannerPage from './pages/AssignmentPlannerPage';
+import AssignmentManagementPage from './pages/AssignmentManagementPage';
 import AnalyticsPage from './pages/AnalyticsPage';
 import MyVisitsPage from './pages/MyVisitsPage';
 import VisitDetailPage from './pages/VisitDetailPage';
@@ -27,7 +28,6 @@ import NotificationsPage from './pages/NotificationsPage';
 import SiteVisitReportPage from './pages/SiteVisitReportPage';
 import ReportsPage from './pages/ReportsPage';
 import AgencyInfoFormPage from './pages/AgencyInfoFormPage';
-import AutoAssignPage from './pages/AutoAssignPage';
 import SettingsPage from './pages/SettingsPage';
 import LeavePage from './pages/LeavePage';
 import NotificationCenterPage from './pages/NotificationCenterPage';
@@ -54,6 +54,7 @@ import AppointmentPage from './pages/AppointmentPage';
 import AiRiskPage from './pages/AiRiskPage';
 import AiForecastPage from './pages/AiForecastPage';
 import AiHealthPage from './pages/AiHealthPage';
+import AgencyAcquisitionPage from './pages/AgencyAcquisitionPage';
 
 function Splash() {
   return (
@@ -74,17 +75,20 @@ export default function App() {
 
   if (!user) {
     return (
-      <Routes>
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="*" element={<Navigate to="/login" replace />} />
-      </Routes>
+      <AppThemeProvider>
+        <Routes>
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="*" element={<Navigate to="/login" replace />} />
+        </Routes>
+      </AppThemeProvider>
     );
   }
 
   const isManager = user.activeRole !== 'sales';
 
   return (
-    <Layout>
+    <AppThemeProvider>
+      <Layout>
       <Routes>
         {isManager ? (
           <>
@@ -97,8 +101,10 @@ export default function App() {
             <Route path="/products" element={<ProductsPage />} />
             <Route path="/models" element={<ModelsPage />} />
             <Route path="/kpi" element={<KpiPage />} />
-            <Route path="/auto-assign" element={<AssignmentPlannerPage />} />
-            <Route path="/quick-assign" element={<AutoAssignPage />} />
+            <Route path="/assignments" element={<AssignmentManagementPage />} />
+            <Route path="/assignment-planner" element={<Navigate to="/assignments" replace />} />
+            <Route path="/auto-assign" element={<Navigate to="/assignments?tab=1" replace />} />
+            <Route path="/quick-assign" element={<Navigate to="/assignments?tab=1" replace />} />
             <Route path="/scheduling" element={<SchedulingPage />} />
             <Route path="/calendar" element={<CalendarPage />} />
             <Route path="/seller-performance" element={<SellerPerformancePage />} />
@@ -123,6 +129,7 @@ export default function App() {
             <Route path="/ai-risk" element={<AiRiskPage />} />
             <Route path="/ai-forecast" element={<AiForecastPage />} />
             <Route path="/ai-health" element={<AiHealthPage />} />
+            <Route path="/agency-acquisition" element={<AgencyAcquisitionPage />} />
           </>
         ) : (
           <>
@@ -150,5 +157,6 @@ export default function App() {
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Layout>
+    </AppThemeProvider>
   );
 }

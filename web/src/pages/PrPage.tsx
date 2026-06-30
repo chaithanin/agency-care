@@ -12,6 +12,7 @@ import {
 import { useT } from '../i18n';
 import { api } from '../api/client';
 import { useAuth } from '../auth/AuthContext';
+import { ExportPdfButton } from '../components/ExportPdfButton';
 
 interface PrSummary {
   id: string;
@@ -117,7 +118,7 @@ export default function PrPage() {
       setItems(res.data.items);
       setTotal(res.data.total);
     } catch (e) {
-      setError('โหลดข้อมูลไม่สำเร็จ');
+      setError('Failed to load data');
     } finally {
       setLoading(false);
     }
@@ -127,7 +128,7 @@ export default function PrPage() {
     try {
       const res = await api.get<PrSummary[]>('/pr/export');
       const rows = res.data;
-      const header = ['PR Number', 'Title', 'Department', 'Type', 'Priority', 'Status', 'Budget', 'Due Date', 'Responsible', 'Created By', 'Created At'];
+      const header = ['PR Number', 'Title', 'Department', 'Type', 'Priority', 'Status', 'Budget', 'Due Date', 'Responsible', 'Created By', 'Created Date'];
       const csv = '﻿' + [header, ...rows.map((r) => [
         r.prNumber, r.title, r.department, r.prType, r.priority, r.status,
         r.budgetTotal ?? '', r.dueDate ?? '', r.responsible?.name ?? '', r.createdBy.name,
@@ -142,11 +143,11 @@ export default function PrPage() {
   const departments = useMemo(() => [...new Set(items.map((i) => i.department))].filter(Boolean), [items]);
 
   const kpiCards = dashboard ? [
-    { label: 'ทั้งหมด', value: dashboard.total, icon: <Assignment />, color: '#4F46E5' },
+    { label: 'Total', value: dashboard.total, icon: <Assignment />, color: '#4F46E5' },
     { label: t('prt.open'), value: dashboard.open, icon: <AccessTime />, color: '#0369A1' },
     { label: t('prt.overdue'), value: dashboard.overdue, icon: <Warning />, color: '#DC2626' },
-    { label: 'ปิดวันนี้', value: dashboard.completedToday, icon: <CheckCircle />, color: '#16A34A' },
-    { label: `${t('prt.avgDays')} (วัน)`, value: dashboard.avgClosingDays || '—', icon: <TrendingDown />, color: '#7C3AED' },
+    { label: 'Closed Today', value: dashboard.completedToday, icon: <CheckCircle />, color: '#16A34A' },
+    { label: `${t('prt.avgDays')} (days)`, value: dashboard.avgClosingDays || '—', icon: <TrendingDown />, color: '#7C3AED' },
   ] : [];
 
   return (
@@ -155,9 +156,10 @@ export default function PrPage() {
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
         <Box>
           <Typography variant="h5" fontWeight={700}>{t('prt.module')}</Typography>
-          <Typography variant="body2" color="text.secondary">ติดตาม PR จนกว่าจะปิดงาน — {total} รายการ</Typography>
+          <Typography variant="body2" color="text.secondary">Track PRs until closed — {total} items</Typography>
         </Box>
         <Box display="flex" gap={1}>
+          <ExportPdfButton tableId="pr-table" filename="purchase-requests" title="Purchase Requests" size="small" />
           {isManager && <Button variant="outlined" startIcon={<Download />} onClick={exportCsv}>{t('prt.export')}</Button>}
           <Button variant="contained" startIcon={<Add />} onClick={() => navigate('/pr/create')}>{t('prt.create')}</Button>
         </Box>
@@ -188,7 +190,7 @@ export default function PrPage() {
       <Paper sx={{ p: 2, mb: 2 }}>
         <Box display="flex" flexWrap="wrap" gap={1.5} alignItems="center">
           <TextField
-            size="small" placeholder="ค้นหา PR..." value={search}
+            size="small" placeholder="Search PR..." value={search}
             onChange={(e) => setSearch(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && fetchList()}
             InputProps={{ startAdornment: <Search sx={{ mr: 0.5, color: 'text.secondary', fontSize: 18 }} /> }}
@@ -197,7 +199,7 @@ export default function PrPage() {
           <FormControl size="small" sx={{ minWidth: 160 }}>
             <InputLabel>{t('prt.status')}</InputLabel>
             <Select value={filterStatus} label={t('prt.status')} onChange={(e) => setFilterStatus(e.target.value)}>
-              <MenuItem value="">ทั้งหมด</MenuItem>
+              <MenuItem value="">All</MenuItem>
               {['draft','submitted','waiting_approval','approved','purchasing','ordered','received','completed','cancelled'].map((s) => (
                 <MenuItem key={s} value={s}><StatusChip status={s} t={t} /></MenuItem>
               ))}
@@ -206,7 +208,7 @@ export default function PrPage() {
           <FormControl size="small" sx={{ minWidth: 140 }}>
             <InputLabel>{t('prt.priority')}</InputLabel>
             <Select value={filterPriority} label={t('prt.priority')} onChange={(e) => setFilterPriority(e.target.value)}>
-              <MenuItem value="">ทั้งหมด</MenuItem>
+              <MenuItem value="">All</MenuItem>
               {['low','medium','high','urgent'].map((p) => (
                 <MenuItem key={p} value={p}><PriorityChip priority={p} t={t} /></MenuItem>
               ))}
@@ -215,14 +217,14 @@ export default function PrPage() {
           <FormControl size="small" sx={{ minWidth: 140 }}>
             <InputLabel>{t('prt.department')}</InputLabel>
             <Select value={filterDept} label={t('prt.department')} onChange={(e) => setFilterDept(e.target.value)}>
-              <MenuItem value="">ทั้งหมด</MenuItem>
+              <MenuItem value="">All</MenuItem>
               {departments.map((d) => <MenuItem key={d} value={d}>{d}</MenuItem>)}
             </Select>
           </FormControl>
-          <TextField label="จาก" type="date" size="small" value={from} onChange={(e) => setFrom(e.target.value)} InputLabelProps={{ shrink: true }} />
-          <TextField label="ถึง" type="date" size="small" value={to} onChange={(e) => setTo(e.target.value)} InputLabelProps={{ shrink: true }} />
+          <TextField label="From" type="date" size="small" value={from} onChange={(e) => setFrom(e.target.value)} InputLabelProps={{ shrink: true }} />
+          <TextField label="To" type="date" size="small" value={to} onChange={(e) => setTo(e.target.value)} InputLabelProps={{ shrink: true }} />
           <Button variant="contained" size="small" onClick={fetchList}><Search /></Button>
-          <Tooltip title="รีเฟรช"><IconButton size="small" onClick={() => { fetchList(); fetchDashboard(); }}><Refresh /></IconButton></Tooltip>
+          <Tooltip title="Refresh"><IconButton size="small" onClick={() => { fetchList(); fetchDashboard(); }}><Refresh /></IconButton></Tooltip>
         </Box>
       </Paper>
 
@@ -231,7 +233,7 @@ export default function PrPage() {
         {loading ? (
           <Box p={6} textAlign="center"><CircularProgress /></Box>
         ) : (
-          <Table size="small">
+          <Table id="pr-table" size="small">
             <TableHead>
               <TableRow sx={{ bgcolor: '#F8FAFC' }}>
                 <TableCell sx={{ fontWeight: 700 }}>{t('prt.number')}</TableCell>
@@ -248,7 +250,7 @@ export default function PrPage() {
             <TableBody>
               {items.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={9} align="center" sx={{ py: 6, color: 'text.secondary' }}>ไม่มี PR</TableCell>
+                  <TableCell colSpan={9} align="center" sx={{ py: 6, color: 'text.secondary' }}>No PRs found</TableCell>
                 </TableRow>
               ) : (
                 items.map((pr) => {
@@ -281,7 +283,7 @@ export default function PrPage() {
                         ) : '—'}
                       </TableCell>
                       <TableCell>
-                        <Chip label={`${age} วัน`} size="small" color={age > 14 ? 'error' : age > 7 ? 'warning' : 'default'} />
+                        <Chip label={`${age}d`} size="small" color={age > 14 ? 'error' : age > 7 ? 'warning' : 'default'} />
                       </TableCell>
                     </TableRow>
                   );

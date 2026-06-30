@@ -19,8 +19,8 @@ const STATUS_COLORS: Record<string, string> = {
   approved: '#34D399', signing: '#818CF8', completed: '#22C55E', cancelled: '#EF4444',
 };
 const STATUS_LABELS: Record<string, string> = {
-  draft: 'ร่าง', pending_review: 'รอ Closer ตรวจ', pending_approval: 'รออนุมัติ',
-  approved: 'อนุมัติแล้ว', signing: 'รอลงนาม', completed: 'เสร็จสิ้น', cancelled: 'ยกเลิก',
+  draft: 'Draft', pending_review: 'Pending Closer Review', pending_approval: 'Pending Approval',
+  approved: 'Approved', signing: 'Pending Signature', completed: 'Completed', cancelled: 'Cancelled',
 };
 const NEXT_STATUS: Record<string, string[]> = {
   draft: ['pending_review', 'cancelled'],
@@ -32,11 +32,11 @@ const NEXT_STATUS: Record<string, string[]> = {
   cancelled: [],
 };
 const NEXT_LABEL: Record<string, string> = {
-  pending_review: 'ส่ง Closer ตรวจ', pending_approval: 'ส่งอนุมัติ',
-  approved: 'อนุมัติ', signing: 'ส่งลงนาม', draft: 'ย้อนกลับ', cancelled: 'ยกเลิก',
+  pending_review: 'Submit to Closer', pending_approval: 'Submit for Approval',
+  approved: 'Approve', signing: 'Send for Signature', draft: 'Revert to Draft', cancelled: 'Cancel',
 };
-const MONTH_TH = ['','มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน',
-  'กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+const MONTH_TH = ['','January','February','March','April','May','June',
+  'July','August','September','October','November','December'];
 const VISIT_TYPE_TH: Record<string,string> = { site_visit:'Site Visit', follow_up:'Follow-up', training:'Training', new_agency:'New Agency' };
 const DOC_TITLE: Record<string,string> = { sva:'Site Visit Assignment', svr:'Site Visit Completion Report', mpa:'Monthly Performance Acknowledgement' };
 
@@ -74,10 +74,10 @@ function timeAgo(d: string) {
 }
 
 const AUDIT_LABELS: Record<string,string> = {
-  create:'📝 สร้างเอกสาร', edit:'✏️ แก้ไข', status_change:'🔄 เปลี่ยนสถานะ',
-  employee_sign:'✍️ พนักงานลงนาม', supervisor_sign:'✍️ หัวหน้าลงนาม',
-  manager_sign:'✍️ ผู้จัดการลงนาม', revoke_signature:'🚫 ยกเลิกลายเซ็น',
-  generate_schedule:'🤖 AI สร้างตาราง', new_version:'📄 Version ใหม่', completed:'✅ เสร็จสิ้น',
+  create:'📝 Document Created', edit:'✏️ Edited', status_change:'🔄 Status Changed',
+  employee_sign:'✍️ Employee Signed', supervisor_sign:'✍️ Supervisor Signed',
+  manager_sign:'✍️ Manager Signed', revoke_signature:'🚫 Signature Revoked',
+  generate_schedule:'🤖 AI Generated Schedule', new_version:'📄 New Version', completed:'✅ Completed',
 };
 
 export default function DocDetailPage() {
@@ -156,7 +156,7 @@ export default function DocDetailPage() {
   };
 
   if (loading) return <Box p={6} textAlign="center"><CircularProgress /></Box>;
-  if (!doc) return <Box p={3}><Alert severity="error">{error || 'ไม่พบเอกสาร'}</Alert></Box>;
+  if (!doc) return <Box p={3}><Alert severity="error">{error || 'Document not found'}</Alert></Box>;
 
   const scheduleRows = doc.rows.filter(r => r.rowType === 'schedule').sort((a, b) => a.sortOrder - b.sortOrder);
   const kpiRows = doc.rows.filter(r => r.rowType === 'kpi');
@@ -175,23 +175,23 @@ export default function DocDetailPage() {
           <IconButton onClick={() => navigate('/docs')}><ArrowBack /></IconButton>
           <Box>
             <Typography variant="h5" fontWeight={700}>{doc.docNumber ?? doc.id.slice(0, 12)}</Typography>
-            <Typography variant="body2" color="text.secondary">{DOC_TITLE[doc.docType]} · V{doc.version} · {MONTH_TH[doc.month]} {doc.year + 543}</Typography>
+            <Typography variant="body2" color="text.secondary">{DOC_TITLE[doc.docType]} · V{doc.version} · {MONTH_TH[doc.month]} {doc.year}</Typography>
           </Box>
         </Box>
         <Box display="flex" gap={1} flexWrap="wrap" justifyContent="flex-end" alignItems="center">
           <Chip label={STATUS_LABELS[doc.status] ?? doc.status} sx={{ bgcolor: STATUS_COLORS[doc.status], color: '#fff', fontWeight: 700 }} />
-          {canEdit && <Button size="small" variant="outlined" startIcon={<Edit />} onClick={() => navigate(`/docs/${id}/edit`)}>แก้ไข</Button>}
+          {canEdit && <Button size="small" variant="outlined" startIcon={<Edit />} onClick={() => navigate(`/docs/${id}/edit`)}>Edit</Button>}
           {nextStatuses.length > 0 && (
             <Button size="small" variant="contained" startIcon={<PlayArrow />} onClick={() => { setNewStatus(nextStatuses[0]); setStatusDialog(true); }}>
               {NEXT_LABEL[nextStatuses[0]] ?? nextStatuses[0]}
             </Button>
           )}
-          <Tooltip title="พิมพ์ / Export PDF">
+          <Tooltip title="Print / Export PDF">
             <Button size="small" variant="outlined" startIcon={<Print />} onClick={() => window.open(`/docs/${id}/print`, '_blank')}>PDF</Button>
           </Tooltip>
           {isManager && (
-            <Tooltip title="สร้าง Version ใหม่">
-              <Button size="small" variant="outlined" startIcon={<History />} onClick={() => setVersionDialog(true)}>Version ใหม่</Button>
+            <Tooltip title="Create New Version">
+              <Button size="small" variant="outlined" startIcon={<History />} onClick={() => setVersionDialog(true)}>New Version</Button>
             </Tooltip>
           )}
         </Box>
@@ -204,17 +204,17 @@ export default function DocDetailPage() {
         <Grid item xs={12} md={8}>
           {/* Employee Info */}
           <Paper sx={{ p: 2, mb: 2 }}>
-            <Typography variant="subtitle2" fontWeight={700} mb={1}>ข้อมูลพนักงาน</Typography>
+            <Typography variant="subtitle2" fontWeight={700} mb={1}>Employee Information</Typography>
             <Grid container spacing={1}>
               {[
-                ['รหัส', doc.employee.code],
-                ['ชื่อ', doc.employee.name],
-                ['ตำแหน่ง', doc.employee.position],
-                ['ทีม', doc.employee.team?.name ?? '—'],
-                ['โซน', doc.employee.zone ?? '—'],
-                ['หัวหน้า', doc.supervisor?.name ?? '—'],
+                ['Code', doc.employee.code],
+                ['Name', doc.employee.name],
+                ['Position', doc.employee.position],
+                ['Team', doc.employee.team?.name ?? '—'],
+                ['Zone', doc.employee.zone ?? '—'],
+                ['Supervisor', doc.supervisor?.name ?? '—'],
                 ['Closer', doc.closer?.name ?? '—'],
-                ['อนุมัติโดย', doc.approvedBy?.name ?? '—'],
+                ['Approved By', doc.approvedBy?.name ?? '—'],
               ].map(([label, val]) => (
                 <Grid item xs={6} sm={3} key={label}>
                   <Typography variant="caption" color="text.secondary">{label}</Typography>
@@ -226,7 +226,7 @@ export default function DocDetailPage() {
 
           {/* KPI */}
           <Paper sx={{ p: 2, mb: 2 }}>
-            <Typography variant="subtitle2" fontWeight={700} mb={1}>KPI ประจำเดือน</Typography>
+            <Typography variant="subtitle2" fontWeight={700} mb={1}>Monthly KPI</Typography>
             <Grid container spacing={1}>
               {[
                 ['Site Visit', doc.kpiSiteVisit, doc.actualSiteVisit],
@@ -241,7 +241,7 @@ export default function DocDetailPage() {
                     <Typography variant="h6" fontWeight={700} color="primary">{String(target)}</Typography>
                     {actual != null && (
                       <Typography variant="body2" color={Number(actual) >= Number(target) ? 'success.main' : 'error.main'}>
-                        จริง: {String(actual)}
+                        Actual: {String(actual)}
                       </Typography>
                     )}
                   </Paper>
@@ -253,12 +253,12 @@ export default function DocDetailPage() {
           {/* MPA KPI table */}
           {doc.docType === 'mpa' && kpiRows.length > 0 && (
             <Paper sx={{ p: 2, mb: 2 }}>
-              <Typography variant="subtitle2" fontWeight={700} mb={1}>ผลการปฏิบัติงาน</Typography>
+              <Typography variant="subtitle2" fontWeight={700} mb={1}>Performance Results</Typography>
               <Table size="small">
                 <TableHead><TableRow sx={{ bgcolor: '#F8FAFC' }}>
                   <TableCell sx={{ fontWeight: 600 }}>KPI</TableCell>
-                  <TableCell sx={{ fontWeight: 600 }}>เป้าหมาย</TableCell>
-                  <TableCell sx={{ fontWeight: 600 }}>จริง</TableCell>
+                  <TableCell sx={{ fontWeight: 600 }}>Target</TableCell>
+                  <TableCell sx={{ fontWeight: 600 }}>Actual</TableCell>
                   <TableCell sx={{ fontWeight: 600 }}>Achievement</TableCell>
                 </TableRow></TableHead>
                 <TableBody>
@@ -281,17 +281,17 @@ export default function DocDetailPage() {
           {/* Schedule (SVA/SVR) */}
           {(doc.docType === 'sva' || doc.docType === 'svr') && scheduleRows.length > 0 && (
             <Paper sx={{ p: 2, mb: 2 }}>
-              <Typography variant="subtitle2" fontWeight={700} mb={1}>ตารางปฏิบัติงาน ({scheduleRows.length} รายการ)</Typography>
+              <Typography variant="subtitle2" fontWeight={700} mb={1}>Work Schedule ({scheduleRows.length} items)</Typography>
               <Box sx={{ overflowX: 'auto' }}>
                 <Table size="small">
                   <TableHead><TableRow sx={{ bgcolor: '#F8FAFC' }}>
-                    {['วันที่','เวลา','Agency','ผู้ติดต่อ','จังหวัด','ประเภท','สถานะ'].map(h => <TableCell key={h} sx={{ fontWeight: 600, whiteSpace: 'nowrap' }}>{h}</TableCell>)}
-                    {doc.docType === 'svr' && <TableCell sx={{ fontWeight: 600 }}>ผลการเยี่ยม</TableCell>}
+                    {['Date','Time','Agency','Contact','Province','Type','Status'].map(h => <TableCell key={h} sx={{ fontWeight: 600, whiteSpace: 'nowrap' }}>{h}</TableCell>)}
+                    {doc.docType === 'svr' && <TableCell sx={{ fontWeight: 600 }}>Visit Result</TableCell>}
                   </TableRow></TableHead>
                   <TableBody>
                     {scheduleRows.map(row => (
                       <TableRow key={row.id}>
-                        <TableCell sx={{ whiteSpace: 'nowrap' }}>{row.visitDate ? new Date(row.visitDate).toLocaleDateString('th-TH') : '—'}</TableCell>
+                        <TableCell sx={{ whiteSpace: 'nowrap' }}>{row.visitDate ? new Date(row.visitDate).toLocaleDateString('en-GB') : '—'}</TableCell>
                         <TableCell>{row.visitTime ?? '—'}</TableCell>
                         <TableCell><Typography variant="body2" sx={{ maxWidth: 130, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{row.agencyName}</Typography></TableCell>
                         <TableCell>{row.contactPerson ?? '—'}</TableCell>
@@ -333,15 +333,15 @@ export default function DocDetailPage() {
               {doc.supervisorComment && (
                 <Box mb={2}>
                   <Typography variant="subtitle2" fontWeight={700} mb={0.5}>Supervisor Evaluation</Typography>
-                  {doc.supervisorScore != null && <Chip label={`คะแนน: ${doc.supervisorScore}/100`} color="primary" size="small" sx={{ mb: 1 }} />}
+                  {doc.supervisorScore != null && <Chip label={`Score: ${doc.supervisorScore}/100`} color="primary" size="small" sx={{ mb: 1 }} />}
                   <Typography variant="body2">{doc.supervisorComment}</Typography>
-                  {doc.supervisorPlan && <Typography variant="body2" color="text.secondary" mt={1}>แผนพัฒนา: {doc.supervisorPlan}</Typography>}
+                  {doc.supervisorPlan && <Typography variant="body2" color="text.secondary" mt={1}>Development Plan: {doc.supervisorPlan}</Typography>}
                 </Box>
               )}
               {doc.employeeComment && (
                 <Box>
                   <Divider sx={{ mb: 1 }} />
-                  <Typography variant="subtitle2" fontWeight={700} mb={0.5}>Employee Comment</Typography>
+                  <Typography variant="subtitle2" fontWeight={700} mb={0.5}>Employee Comments</Typography>
                   <Typography variant="body2">{doc.employeeComment}</Typography>
                 </Box>
               )}
@@ -351,7 +351,7 @@ export default function DocDetailPage() {
           {/* Declaration */}
           {doc.declaration && (
             <Paper sx={{ p: 2, mb: 2, bgcolor: '#FAFAF5', border: '1px solid #E5E7EB' }}>
-              <Typography variant="caption" color="text.secondary" display="block" mb={0.5}>การรับทราบ</Typography>
+              <Typography variant="caption" color="text.secondary" display="block" mb={0.5}>Declaration</Typography>
               <Typography variant="body2" fontStyle="italic">"{doc.declaration}"</Typography>
             </Paper>
           )}
@@ -363,11 +363,11 @@ export default function DocDetailPage() {
           <Paper sx={{ p: 2, mb: 2 }}>
             <Box display="flex" alignItems="center" gap={1} mb={2}>
               <Fingerprint sx={{ color: '#7C3AED' }} />
-              <Typography variant="subtitle2" fontWeight={700}>ลายเซ็น</Typography>
+              <Typography variant="subtitle2" fontWeight={700}>Signatures</Typography>
             </Box>
             {doc.requiredSigners.map((signerType) => {
               const sig = signedMap.get(signerType);
-              const signerLabel = signerType === 'employee' ? 'พนักงาน' : signerType === 'supervisor' ? 'หัวหน้างาน' : 'ผู้จัดการ';
+              const signerLabel = signerType === 'employee' ? 'Employee' : signerType === 'supervisor' ? 'Supervisor' : 'Manager';
               return (
                 <Box key={signerType} mb={2} p={1.5} sx={{ border: `1.5px ${sig ? 'solid #22C55E' : 'dashed #CBD5E1'}`, borderRadius: 1 }}>
                   <Box display="flex" justifyContent="space-between" alignItems="center">
@@ -376,15 +376,15 @@ export default function DocDetailPage() {
                       <Typography variant="body2" fontWeight={600}>{signerLabel}</Typography>
                     </Box>
                     {sig ? (
-                      isAdmin && <Button size="small" color="error" onClick={() => { setRevokeDialog(sig.id); setRevokeReason(''); }}>ยกเลิก</Button>
+                      isAdmin && <Button size="small" color="error" onClick={() => { setRevokeDialog(sig.id); setRevokeReason(''); }}>Revoke</Button>
                     ) : (
-                      canSign && <Button size="small" variant="contained" onClick={() => setSignDialog(signerType)}>ลงนาม</Button>
+                      canSign && <Button size="small" variant="contained" onClick={() => setSignDialog(signerType)}>Sign</Button>
                     )}
                   </Box>
                   {sig && (
                     <Box mt={1}>
                       {sig.signatureData && <img src={sig.signatureData} alt="signature" style={{ width: '100%', maxHeight: 60, objectFit: 'contain' }} />}
-                      <Typography variant="caption" color="text.secondary" display="block">{sig.signedBy.name} · {new Date(sig.signedAt).toLocaleDateString('th-TH')}</Typography>
+                      <Typography variant="caption" color="text.secondary" display="block">{sig.signedBy.name} · {new Date(sig.signedAt).toLocaleDateString('en-GB')}</Typography>
                     </Box>
                   )}
                 </Box>
@@ -397,7 +397,7 @@ export default function DocDetailPage() {
             <Paper sx={{ p: 2, mb: 2 }}>
               <Box display="flex" alignItems="center" gap={1} mb={1}>
                 <History sx={{ color: '#6B7280', fontSize: 18 }} />
-                <Typography variant="subtitle2" fontWeight={700}>ประวัติ Version</Typography>
+                <Typography variant="subtitle2" fontWeight={700}>Version History</Typography>
               </Box>
               {doc.versions.map(v => (
                 <Box key={v.id} display="flex" justifyContent="space-between" mb={1}>
@@ -405,7 +405,7 @@ export default function DocDetailPage() {
                     <Typography variant="body2" fontWeight={600}>V{v.version}</Typography>
                     <Typography variant="caption" color="text.secondary">{v.reason}</Typography>
                   </Box>
-                  <Typography variant="caption" color="text.secondary">{new Date(v.createdAt).toLocaleDateString('th-TH')}</Typography>
+                  <Typography variant="caption" color="text.secondary">{new Date(v.createdAt).toLocaleDateString('en-GB')}</Typography>
                 </Box>
               ))}
             </Paper>
@@ -415,7 +415,7 @@ export default function DocDetailPage() {
           <Paper sx={{ p: 2 }}>
             <Box display="flex" alignItems="center" gap={1} mb={1}>
               <HistoryEdu sx={{ color: '#6B7280', fontSize: 18 }} />
-              <Typography variant="subtitle2" fontWeight={700}>Audit Log</Typography>
+              <Typography variant="subtitle2" fontWeight={700}>Activity Log</Typography>
             </Box>
             <Box sx={{ maxHeight: 300, overflow: 'auto' }}>
               {doc.auditLogs.map((log, i) => (
@@ -437,38 +437,38 @@ export default function DocDetailPage() {
 
       {/* Status Change Dialog */}
       <Dialog open={statusDialog} onClose={() => setStatusDialog(false)} maxWidth="xs" fullWidth>
-        <DialogTitle>เปลี่ยนสถานะ</DialogTitle>
+        <DialogTitle>Change Status</DialogTitle>
         <DialogContent>
           <FormControl fullWidth sx={{ mt: 1 }}>
-            <InputLabel>สถานะใหม่</InputLabel>
-            <Select value={newStatus} label="สถานะใหม่" onChange={e => setNewStatus(e.target.value)}>
+            <InputLabel>New Status</InputLabel>
+            <Select value={newStatus} label="New Status" onChange={e => setNewStatus(e.target.value)}>
               {nextStatuses.map(s => (
                 <MenuItem key={s} value={s}><Chip label={STATUS_LABELS[s] ?? s} size="small" sx={{ bgcolor: STATUS_COLORS[s], color: '#fff' }} /></MenuItem>
               ))}
             </Select>
           </FormControl>
-          <TextField label="หมายเหตุ" fullWidth multiline rows={2} sx={{ mt: 2 }} value={statusNote} onChange={e => setStatusNote(e.target.value)} />
+          <TextField label="Remarks" fullWidth multiline rows={2} sx={{ mt: 2 }} value={statusNote} onChange={e => setStatusNote(e.target.value)} />
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setStatusDialog(false)}>ยกเลิก</Button>
+          <Button onClick={() => setStatusDialog(false)}>Cancel</Button>
           <Button variant="contained" onClick={changeStatus} disabled={changingStatus}>
-            {changingStatus ? <CircularProgress size={18} /> : 'ยืนยัน'}
+            {changingStatus ? <CircularProgress size={18} /> : 'Confirm'}
           </Button>
         </DialogActions>
       </Dialog>
 
       {/* Signature Dialog */}
       <Dialog open={Boolean(signDialog)} onClose={() => setSignDialog(null)} maxWidth="sm" fullWidth>
-        <DialogTitle>ลงลายมือชื่อ — {signDialog === 'employee' ? 'พนักงาน' : signDialog === 'supervisor' ? 'หัวหน้างาน' : 'ผู้จัดการ'}</DialogTitle>
+        <DialogTitle>Sign Document — {signDialog === 'employee' ? 'Employee' : signDialog === 'supervisor' ? 'Supervisor' : 'Manager'}</DialogTitle>
         <DialogContent>
           <Typography variant="body2" color="text.secondary" mb={2}>
-            "{doc.declaration ?? 'ข้าพเจ้ารับทราบและยืนยันความถูกต้องของเอกสารฉบับนี้'}"
+            "{doc.declaration ?? 'I acknowledge and confirm the accuracy of this document.'}"
           </Typography>
           {signingInProgress ? <Box textAlign="center"><CircularProgress /></Box> : (
             <SignaturePad
               onSave={handleSign}
               onCancel={() => setSignDialog(null)}
-              label={`ลงนาม (${signDialog})`}
+              label={`Sign (${signDialog})`}
             />
           )}
         </DialogContent>
@@ -476,26 +476,26 @@ export default function DocDetailPage() {
 
       {/* Revoke Dialog */}
       <Dialog open={Boolean(revokeDialog)} onClose={() => setRevokeDialog(null)} maxWidth="xs" fullWidth>
-        <DialogTitle>ยกเลิกลายเซ็น</DialogTitle>
+        <DialogTitle>Revoke Signature</DialogTitle>
         <DialogContent>
-          <TextField label="เหตุผล *" fullWidth multiline rows={2} sx={{ mt: 1 }} value={revokeReason} onChange={e => setRevokeReason(e.target.value)} />
+          <TextField label="Reason *" fullWidth multiline rows={2} sx={{ mt: 1 }} value={revokeReason} onChange={e => setRevokeReason(e.target.value)} />
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setRevokeDialog(null)}>ยกเลิก</Button>
-          <Button variant="contained" color="error" onClick={handleRevoke} disabled={!revokeReason}>ยืนยัน</Button>
+          <Button onClick={() => setRevokeDialog(null)}>Cancel</Button>
+          <Button variant="contained" color="error" onClick={handleRevoke} disabled={!revokeReason}>Confirm</Button>
         </DialogActions>
       </Dialog>
 
       {/* Version Dialog */}
       <Dialog open={versionDialog} onClose={() => setVersionDialog(false)} maxWidth="xs" fullWidth>
-        <DialogTitle>สร้าง Version ใหม่</DialogTitle>
+        <DialogTitle>Create New Version</DialogTitle>
         <DialogContent>
-          <Alert severity="warning" sx={{ mt: 1, mb: 2 }}>ลายเซ็นทั้งหมดจะถูกยกเลิก สถานะจะย้อนกลับเป็น Draft</Alert>
-          <TextField label="เหตุผลการแก้ไข *" fullWidth multiline rows={2} value={versionReason} onChange={e => setVersionReason(e.target.value)} />
+          <Alert severity="warning" sx={{ mt: 1, mb: 2 }}>All signatures will be revoked and the status will revert to Draft.</Alert>
+          <TextField label="Reason for Revision *" fullWidth multiline rows={2} value={versionReason} onChange={e => setVersionReason(e.target.value)} />
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setVersionDialog(false)}>ยกเลิก</Button>
-          <Button variant="contained" onClick={createVersion} disabled={!versionReason}>สร้าง V{(doc.version || 0) + 1}</Button>
+          <Button onClick={() => setVersionDialog(false)}>Cancel</Button>
+          <Button variant="contained" onClick={createVersion} disabled={!versionReason}>Create V{(doc.version || 0) + 1}</Button>
         </DialogActions>
       </Dialog>
     </Box>

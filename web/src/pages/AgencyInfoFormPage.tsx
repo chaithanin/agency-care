@@ -238,7 +238,7 @@ export default function AgencyInfoFormPage() {
           <FormLabel sx={{ fontWeight: 700, fontSize: 15, color: 'text.primary', display: 'block', mb: 1 }}>
             Agency Location
           </FormLabel>
-          <TextField fullWidth size="small" label="Location of the Agency"
+          <TextField fullWidth size="small" label="Agency Location"
             value={p.locationDetail}
             onChange={(e) => setP({ ...p, locationDetail: e.target.value })}
             placeholder={t('aif.locationPlaceholder')} />
@@ -251,7 +251,7 @@ export default function AgencyInfoFormPage() {
           <FormLabel sx={{ fontWeight: 700, fontSize: 15, color: 'text.primary', display: 'block', mb: 1 }}>
             Official Website
           </FormLabel>
-          <YesNo label="Does the agency have an official website?"
+          <YesNo label="Does the Agency have an official website?"
             value={p.hasWebsite} onChange={(v) => setP({ ...p, hasWebsite: v })} />
           {(p.hasWebsite === 'yes' || p.websiteUrl) && (
             <TextField fullWidth size="small" label="Website URL" value={p.websiteUrl}
@@ -269,7 +269,7 @@ export default function AgencyInfoFormPage() {
           </FormLabel>
 
           <Typography variant="body2" fontWeight={600} gutterBottom>
-            Name of Developer Projects Advertised on the Website:
+            Projects advertised on website:
           </Typography>
           <Stack spacing={1.5} mb={2}>
             {([0, 1, 2] as const).map((i) => (
@@ -285,10 +285,10 @@ export default function AgencyInfoFormPage() {
             ))}
           </Stack>
 
-          <Typography variant="body2" fontWeight={600} gutterBottom>Target Market:</Typography>
+          <Typography variant="body2" fontWeight={600} gutterBottom>Target Markets:</Typography>
           <FormGroup sx={{ ml: 1 }}>
             {[
-              { key: 'resell', label: 'Resell' },
+              { key: 'resell', label: 'Resale' },
               { key: 'underConstruction', label: 'Under Construction' },
               { key: 'finishedProjects', label: 'Finished Projects' },
               { key: 'rentals', label: 'Rentals' },
@@ -312,7 +312,7 @@ export default function AgencyInfoFormPage() {
               />
               <TextField size="small" value={p.targetMarkets.otherMarket}
                 onChange={(e) => setP({ ...p, targetMarkets: { ...p.targetMarkets, otherMarket: e.target.value } })}
-                placeholder="specify..." sx={{ width: 200 }} />
+                placeholder="Specify..." sx={{ width: 200 }} />
             </Stack>
           </FormGroup>
         </FieldRow>
@@ -322,17 +322,17 @@ export default function AgencyInfoFormPage() {
         {/* Social Media */}
         <FieldRow>
           <FormLabel sx={{ fontWeight: 700, fontSize: 15, color: 'text.primary', display: 'block', mb: 1.5 }}>
-            Social Media Presence
+            Social Media
           </FormLabel>
 
           {/* Organic */}
           <YesNo
-            label="Does the agency engage in organic advertising on social media?"
+            label="Does the Agency run organic ads on Social Media?"
             value={p.hasOrganicSocial}
             onChange={(v) => setP({ ...p, hasOrganicSocial: v })}
           />
           {p.hasOrganicSocial === 'yes' && (
-            <PlatformGroup label="Platforms (organic)"
+            <PlatformGroup label="Channels (Organic)"
               value={p.organicPlatforms}
               onChange={(v) => setP({ ...p, organicPlatforms: v })} />
           )}
@@ -341,12 +341,12 @@ export default function AgencyInfoFormPage() {
 
           {/* Paid */}
           <YesNo
-            label="Does the agency engage in paid sponsored advertising on social media?"
+            label="Does the Agency run paid ads on Social Media?"
             value={p.hasPaidSocial}
             onChange={(v) => setP({ ...p, hasPaidSocial: v })}
           />
           {p.hasPaidSocial === 'yes' && (
-            <PlatformGroup label="Platforms (paid)"
+            <PlatformGroup label="Channels (Paid)"
               value={p.paidPlatforms}
               onChange={(v) => setP({ ...p, paidPlatforms: v })} />
           )}
@@ -354,7 +354,7 @@ export default function AgencyInfoFormPage() {
           <Box mt={2} />
 
           <Typography variant="body2" fontWeight={600} gutterBottom>
-            Type of Projects Focused on Social Media Advertising:
+            Projects advertised on Social Media:
           </Typography>
           <Stack spacing={1.5}>
             {([0, 1] as const).map((i) => (
@@ -383,13 +383,13 @@ export default function AgencyInfoFormPage() {
             Contact Details
           </FormLabel>
           <Stack spacing={1.5}>
-            <TextField size="small" fullWidth label="Telephone"
+            <TextField size="small" fullWidth label="Phone Number"
               value={phone} onChange={(e) => setPhone(e.target.value)}
               placeholder="+66 XX XXX XXXX" />
             <TextField size="small" fullWidth label="Email"
               value={email} onChange={(e) => setEmail(e.target.value)}
               placeholder="email@agency.com" />
-            <TextField size="small" fullWidth label="Contact Person Name"
+            <TextField size="small" fullWidth label="Contact Person"
               value={contactPerson} onChange={(e) => setContactPerson(e.target.value)}
               placeholder={t('aif.contactPersonPlaceholder')} />
           </Stack>
@@ -402,7 +402,7 @@ export default function AgencyInfoFormPage() {
           <FormLabel sx={{ fontWeight: 700, fontSize: 15, color: 'text.primary', display: 'block', mb: 1 }}>
             Agency Staff
           </FormLabel>
-          <TextField size="small" label="Number of Staff in Office"
+          <TextField size="small" label="Number of staff in office"
             type="number" value={p.staffCount}
             onChange={(e) => setP({ ...p, staffCount: e.target.value })}
             sx={{ width: 220 }} />
@@ -415,9 +415,9 @@ export default function AgencyInfoFormPage() {
           <FormLabel sx={{ fontWeight: 700, fontSize: 15, color: 'text.primary', display: 'block', mb: 1 }}>
             Agency Engagement
           </FormLabel>
-          <YesNo label="Does the agency bring customers to us?"
+          <YesNo label="Does the Agency bring customers to us?"
             value={p.bringCustomers} onChange={(v) => setP({ ...p, bringCustomers: v })} />
-          <YesNo label="Does the agency sell for us?"
+          <YesNo label="Does the Agency sell our products?"
             value={p.sellsForUs} onChange={(v) => setP({ ...p, sellsForUs: v })} />
         </FieldRow>
 
@@ -428,7 +428,7 @@ export default function AgencyInfoFormPage() {
           <FormLabel sx={{ fontWeight: 700, fontSize: 15, color: 'text.primary', display: 'block', mb: 1 }}>
             Transaction History
           </FormLabel>
-          <TextField size="small" type="date" label="Last Sale Date with Us"
+          <TextField size="small" type="date" label="Last sale date with us"
             value={p.lastSaleDate}
             onChange={(e) => setP({ ...p, lastSaleDate: e.target.value })}
             InputLabelProps={{ shrink: true }} sx={{ width: 240 }} />
@@ -442,7 +442,7 @@ export default function AgencyInfoFormPage() {
             Orientation and Meetings
           </FormLabel>
           <YesNo
-            label="Has the agency visited us for orientation or to meet management?"
+            label="Has the Agency attended an orientation or met with our management?"
             value={p.hadOrientation}
             onChange={(v) => setP({ ...p, hadOrientation: v })}
           />
