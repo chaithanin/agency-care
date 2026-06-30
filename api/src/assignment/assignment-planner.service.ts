@@ -59,7 +59,7 @@ export class AssignmentPlannerService {
   async approvePlan(planId: string, approvedBy: string, note?: string) {
     const plan = await this.prisma.assignmentPlan.findUnique({ where: { id: planId } });
     if (!plan) throw new NotFoundException('Plan not found');
-    if (plan.status !== 'pending_review') throw new BadRequestException('Plan must be in review stage');
+    if (plan.status !== 'draft') throw new BadRequestException('Plan must be in draft');
 
     return this.prisma.assignmentPlan.update({
       where: { id: planId },

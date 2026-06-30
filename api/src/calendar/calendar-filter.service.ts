@@ -68,7 +68,7 @@ export class CalendarFilterService {
       agency: { agencyId: { in: filterValue } },
     };
 
-    const whereClause = filters[filterType] || {};
+    const whereClause = (filters as any)[filterType] || {};
 
     return this.prisma.calendarEvent.findMany({
       where: { ...whereClause, status: { not: 'cancelled' } },
