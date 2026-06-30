@@ -109,6 +109,7 @@ export default function PlansPage() {
     isRecurring: false, recurringFreq: 'monthly', recurringUntil: '',
   });
   const [error, setError] = useState('');
+  const [createLoading, setCreateLoading] = useState(false);
 
   // ─── Call Confirm ─────────────────────────────────────────────────────────
   const [callFor, setCallFor] = useState<Plan | null>(null);
@@ -174,8 +175,11 @@ export default function PlansPage() {
 
   const create = async () => {
     setError('');
-    if (!form.agencyId || !form.employeeId) { setError(t('pl2.selectAgencyAndSeller')); return; }
-    if (form.isRecurring && !form.recurringUntil) { setError(t('pl.recurringUntilRequired')); return; }
+    if (!form.agencyId || !form.employeeId) { setError(t('pl2.selectAgencyAndSeller') || 'Please select Agency and Seller'); return; }
+    if (!form.date) { setError('Please select a date'); return; }
+    if (form.isRecurring && !form.recurringUntil) { setError(t('pl.recurringUntilRequired') || 'Please select recurring until date'); return; }
+
+    setCreateLoading(true);
     try {
       await api.post('/visits/plans', {
         agencyId: form.agencyId,
@@ -191,8 +195,15 @@ export default function PlansPage() {
       });
       setOpenAdd(false);
       setForm({ agencyId: '', employeeId: '', date: todayStr(), note: '', actionType: 'visit', requestDetails: '', priority: 'medium', isRecurring: false, recurringFreq: 'monthly', recurringUntil: '' });
+      setError('');
       loadPlans();
-    } catch (e) { setError(errMsg(e)); }
+    } catch (e) {
+      const msg = errMsg(e) || 'Failed to create plan';
+      setError(msg);
+      console.error('Create plan error:', e);
+    } finally {
+      setCreateLoading(false);
+    }
   };
 
   // ─── Export CSV ──────────────────────────────────────────────────────────
@@ -727,8 +738,11 @@ export default function PlansPage() {
           </Stack>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpenAdd(false)}>{t('common.cancel')}</Button>
-          <Button variant="contained" onClick={create}>{t('pl2.add')}</Button>
+          <Button onClick={() => setOpenAdd(false)} disabled={createLoading}>{t('common.cancel')}</Button>
+          <Button variant="contained" onClick={create} disabled={createLoading} sx={{ position: 'relative' }}>
+            {createLoading && <CircularProgress size={20} sx={{ position: 'absolute', left: 12 }} />}
+            <span style={{ marginLeft: createLoading ? 28 : 0 }}>{t('pl2.add')}</span>
+          </Button>
         </DialogActions>
       </Dialog>
 
