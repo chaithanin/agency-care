@@ -141,6 +141,11 @@ export default function AppointmentPage() {
   const [detail, setDetail] = useState<Appointment | null>(null);
   const [checkinOpen, setCheckinOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
+  const [dayDetailOpen, setDayDetailOpen] = useState(false);
+  const [dayDetailDate, setDayDetailDate] = useState<string | null>(null);
+  const [dayDetailEvents, setDayDetailEvents] = useState<CalendarEvent[]>([]);
+  const [agencyDetailOpen, setAgencyDetailOpen] = useState(false);
+  const [selectedAgencyId, setSelectedAgencyId] = useState<string | null>(null);
 
   const [form, setForm] = useState(blankForm());
   const [checkinForm, setCheckinForm] = useState({ receptionName: '', meetingRoomActual: '', notes: '' });
@@ -172,10 +177,14 @@ export default function AppointmentPage() {
     else if (calMode === 'week') { const w = getWeekDays(curDate); from = w[0]; to = w[6]; }
     else { from = to = curDate; }
     try {
-      const r = await api.get<CalendarEvent[]>(`/appointments/calendar?from=${toBKKDate(from)}&to=${toBKKDate(to)}`);
+      const p = new URLSearchParams({ from: toBKKDate(from), to: toBKKDate(to) });
+      if (filterSearch) p.set('search', filterSearch);
+      if (filterSeller) p.set('saleId', filterSeller);
+      if (filterCategory) p.set('meetingType', filterCategory);
+      const r = await api.get<CalendarEvent[]>(`/appointments/calendar?${p}`);
       setEvents(r.data);
     } catch { /* ignore */ }
-  }, [calMode, curDate]);
+  }, [calMode, curDate, filterSearch, filterSeller, filterCategory]);
 
   const fetchList = useCallback(async () => {
     setLoading(true);
@@ -313,10 +322,16 @@ export default function AppointmentPage() {
 
   const EventChip = ({ ev }: { ev: CalendarEvent }) => (
     <Box
-      onClick={e => { e.stopPropagation(); if (ev.sourceType === 'appointment') { setDetailId(ev.id); setDetail(null); } }}
-      sx={{ bgcolor: ev.color, color: '#fff', borderRadius: 0.5, px: 0.5, py: 0.15, mb: 0.25, fontSize: 10, fontWeight: 600, cursor: 'pointer', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis', '&:hover': { opacity: 0.85 } }}
+      sx={{
+        bgcolor: ev.color, color: '#fff', borderRadius: 0.5, px: 0.5, py: 0.15, mb: 0.25, fontSize: 10, fontWeight: 600,
+        overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis', display: 'flex', gap: 0.25, alignItems: 'center'
+      }}
     >
-      {ev.startTime && `${ev.startTime} `}{ev.title}
+      {ev.startTime && <span>{ev.startTime}</span>}
+      <span onClick={e => { e.stopPropagation(); if (ev.sourceType === 'appointment') { setDetailId(ev.id); setDetail(null); } }} style={{ cursor: 'pointer', flex: 1, minWidth: 0, textOverflow: 'ellipsis', overflow: 'hidden' }} title={ev.title}>
+        {ev.title}
+      </span>
+      {ev.agencyId && <span onClick={e => { e.stopPropagation(); setSelectedAgencyId(ev.agencyId); setAgencyDetailOpen(true); }} style={{ cursor: 'pointer', whiteSpace: 'nowrap' }} title="Agency details">📌</span>}
     </Box>
   );
 
@@ -526,15 +541,68 @@ export default function AppointmentPage() {
                 <ToggleButton value="day">Day</ToggleButton>
               </ToggleButtonGroup>
               <IconButton size="small" onClick={fetchEvents}><Refresh /></IconButton>
+              <Button size="small" variant="outlined" startIcon={<Download />} onClick={() => setExportDialogOpen(true)}>Export</Button>
             </Box>
           </Box>
 
-          {/* Legend */}
-          <Box display="flex" gap={1} flexWrap="wrap" mb={1.5}>
-            {[['#16A34A','🚗 Field Visit'],['#2563EB','🏢 Showroom'],['#D97706','🎓 Training'],['#DC2626','📝 Contract'],['#7C3AED','📣 Marketing'],['#EA580C','🔄 Follow-up']].map(([c,l])=>
-              <Chip key={l} size="small" label={l} sx={{ bgcolor: c, color: '#fff', fontWeight: 600, fontSize: 11 }} />
-            )}
-          </Box>
+          {/* Filters & Legend */}
+          <Paper sx={{ p: 1.5, mb: 1.5, bgcolor: '#F8FAFC' }}>
+            <Stack spacing={1.5}>
+              {/* Filter Controls */}
+              <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap alignItems="center">
+                <TextField
+                  size="small" label="Search" placeholder="Agency, person..."
+                  value={filterSearch} onChange={e => setFilterSearch(e.target.value)}
+                  sx={{ minWidth: 150 }}
+                />
+                <TextField
+                  size="small" type="date" label="From"
+                  InputLabelProps={{ shrink: true }}
+                  value={filterFrom} onChange={e => setFilterFrom(e.target.value)}
+                  sx={{ width: 140 }}
+                />
+                <TextField
+                  size="small" type="date" label="To"
+                  InputLabelProps={{ shrink: true }}
+                  value={filterTo} onChange={e => setFilterTo(e.target.value)}
+                  sx={{ width: 140 }}
+                />
+                <FormControl size="small" sx={{ minWidth: 140 }}>
+                  <InputLabel>Sales</InputLabel>
+                  <Select value={filterSeller} label="Sales" onChange={e => setFilterSeller(e.target.value)}>
+                    <MenuItem value="">All Sales</MenuItem>
+                    {userOpts.filter(u => u.role === 'sales').map(u => <MenuItem key={u.id} value={u.id}>{u.name}</MenuItem>)}
+                  </Select>
+                </FormControl>
+                <FormControl size="small" sx={{ minWidth: 140 }}>
+                  <InputLabel>Category</InputLabel>
+                  <Select value={filterCategory} label="Category" onChange={e => setFilterCategory(e.target.value)}>
+                    <MenuItem value="">All</MenuItem>
+                    {MEETING_TYPES.map(m => <MenuItem key={m.key} value={m.key}>{m.label}</MenuItem>)}
+                  </Select>
+                </FormControl>
+                <Button size="small" variant="contained" onClick={fetchEvents}>Search</Button>
+                {(filterSearch || filterFrom || filterTo || filterSeller || filterCategory) && (
+                  <Button size="small" variant="outlined" onClick={() => {
+                    setFilterSearch(''); setFilterFrom(''); setFilterTo(''); setFilterSeller(''); setFilterCategory('');
+                  }}>Clear</Button>
+                )}
+              </Stack>
+
+              {/* Clickable Legend */}
+              <Stack direction="row" spacing={0.5} flexWrap="wrap">
+                <Typography variant="caption" sx={{ alignSelf: 'center', mr: 0.5 }}>Quick filter:</Typography>
+                {[['#16A34A','🚗 Field Visit', 'site_visit'],['#2563EB','🏢 Showroom', 'showroom'],['#D97706','🎓 Training', 'training'],['#DC2626','📝 Contract', 'contract'],['#7C3AED','📣 Marketing', 'marketing'],['#EA580C','🔄 Follow-up', 'follow_up']].map(([c,l,k])=>
+                  <Chip
+                    key={l} size="small" label={l}
+                    clickable
+                    onClick={() => setFilterCategory(filterCategory === k ? '' : k)}
+                    sx={{ bgcolor: filterCategory === k ? c : '#E2E8F0', color: filterCategory === k ? '#fff' : '#334155', fontWeight: 600, fontSize: 11, cursor: 'pointer' }}
+                  />
+                )}
+              </Stack>
+            </Stack>
+          </Paper>
 
           {/* Month View */}
           {calMode === 'month' && (
@@ -549,7 +617,14 @@ export default function AppointmentPage() {
                   const isToday = ds === toBKKDate(new Date());
                   const isCur = day.getMonth() === curDate.getMonth();
                   return (
-                    <Box key={i} sx={{ minHeight: 90, p: 0.5, borderRight: '1px solid #E2E8F0', borderBottom: '1px solid #E2E8F0', bgcolor: isToday ? '#EFF6FF' : 'transparent', opacity: isCur ? 1 : 0.4 }}>
+                    <Box
+                      key={i}
+                      onClick={() => { setDayDetailDate(ds); setDayDetailEvents(dayEvts); setDayDetailOpen(true); }}
+                      sx={{
+                        minHeight: 90, p: 0.5, borderRight: '1px solid #E2E8F0', borderBottom: '1px solid #E2E8F0',
+                        bgcolor: isToday ? '#EFF6FF' : 'transparent', opacity: isCur ? 1 : 0.4,
+                        cursor: 'pointer', '&:hover': { bgcolor: isToday ? '#DEE9F7' : '#F1F5F9' }
+                      }}>
                       <Typography variant="caption" fontWeight={isToday ? 700 : 400} sx={{ display: 'block', mb: 0.25, color: isToday ? 'primary.main' : 'text.primary' }}>
                         {day.getDate()}
                       </Typography>
@@ -961,6 +1036,80 @@ export default function AppointmentPage() {
         tableId="appointments-table"
         filename="activity-calendar"
       />
+
+      {/* Day Detail Modal */}
+      <Dialog open={dayDetailOpen} maxWidth="sm" fullWidth onClose={() => setDayDetailOpen(false)}>
+        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Typography fontWeight={700}>Tasks for {dayDetailDate ? new Date(dayDetailDate).toLocaleDateString('th-TH', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : ''}</Typography>
+          <IconButton onClick={() => setDayDetailOpen(false)} size="small"><Close /></IconButton>
+        </DialogTitle>
+        <DialogContent>
+          {dayDetailEvents.length === 0 ? (
+            <Typography color="text.secondary" textAlign="center" py={3}>No appointments for this day</Typography>
+          ) : (
+            <Stack spacing={1.5}>
+              {dayDetailEvents.map(ev => (
+                <Paper key={ev.id} sx={{ p: 1.5, bgcolor: '#F8FAFC', borderLeft: `4px solid ${ev.color}` }}>
+                  <Box display="flex" justifyContent="space-between" alignItems="start" gap={1}>
+                    <Box flex={1}>
+                      <Typography variant="subtitle2" fontWeight={700}>{ev.agencyName}</Typography>
+                      <Typography variant="caption" color="text.secondary">{ev.startTime} • {ev.title}</Typography>
+                      {ev.saleName && <Typography variant="caption" display="block" color="text.secondary">👤 {ev.saleName}</Typography>}
+                    </Box>
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      onClick={() => { setDetailId(ev.id); setDayDetailOpen(false); setDetail(null); }}
+                    >
+                      View
+                    </Button>
+                  </Box>
+                </Paper>
+              ))}
+            </Stack>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Agency Detail Modal */}
+      <Dialog open={agencyDetailOpen} maxWidth="sm" fullWidth onClose={() => setAgencyDetailOpen(false)}>
+        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Typography fontWeight={700}>Agency Details</Typography>
+          <IconButton onClick={() => setAgencyDetailOpen(false)} size="small"><Close /></IconButton>
+        </DialogTitle>
+        <DialogContent>
+          {selectedAgencyId ? (
+            <Stack spacing={1.5}>
+              {agencyOpts.find(a => a.id === selectedAgencyId) && (
+                <>
+                  <Box>
+                    <Typography variant="caption" color="text.secondary" display="block">Agency Name</Typography>
+                    <Typography fontWeight={700}>{agencyOpts.find(a => a.id === selectedAgencyId)?.name}</Typography>
+                  </Box>
+                  <Box>
+                    <Typography variant="caption" color="text.secondary" display="block">Agency Code</Typography>
+                    <Typography>{agencyOpts.find(a => a.id === selectedAgencyId)?.code}</Typography>
+                  </Box>
+                  {agencyOpts.find(a => a.id === selectedAgencyId)?.phone && (
+                    <Box>
+                      <Typography variant="caption" color="text.secondary" display="block">Phone</Typography>
+                      <Typography>{agencyOpts.find(a => a.id === selectedAgencyId)?.phone}</Typography>
+                    </Box>
+                  )}
+                  {agencyOpts.find(a => a.id === selectedAgencyId)?.managerName && (
+                    <Box>
+                      <Typography variant="caption" color="text.secondary" display="block">Manager</Typography>
+                      <Typography>{agencyOpts.find(a => a.id === selectedAgencyId)?.managerName}</Typography>
+                    </Box>
+                  )}
+                </>
+              )}
+            </Stack>
+          ) : (
+            <Typography color="text.secondary">Loading...</Typography>
+          )}
+        </DialogContent>
+      </Dialog>
     </Box>
   );
 }
