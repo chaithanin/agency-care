@@ -1,12 +1,14 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { AgencyAssignmentEngine } from './agency-assignment.engine';
+import { AutoRescheduleService } from './auto-reschedule.service';
 
 @Injectable()
 export class AssignmentService {
   constructor(
     private prisma: PrismaService,
     private agencyEngine: AgencyAssignmentEngine,
+    private autoReschedule: AutoRescheduleService,
   ) {}
 
   // มอบหมาย agency ให้ employee (upsert: ถ้าเคยมีแล้ว set active)
@@ -57,5 +59,26 @@ export class AssignmentService {
 
   async checkConsecutiveAssignments(employeeId: string, agencyId: string, date: string) {
     return this.agencyEngine.checkConsecutiveAssignments(employeeId, agencyId, date);
+  }
+
+  // Auto-Reschedule Methods
+  async handleCancellation(planId: string) {
+    return this.autoReschedule.handleAgencyCancellation(planId);
+  }
+
+  async handleReschedule(planId: string, newDate: string) {
+    return this.autoReschedule.handleAgencyReschedule(planId, newDate);
+  }
+
+  async handleSickLeave(employeeId: string, date: string) {
+    return this.autoReschedule.handleEmployeeSickLeave(employeeId, date);
+  }
+
+  async getPendingReschedules() {
+    return this.autoReschedule.getPendingReschedules();
+  }
+
+  async getRescheduleStats(month: string) {
+    return this.autoReschedule.getRescheduleStats(month);
   }
 }

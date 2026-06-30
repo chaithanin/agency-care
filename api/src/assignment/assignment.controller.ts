@@ -78,4 +78,42 @@ export class AssignmentController {
       date,
     );
   }
+
+  // Auto-Reschedule Endpoints
+
+  @Roles('admin', 'closer')
+  @Post('reschedule/cancel/:planId')
+  handleCancellation(@Param('planId') planId: string) {
+    return this.service.handleCancellation(planId);
+  }
+
+  @Roles('admin', 'closer')
+  @Post('reschedule/move/:planId')
+  handleReschedule(
+    @Param('planId') planId: string,
+    @Body('newDate') newDate: string,
+  ) {
+    return this.service.handleReschedule(planId, newDate);
+  }
+
+  @Roles('admin', 'closer')
+  @Post('reschedule/sick-leave/:employeeId')
+  handleSickLeave(
+    @Param('employeeId') employeeId: string,
+    @Body('date') date: string,
+  ) {
+    return this.service.handleSickLeave(employeeId, date);
+  }
+
+  @Roles('admin', 'closer', 'sales')
+  @Get('reschedule/pending')
+  getPendingReschedules() {
+    return this.service.getPendingReschedules();
+  }
+
+  @Roles('admin', 'closer')
+  @Get('reschedule/stats')
+  getRescheduleStats(@Query('month') month: string) {
+    return this.service.getRescheduleStats(month);
+  }
 }
