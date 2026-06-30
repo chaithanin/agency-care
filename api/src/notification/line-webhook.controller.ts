@@ -92,11 +92,11 @@ export class LineWebhookController {
       const text = (event.message.text ?? '').trim().toLowerCase();
 
       if (text === 'ผูก' || text === 'bind' || text === 'link') {
-        await this.replyText(event.replyToken, '🔗 เข้าสู่ระบบ Agency Care แล้วกด "ผูก LINE" ในหน้า Profile ของคุณครับ');
+        await this.replyText(event.replyToken, '🔗 Sign in to Agency Care and click "Link LINE" in your Profile page.');
         return;
       }
 
-      if (text === 'สถานะ' || text === 'status') {
+      if (text === 'status') {
         const emp = await this.db.employee.findFirst({ where: { lineUserId } });
         if (emp) {
           const today = new Date();
@@ -104,21 +104,20 @@ export class LineWebhookController {
           const end = new Date(today.setHours(23,59,59,999));
           const checkins = await this.db.visitCheckin.count({ where: { employeeId: emp.id, checkinAt: { gte: start, lte: end } } });
           const tasks = await this.db.task.count({ where: { assignedToId: emp.id, status: { not: 'done' } } });
-          await this.replyText(event.replyToken, `📊 สถานะวันนี้\n\n✅ Check-in แล้ว: ${checkins} ครั้ง\n📋 งานค้าง: ${tasks} รายการ\n\nเปิดแอป: ${this.config.get('APP_URL') ?? 'https://agency-care-1027220843311.asia-east2.run.app'}`);
+          await this.replyText(event.replyToken, `📊 Your Status Today\n\n✅ Check-ins: ${checkins}\n📋 Pending Tasks: ${tasks}\n\nOpen App: ${this.config.get('APP_URL') ?? 'https://agency-care-1027220843311.asia-east2.run.app'}`);
         } else {
-          await this.replyText(event.replyToken, '❌ ยังไม่ได้ผูกบัญชี กรุณาเข้าระบบแล้วผูก LINE ก่อนครับ');
+          await this.replyText(event.replyToken, '❌ Account not linked. Please sign in and link your LINE account first.');
         }
         return;
       }
 
-      if (text === 'help' || text === 'ช่วยเหลือ') {
+      if (text === 'help') {
         await this.replyText(event.replyToken,
           '🤖 Agency Care Bot\n\n' +
-          '📌 คำสั่งที่ใช้ได้:\n' +
-          '• สถานะ — ดูงานวันนี้\n' +
-          '• ผูก — ผูกบัญชีกับระบบ\n' +
-          '• help — ดูคำสั่งทั้งหมด\n\n' +
-          '🔔 แจ้งเตือนอัตโนมัติ:\n' +
+          '📌 Available Commands:\n' +
+          '• status — View today\'s tasks\n' +
+          '• help — View all commands\n\n' +
+          '🔔 Automatic Notifications:\n' +
           '• 08:00 Daily Brief\n' +
           '• 12:00 Midday Reminder\n' +
           '• 16:00 Follow-up\n' +

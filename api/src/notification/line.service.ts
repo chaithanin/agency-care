@@ -76,15 +76,15 @@ export class LineService {
       body: {
         type: 'box', layout: 'vertical', spacing: 'sm',
         contents: [
-          { type: 'text', text: `Good Morning, คุณ${name}`, weight: 'bold', size: 'md', color: '#111827' },
+          { type: 'text', text: `Good Morning, ${name}`, weight: 'bold', size: 'md', color: '#111827' },
           { type: 'separator', margin: 'sm' },
-          this._row('📅 งานวันนี้', `${todayCount} งาน`, '#4F46E5'),
-          this._row('⏳ งานค้าง', `${overdueCount} งาน`, overdueCount > 0 ? '#EF4444' : '#6B7280'),
-          this._row('✅ ความสำเร็จ', `${completionPct}%`,
+          this._row('📅 Tasks Today', `${todayCount} tasks`, '#4F46E5'),
+          this._row('⏳ Overdue', `${overdueCount} tasks`, overdueCount > 0 ? '#EF4444' : '#6B7280'),
+          this._row('✅ Completion', `${completionPct}%`,
             completionPct >= 80 ? '#22C55E' : completionPct >= 50 ? '#F59E0B' : '#EF4444'),
         ],
       },
-      footer: this._footer('👉 ดูรายละเอียด', appUrl),
+      footer: this._footer('👉 View Details', appUrl),
     };
   }
 
@@ -110,16 +110,16 @@ export class LineService {
       body: {
         type: 'box', layout: 'vertical', spacing: 'sm',
         contents: [
-          { type: 'text', text: `ทีม: ${teamName}`, weight: 'bold', size: 'sm', color: '#374151' },
-          this._row('📋 งานทั้งหมด', `${totalTasks} งาน`, '#374151'),
-          this._row('⏳ งานค้าง', `${overdueTotal} งาน`, overdueTotal > 0 ? '#EF4444' : '#6B7280'),
+          { type: 'text', text: `Team: ${teamName}`, weight: 'bold', size: 'sm', color: '#374151' },
+          this._row('📋 Total Tasks', `${totalTasks} tasks`, '#374151'),
+          this._row('⏳ Overdue', `${overdueTotal} tasks`, overdueTotal > 0 ? '#EF4444' : '#6B7280'),
           { type: 'separator', margin: 'sm' },
           ...members.slice(0, 5).map((m) =>
-            this._row(`• ${m.name}`, `${m.overdue} งาน`, m.overdue > 0 ? '#EF4444' : '#6B7280'),
+            this._row(`• ${m.name}`, `${m.overdue} tasks`, m.overdue > 0 ? '#EF4444' : '#6B7280'),
           ),
         ],
       },
-      footer: this._footer('👉 ดู Dashboard', appUrl),
+      footer: this._footer('👉 View Dashboard', appUrl),
     };
   }
 
@@ -146,14 +146,14 @@ export class LineService {
       body: {
         type: 'box', layout: 'vertical', spacing: 'sm',
         contents: [
-          this._row('📋 งานทั้งหมด', `${totalTasks} งาน`, '#374151'),
-          this._row('✅ เสร็จแล้ว', `${completed} งาน`, '#22C55E'),
-          this._row('⏳ งานค้าง', `${overdue} งาน`, overdue > 0 ? '#EF4444' : '#6B7280'),
-          this._row('👥 พนักงานมีงานค้าง', `${overdueEmployees} คน`, overdueEmployees > 0 ? '#EF4444' : '#6B7280'),
+          this._row('📋 Total Tasks', `${totalTasks} tasks`, '#374151'),
+          this._row('✅ Completed', `${completed} tasks`, '#22C55E'),
+          this._row('⏳ Overdue', `${overdue} tasks`, overdue > 0 ? '#EF4444' : '#6B7280'),
+          this._row('👥 Employees Overdue', `${overdueEmployees} people`, overdueEmployees > 0 ? '#EF4444' : '#6B7280'),
           { type: 'separator', margin: 'sm' },
-          { type: 'text', text: 'แบ่งตามทีม:', size: 'xs', color: '#6B7280' },
+          { type: 'text', text: 'By Team:', size: 'xs', color: '#6B7280' },
           ...teams.slice(0, 5).map((t) =>
-            this._row(`• ${t.name}`, `${t.overdue} งาน`, t.overdue > 0 ? '#EF4444' : '#6B7280'),
+            this._row(`• ${t.name}`, `${t.overdue} tasks`, t.overdue > 0 ? '#EF4444' : '#6B7280'),
           ),
         ],
       },
@@ -181,13 +181,13 @@ export class LineService {
       body: {
         type: 'box', layout: 'vertical', spacing: 'sm',
         contents: [
-          { type: 'text', text: `Good Morning, คุณ${name}`, weight: 'bold', size: 'md', color: '#111827' },
-          this._row('📅 งานวันนี้', `${todayCount} งาน`, '#4F46E5'),
+          { type: 'text', text: `Good Morning, ${name}`, weight: 'bold', size: 'md', color: '#111827' },
+          this._row('📅 Tasks Today', `${todayCount} tasks`, '#4F46E5'),
           overdueCount > 0
-            ? this._row('⏳ งานค้าง', `${overdueCount} งาน`, '#EF4444')
+            ? this._row('⏳ Overdue', `${overdueCount} tasks`, '#EF4444')
             : null,
           { type: 'separator', margin: 'sm' },
-          { type: 'text', text: '💡 AI แนะนำให้เริ่มจาก:', size: 'sm', weight: 'bold', color: '#374151' },
+          { type: 'text', text: '💡 AI Recommendations:', size: 'sm', weight: 'bold', color: '#374151' },
           ...topTasks.slice(0, 3).map((task, i) => ({
             type: 'text',
             text: `${i + 1}. ${task.title}${task.time ? ` (${task.time})` : ''}`,
