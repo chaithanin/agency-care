@@ -213,7 +213,7 @@ export default function CalendarPage() {
   // Check if any filters are active
   const hasFilters = filterDateFrom || filterDateTo;
 
-  // Filter data based on date range
+  // Filter data based on all filters
   const filteredData = useMemo(() => {
     if (!data) return null;
     if (!hasFilters) return data;
@@ -224,18 +224,51 @@ export default function CalendarPage() {
     };
 
     for (const [date, visits] of Object.entries(data.days)) {
-      let include = true;
+      const filteredVisits = visits.filter((v) => {
+        // Date range filters
+        if (filterDateFrom && date < filterDateFrom) return false;
+        if (filterDateTo && date > filterDateTo) return false;
 
-      if (filterDateFrom && date < filterDateFrom) include = false;
-      if (filterDateTo && date > filterDateTo) include = false;
+        // Type filter (not implemented in API, needs data structure)
+        if (filterType.length > 0) {
+          // TODO: Need activityType field in visit data
+        }
 
-      if (include) {
-        filtered.days[date] = visits;
+        // Key activity filter (not implemented in API)
+        if (filterKeyActivity) {
+          // TODO: Need keyActivity field in visit data
+        }
+
+        // Status filter (not implemented in API)
+        if (filterStatus) {
+          // TODO: Use v.status when available
+        }
+
+        // Customer filter
+        if (filterCustomer && !v.agencyName.toLowerCase().includes(filterCustomer.toLowerCase())) {
+          return false;
+        }
+
+        // Owner/Employee filter
+        if (filterOwner.length > 0 && !filterOwner.includes(v.employeeName)) {
+          return false;
+        }
+
+        // Agency search filter
+        if (agencySearch && !v.agencyName.toLowerCase().includes(agencySearch.toLowerCase())) {
+          return false;
+        }
+
+        return true;
+      });
+
+      if (filteredVisits.length > 0) {
+        filtered.days[date] = filteredVisits;
       }
     }
 
     return filtered;
-  }, [data, filterDateFrom, filterDateTo, hasFilters]);
+  }, [data, filterDateFrom, filterDateTo, filterType, filterKeyActivity, filterStatus, filterCustomer, filterOwner, agencySearch, hasFilters]);
 
   // Calculate result count
   const resultCount = useMemo(() => {
