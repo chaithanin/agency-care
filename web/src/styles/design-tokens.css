@@ -1,0 +1,105 @@
+/* Design System: Premium SaaS Tokens */
+
+:root {
+  /* Colors - Primary */
+  --color-primary: #6C63FF;
+  --color-purple: #7C5CFF;
+  --color-pink: #FF7AC6;
+  --color-blue: #60A5FA;
+  --color-mint: #5EEAD4;
+  --color-green: #22C55E;
+  --color-yellow: #FACC15;
+  --color-red: #EF4444;
+
+  /* Backgrounds - Gradient Mix */
+  --bg-primary: linear-gradient(135deg, #FFF8E8 0%, #FFEAF7 25%, #F7D9FF 50%, #EEF5FF 75%, #E7FAFF 100%);
+  --bg-subtle: linear-gradient(135deg, #FAFAF9 0%, #F8F4FB 100%);
+
+  /* Cards */
+  --card-bg: rgba(255, 255, 255, 0.95);
+  --card-backdrop-blur: 20px;
+  --card-border-radius: 24px;
+  --card-border-radius-lg: 30px;
+
+  /* Shadows - Layered & Soft */
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.08);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.12);
+  --shadow-xl: 0 12px 48px rgba(0, 0, 0, 0.15);
+  --shadow-2xl: 0 20px 64px rgba(0, 0, 0, 0.18);
+
+  /* Glassmorphism */
+  --glass-bg: rgba(255, 255, 255, 0.7);
+  --glass-blur: 12px;
+  --glass-border: 1px solid rgba(255, 255, 255, 0.2);
+
+  /* Typography */
+  --font-family: 'Inter', 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+
+  /* Spacing */
+  --space-xs: 0.25rem;
+  --space-sm: 0.5rem;
+  --space-md: 1rem;
+  --space-lg: 1.5rem;
+  --space-xl: 2rem;
+  --space-2xl: 3rem;
+  --space-3xl: 4rem;
+
+  /* Border Radius */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --radius-2xl: 30px;
+
+  /* Transitions */
+  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-base: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: 500ms cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* Spring Animation */
+  --spring-bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+/* Global Styles */
+* {
+  font-family: var(--font-family);
+}
+
+body {
+  background: var(--bg-primary);
+  color: #1f2937;
+  line-height: 1.6;
+}
+
+/* Scrollbar Styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.3);
+}
+
+/* Smooth Transitions */
+* {
+  transition: background-color var(--transition-base),
+              color var(--transition-base),
+              border-color var(--transition-base),
+              box-shadow var(--transition-base);
+}

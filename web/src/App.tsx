@@ -23,6 +23,7 @@ import SellerPerformancePage from './pages/SellerPerformancePage';
 import PipelinePage from './pages/PipelinePage';
 import UsersPage from './pages/UsersPage';
 import CalendarPage from './pages/CalendarPage';
+import PremiumActivityCalendar from './pages/PremiumActivityCalendar';
 import TasksPage from './pages/TasksPage';
 import NotificationsPage from './pages/NotificationsPage';
 import SiteVisitReportPage from './pages/SiteVisitReportPage';
@@ -137,6 +138,7 @@ export default function App() {
             <Route path="/" element={<MyVisitsPage />} />
             <Route path="/my-day" element={<MyDayPage />} />
             <Route path="/calendar" element={<CalendarPage />} />
+            <Route path="/activity-calendar" element={<PremiumActivityCalendar />} />
           </>
         )}
         <Route path="/route" element={<RoutePage />} />

@@ -5,6 +5,7 @@ import { ThemeProvider, CssBaseline } from '@mui/material';
 import { theme } from './theme';
 import { AuthProvider } from './auth/AuthContext';
 import { I18nProvider } from './i18n';
+import './styles/design-tokens.css';
 import App from './App';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
