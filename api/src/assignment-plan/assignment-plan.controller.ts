@@ -1,5 +1,5 @@
 import {
-  Body, Controller, Get, Param, Patch, Post,
+  Body, Controller, Delete, Get, Param, Patch, Post,
 } from '@nestjs/common';
 import { Roles } from '../auth/guards';
 import { CurrentUser } from '../common/current-user.decorator';
@@ -66,5 +66,10 @@ export class AssignmentPlanController {
     @Param('versionId') versionId: string,
   ) {
     return this.svc.rollback(user, id, versionId);
+  }
+
+  @Delete(':id')
+  delete(@CurrentUser() user: RequestUser, @Param('id') id: string) {
+    return this.svc.delete(user, id);
   }
 }

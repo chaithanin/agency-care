@@ -390,4 +390,33 @@ export class AssignmentPlanService {
 
     return this.getById(user, planId);
   }
+
+  // ─── ลบแผน ────────────────────────────────────────────────────────────────
+  async delete(user: RequestUser, planId: string) {
+    if (!['admin', 'super_admin'].includes(user.role)) {
+      throw new ForbiddenException('เฉพาะ Admin เท่านั้น');
+    }
+    const plan = await this.prisma.assignmentPlan.findUnique({ where: { id: planId } });
+    if (!plan) throw new NotFoundException('ไม่พบแผน');
+
+    // ลบได้เฉพาะแผน Draft เท่านั้น
+    if (plan.status !== 'draft') {
+      throw new BadRequestException('ลบได้เฉพาะแผน Draft เท่านั้น (สถานะ: ' + plan.status + ')');
+    }
+
+    // ลบทั้งหมด: versions, items, plan
+    await this.prisma.$transaction(async (tx) => {
+      // ลบ items ในทุก version
+      const versions = await tx.planVersion.findMany({ where: { planId } });
+      for (const v of versions) {
+        await tx.planVersionItem.deleteMany({ where: { versionId: v.id } });
+      }
+      // ลบ versions
+      await tx.planVersion.deleteMany({ where: { planId } });
+      // ลบ plan
+      await tx.assignmentPlan.delete({ where: { id: planId } });
+    });
+
+    return { message: 'ลบแผนเสร็จสิ้น', id: planId };
+  }
 }
