@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { ChevronLeft, ChevronRight, Calendar, Clock, MapPin, User, Download, Filter } from 'lucide-react';
+import { useState } from 'react';
+import { ChevronLeft, ChevronRight, AccessTime, Person, Download, FilterList } from '@mui/icons-material';
 import { PremiumCard, GradientCard, KPICard } from '../components/premium/PremiumCard';
 import { PremiumButton } from '../components/premium/PremiumButton';
 
@@ -46,7 +46,7 @@ export default function PremiumActivityCalendar() {
             <h1 className="text-4xl font-bold text-gray-900 mb-2">Activity Calendar</h1>
             <p className="text-gray-600">Track and manage all your appointments and activities</p>
           </div>
-          <PremiumButton variant="primary" size="lg" icon={<Download size={20} />}>
+          <PremiumButton variant="primary" size="lg" icon={<Download sx={{ fontSize: 20 }} />}>
             Export Calendar
           </PremiumButton>
         </div>
@@ -119,7 +119,7 @@ export default function PremiumActivityCalendar() {
             {/* Category Filter */}
             <div className="space-y-3">
               <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
-                <Filter size={16} /> Filter by Category
+                <FilterList sx={{ fontSize: 16 }} /> Filter by Category
               </label>
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
                 {categories.map((cat) => (
@@ -152,7 +152,7 @@ export default function PremiumActivityCalendar() {
                 onClick={handlePrevMonth}
                 className="p-2 hover:bg-purple-100 rounded-lg transition-colors"
               >
-                <ChevronLeft size={24} className="text-purple-600" />
+                <ChevronLeft sx={{ fontSize: 24, color: '#9333EA' }} />
               </button>
               <div className="text-center">
                 <h3 className="text-2xl font-bold text-gray-900">
@@ -163,7 +163,7 @@ export default function PremiumActivityCalendar() {
                 onClick={handleNextMonth}
                 className="p-2 hover:bg-purple-100 rounded-lg transition-colors"
               >
-                <ChevronRight size={24} className="text-purple-600" />
+                <ChevronRight sx={{ fontSize: 24, color: '#9333EA' }} />
               </button>
             </div>
 
@@ -253,10 +253,10 @@ export default function PremiumActivityCalendar() {
                       <p className="font-semibold text-gray-900">{event.agency}</p>
                       <div className="flex gap-4 text-sm text-gray-600">
                         <span className="flex items-center gap-1">
-                          <Clock size={14} /> {event.time}
+                          <AccessTime sx={{ fontSize: 14 }} /> {event.time}
                         </span>
                         <span className="flex items-center gap-1">
-                          <User size={14} /> {event.sales}
+                          <Person sx={{ fontSize: 14 }} /> {event.sales}
                         </span>
                       </div>
                     </div>
