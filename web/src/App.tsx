@@ -53,7 +53,7 @@ import ProfilePage from './pages/ProfilePage';
 import LineLinkPage from './pages/LineLinkPage';
 import LineConnectionPage from './pages/LineConnectionPage';
 import BroadcastPage from './pages/BroadcastPage';
-import AppointmentPage from './pages/AppointmentPage';
+import AppointmentPagePremium from './pages/AppointmentPagePremium';
 import AiRiskPage from './pages/AiRiskPage';
 import AiForecastPage from './pages/AiForecastPage';
 import AiHealthPage from './pages/AiHealthPage';
@@ -128,7 +128,7 @@ export default function App() {
             <Route path="/training" element={<TrainingPage />} />
             <Route path="/agency-scores" element={<AgencyScorePage />} />
             <Route path="/evaluations" element={<EvaluationPage />} />
-            <Route path="/appointments" element={<AppointmentPage />} />
+            <Route path="/appointments" element={<AppointmentPagePremium />} />
             <Route path="/ai-risk" element={<AiRiskPage />} />
             <Route path="/ai-forecast" element={<AiForecastPage />} />
             <Route path="/ai-health" element={<AiHealthPage />} />
