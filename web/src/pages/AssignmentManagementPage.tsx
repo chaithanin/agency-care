@@ -34,6 +34,7 @@ import {
 import {
   Add as AddIcon,
   CheckCircle,
+  Delete as DeleteIcon,
   History,
   PlayArrow,
   Print as PrintIcon,
@@ -577,6 +578,12 @@ export default function AssignmentManagementPage() {
   const [detailLoading, setDetailLoading] = useState(false);
   const [generateOpen, setGenerateOpen] = useState(false);
 
+  // ─── Edit/Delete Plan ─────────────────────────────────────────────────────────
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deletePlanId, setDeletePlanId] = useState<string | null>(null);
+  const [actionLoading, setActionLoading] = useState(false);
+  const [actionErr, setActionErr] = useState('');
+
   // ─── Tab 2: Quick Auto-Assign (from AutoAssignPage) ──────────────────────────
   const [proposal, setProposal] = useState<ProposalRow[] | null>(null);
   const [summary, setSummary] = useState<SummaryRow[]>([]);
@@ -630,6 +637,29 @@ export default function AssignmentManagementPage() {
   const handleRefresh = () => {
     loadPlans();
     if (selectedId) loadDetail(selectedId);
+  };
+
+  const handleDeletePlan = (planId: string) => {
+    setDeletePlanId(planId);
+    setDeleteOpen(true);
+    setActionErr('');
+  };
+
+  const confirmDelete = async () => {
+    if (!deletePlanId) return;
+    setActionLoading(true);
+    setActionErr('');
+    try {
+      await api.delete(`/assignment-plans/${deletePlanId}`);
+      setDeleteOpen(false);
+      setDeletePlanId(null);
+      if (selectedId === deletePlanId) setSelectedId(null);
+      handleRefresh();
+    } catch (e) {
+      setActionErr(errMsg(e));
+    } finally {
+      setActionLoading(false);
+    }
   };
 
   // ─── Functions for Tab 2: Quick Auto-Assign ───────────────────────────────────
@@ -808,7 +838,6 @@ export default function AssignmentManagementPage() {
             {plans.map((p) => (
               <Box
                 key={p.id}
-                onClick={() => setSelectedId(p.id)}
                 sx={{
                   px: 2,
                   py: 1.5,
@@ -817,18 +846,38 @@ export default function AssignmentManagementPage() {
                   borderColor: 'primary.main',
                   bgcolor: selectedId === p.id ? 'action.selected' : 'transparent',
                   '&:hover': { bgcolor: 'action.hover' },
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'flex-start',
+                  gap: 1,
                 }}
               >
-                <Stack direction="row" justifyContent="space-between" alignItems="center">
-                  <Typography variant="body1" fontWeight={600}>{p.period}</Typography>
-                  <Chip size="small" label={t(STATUS_KEY[p.status])} color={STATUS_COLOR[p.status]} />
+                <Box flex={1} onClick={() => setSelectedId(p.id)}>
+                  <Stack direction="row" justifyContent="space-between" alignItems="center">
+                    <Typography variant="body1" fontWeight={600}>{p.period}</Typography>
+                    <Chip size="small" label={t(STATUS_KEY[p.status])} color={STATUS_COLOR[p.status]} />
+                  </Stack>
+                  <Typography variant="caption" color="text.secondary">
+                    {p.totalAgencies} Agency · {p.totalSales} {t('c.seller')} · v{p.versions.length}
+                  </Typography>
+                  <Typography variant="caption" display="block" color="text.secondary">
+                    {t('aa.createdBy')} {p.createdBy.name}
+                  </Typography>
+                </Box>
+                <Stack direction="row" spacing={0.5}>
+                  <Tooltip title="ลบ">
+                    <IconButton
+                      size="small"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeletePlan(p.id);
+                      }}
+                      sx={{ color: 'error.main' }}
+                    >
+                      <DeleteIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
                 </Stack>
-                <Typography variant="caption" color="text.secondary">
-                  {p.totalAgencies} Agency · {p.totalSales} {t('c.seller')} · v{p.versions.length}
-                </Typography>
-                <Typography variant="caption" display="block" color="text.secondary">
-                  {t('aa.createdBy')} {p.createdBy.name}
-                </Typography>
               </Box>
             ))}
           </Paper>
@@ -1141,6 +1190,38 @@ export default function AssignmentManagementPage() {
         {yearlyMsg && <Alert severity="success" sx={{ mb: 2 }}>{yearlyMsg}</Alert>}
         {yearlyErr && <Alert severity="error" sx={{ mb: 2 }}>{yearlyErr}</Alert>}
       </Box>
+
+      {/* ═══════════════════════════════════════════════════════════════════════════
+          Delete Confirmation Dialog
+          ═══════════════════════════════════════════════════════════════════════════ */}
+      <Dialog open={deleteOpen} onClose={() => !actionLoading && setDeleteOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle>ลบแผน</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} mt={1}>
+            {actionErr && <Alert severity="error">{actionErr}</Alert>}
+            <Typography>
+              คุณแน่ใจหรือว่าต้องการลบแผน <strong>{deletePlanId ? plans.find(p => p.id === deletePlanId)?.period : ''}</strong> นี้?
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              การกระทำนี้ไม่สามารถยกเลิกได้
+            </Typography>
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteOpen(false)} disabled={actionLoading}>
+            ยกเลิก
+          </Button>
+          <Button
+            variant="contained"
+            color="error"
+            onClick={confirmDelete}
+            disabled={actionLoading}
+            startIcon={actionLoading ? <CircularProgress size={16} /> : <DeleteIcon />}
+          >
+            {actionLoading ? 'กำลังลบ...' : 'ลบแผน'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

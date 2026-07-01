@@ -19,11 +19,42 @@ async function upsertUser(email: string, password: string, name: string, role: '
   });
 }
 
+async function seedAppointments(emp1: any, emp2: any, agencies: any[], admin: any) {
+  const today = new Date();
+  const apptData = [
+    { agencyId: agencies[0].id, saleId: emp1.userId, date: today, time: '09:00', type: 'showroom', meetingType: 'project_presentation' },
+    { agencyId: agencies[1].id, saleId: emp1.userId, date: new Date(today.getTime() + 2*24*60*60*1000), time: '14:30', type: 'showroom', meetingType: 'follow_up' },
+    { agencyId: agencies[2].id, saleId: emp1.userId, date: new Date(today.getTime() + 4*24*60*60*1000), time: '10:00', type: 'showroom', meetingType: 'contract' },
+    { agencyId: agencies[3].id, saleId: emp2.userId, date: new Date(today.getTime() + 1*24*60*60*1000), time: '11:00', type: 'showroom', meetingType: 'training' },
+    { agencyId: agencies[4].id, saleId: emp2.userId, date: new Date(today.getTime() + 3*24*60*60*1000), time: '15:30', type: 'showroom', meetingType: 'follow_up' },
+  ];
+
+  for (const appt of apptData) {
+    await prisma.appointment.upsert({
+      where: { apptNo: `APT-${appt.agencyId.slice(0, 8)}-${Math.random().toString(36).slice(2, 8)}` },
+      update: {},
+      create: {
+        apptNo: `APT-${appt.agencyId.slice(0, 8)}-${Math.random().toString(36).slice(2, 8)}`,
+        agencyId: appt.agencyId,
+        saleId: appt.saleId,
+        createdById: admin.id,
+        apptDate: appt.date,
+        startTime: new Date(`2026-07-01T${appt.time}`),
+        endTime: new Date(`2026-07-01T${String(parseInt(appt.time) + 1).padStart(2, '0')}:00`),
+        status: 'confirmed',
+        apptType: appt.type,
+        meetingType: appt.meetingType,
+      },
+    });
+  }
+  console.log('✅ 5 appointments seeded');
+}
+
 async function main() {
   // ===== 1) admin =====
   const adminEmail = process.env.SEED_ADMIN_EMAIL || 'admin@example.com';
   const adminPass = process.env.SEED_ADMIN_PASSWORD || 'Admin@1234';
-  await upsertUser(adminEmail, adminPass, 'ผู้ดูแลระบบ', 'admin');
+  const admin = await upsertUser(adminEmail, adminPass, 'ผู้ดูแลระบบ', 'admin');
   console.log(`✅ admin: ${adminEmail} / ${adminPass}`);
 
   // ===== 2) เซลส์ 2 คน (มีบัญชี login) =====
@@ -112,6 +143,10 @@ async function main() {
     await prisma.product.upsert({ where: { code: p.code }, update: { price: p.price }, create: p });
   }
   console.log('✅ POSM 5 รายการ + สินค้า 3 รายการ');
+
+  // Seed appointments
+  const agencies = await prisma.agency.findMany({ where: { code: { in: agencyData.map(a => a.code) } } });
+  await seedAppointments(emp1, emp2, agencies, admin);
 
   console.log('🎉 seed เสร็จ — login เป็น sale1@example.com เพื่อทดสอบ check-in/แจกสื่อ/บันทึกขาย');
 }

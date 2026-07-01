@@ -24,6 +24,7 @@ import PipelinePage from './pages/PipelinePage';
 import UsersPage from './pages/UsersPage';
 import CalendarPage from './pages/CalendarPage';
 import PremiumActivityCalendar from './pages/PremiumActivityCalendar';
+import ModernDashboard from './pages/ModernDashboard';
 import TasksPage from './pages/TasksPage';
 import NotificationsPage from './pages/NotificationsPage';
 import SiteVisitReportPage from './pages/SiteVisitReportPage';
@@ -141,6 +142,7 @@ export default function App() {
             <Route path="/activity-calendar" element={<PremiumActivityCalendar />} />
           </>
         )}
+        <Route path="/modern-dashboard" element={<ModernDashboard />} />
         <Route path="/route" element={<RoutePage />} />
         <Route path="/tasks" element={<TasksPage />} />
         <Route path="/leave" element={<LeavePage />} />
